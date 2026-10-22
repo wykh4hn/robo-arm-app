@@ -1,0 +1,89 @@
+.page {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page h1 {
+  font-size: 22px;
+}
+
+.section {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section h2 {
+  font-size: var(--fs-lg);
+}
+
+.section ol,
+.section ul {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.legend {
+  list-style: none;
+  padding: 0 !important;
+}
+
+.legendRow {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.situations {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+  list-style: none;
+  padding: 0 !important;
+}
+
+.situation {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.situation h3 {
+  font-size: var(--fs-base);
+  margin-bottom: 4px;
+}
+
+.glossary {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+}
+
+.glossary dt {
+  font-weight: 700;
+}
+
+.glossary dd {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .legendRow,
+  .glossary {
+    grid-template-columns: 1fr;
+  }
+  .glossary dd {
+    margin-bottom: 6px;
+  }
+}

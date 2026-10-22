@@ -1,0 +1,206 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.segmented button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  background: var(--surface);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--border);
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--primary);
+  color: var(--primary-text);
+}
+
+.segmented button:hover[aria-pressed='false'] {
+  background: var(--surface-2);
+}
+
+.sentence {
+  font-size: var(--fs-md);
+  line-height: 1.5;
+}
+
+.trackRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trackLabel {
+  font-weight: 600;
+}
+
+.trackChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--lvl-bg);
+  color: var(--lvl-text);
+  font-weight: 700;
+}
+
+.trackChip:not(:global(.lvl-neutral)) {
+  border-color: var(--lvl-fg);
+}
+
+.trackErr {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pausedTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.chart {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.plot {
+  width: 100%;
+  min-height: 170px;
+  overflow: hidden;
+}
+
+.legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+
+.legendItem {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 6px;
+  align-items: center;
+}
+
+.legendItem input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.legendLabel {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+  cursor: pointer;
+}
+
+.swatch {
+  display: inline-block;
+  width: 18px;
+  border-top: 3px solid;
+  align-self: center;
+}
+
+.jointName {
+  font-weight: 600;
+}
+
+.tech {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.values {
+  grid-column: 2;
+  display: flex;
+  gap: 10px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+
+.values b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.lineLegend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.lineSample {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: none;
+}
+
+.lineSample span {
+  display: block;
+  width: 24px;
+  border-top: 2px solid var(--text);
+}
+
+.lineSample span + span {
+  border-top-style: dashed;
+}
+
+.unit {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+}

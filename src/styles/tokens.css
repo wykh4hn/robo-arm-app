@@ -1,0 +1,74 @@
+/* All design tokens live here. Components only use these variables. */
+:root {
+  /* surfaces & text */
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --surface-2: #f6f8fa;
+  --border: #cbd2d9;
+  --text: #1f2933;
+  --muted: #52606d;
+  --header: #243b53;
+  --header-text: #ffffff;
+  --header-muted: #d9e2ec;
+  --primary: #1f6feb;
+  --primary-text: #ffffff;
+  --primary-hover: #1a5fcc;
+
+  /* status */
+  --ok: #1e8e3e;
+  --ok-bg: #e6f4ea;
+  --ok-text: #166b2e; /* #1e8e3e fails 4.5:1 as text on ok-bg */
+  --warn: #b45309;
+  --warn-bg: #fef3c7;
+  --warn-text: #a14a08;
+  --critical: #c62828;
+  --critical-bg: #fdecea;
+  --critical-text: #c62828;
+  --info: #1f6feb;
+  --info-bg: #e8f0fe;
+  --info-text: #1a5fcc; /* primary fails 4.5:1 as text on info-bg */
+  --estop: #7f1d1d;
+  --estop-bg: #fdecea;
+  --estop-text: #7f1d1d;
+  --neutral: #52606d;
+  --neutral-bg: #f6f8fa;
+  --neutral-text: #52606d;
+  --stop: #d32f2f;
+  --stop-hover: #b71c1c;
+  --stop-text: #ffffff;
+
+  /* charts: one colour per joint within a chart */
+  --chart-1: #e8710a;
+  --chart-2: #1f6feb;
+  --chart-3: #1e8e3e;
+  --chart-grid: #e4e7eb;
+
+  /* type */
+  --font: system-ui, 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 14px;
+  --fs-md: 16px;
+  --fs-lg: 18px;
+
+  /* shape & spacing */
+  --radius: 6px;
+  --radius-lg: 8px;
+  --gap: 12px;
+  --gap-sm: 8px;
+  --gap-xs: 4px;
+  --focus: #1f6feb;
+  --popover-shadow: 0 4px 12px rgba(31, 41, 51, 0.18);
+
+  /* layout */
+  --left-col: 240px;
+  --right-col: 440px;
+  --header-h: 56px;
+}
+
+@media (max-width: 1279px) {
+  :root {
+    --right-col: 360px;
+  }
+}
