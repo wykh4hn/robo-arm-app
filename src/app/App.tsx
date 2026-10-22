@@ -53,8 +53,8 @@ export function App({ createTransport, scenario, showDevPanel = false }: AppProp
       <div className={styles.top}>
         <Header />
         <StatusBar derived={derived} />
-        {tab === 'monitoring' && <PipelineStrip stale={derived.stale} />}
       </div>
+      {tab === 'monitoring' && <PipelineStrip stale={derived.stale} />}
       <main
         id="main"
         className={styles.page}

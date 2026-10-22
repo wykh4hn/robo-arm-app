@@ -73,7 +73,11 @@ export const vi = {
     resolved: 'Đã hết',
     robotLabel: 'Robot:',
     todoLabel: 'Cần làm:',
-    robotStopped: { yes: 'Đã dừng', no: 'Vẫn đang hoạt động', unknown: 'Chưa chắc đã dừng' },
+    robotStopped: {
+      yes: 'Đã dừng',
+      no: 'Không bị dừng bởi sự cố này',
+      unknown: 'Chưa chắc đã dừng',
+    },
     reconnect: 'Kết nối lại',
     ready: 'Sẵn sàng',
     titles: {

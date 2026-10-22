@@ -75,7 +75,11 @@ export const en: Strings = {
     resolved: 'Resolved',
     robotLabel: 'Robot:',
     todoLabel: 'What to do:',
-    robotStopped: { yes: 'Stopped', no: 'Still running', unknown: 'Not sure it has stopped' },
+    robotStopped: {
+      yes: 'Stopped',
+      no: 'Not stopped by this problem',
+      unknown: 'Not sure it has stopped',
+    },
     reconnect: 'Reconnect',
     ready: 'Ready',
     titles: {

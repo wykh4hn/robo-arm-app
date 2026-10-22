@@ -47,7 +47,7 @@ export function PipelineStrip({ stale }: { stale: boolean }) {
                     />
                   )}
                   <span className={styles.label}>{t.pipeline.steps[step.id]}</span>
-                  <span className={`${styles.value} mono`}>{value}</span>
+                  <span className={`${styles.value} ${failed ? '' : 'mono'}`}>{value}</span>
                 </span>
               )}
             </Tooltip>

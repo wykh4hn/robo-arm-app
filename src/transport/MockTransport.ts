@@ -24,11 +24,11 @@ const TASK_MS = 12_000;
 const INITIAL_TASK_MS = 25_000;
 
 const MOTION: Record<JointName, { base: number; amp: number; phase: number }> = {
-  shoulder_pan: { base: 0, amp: 60, phase: 0 },
-  shoulder_lift: { base: -20, amp: 70, phase: 1.1 },
-  elbow_flex: { base: 20, amp: 70, phase: 2.2 },
-  wrist_flex: { base: 30, amp: 50, phase: 0.6 },
-  wrist_roll: { base: -40, amp: 40, phase: 1.7 },
+  shoulder_pan: { base: 0, amp: 50, phase: 0 },
+  shoulder_lift: { base: -20, amp: 55, phase: 1.1 },
+  elbow_flex: { base: 20, amp: 55, phase: 2.2 },
+  wrist_flex: { base: 30, amp: 40, phase: 0.6 },
+  wrist_roll: { base: -40, amp: 30, phase: 1.7 },
   gripper: { base: 50, amp: 45, phase: 0.3 },
 };
 /** The gripper cannot close beyond this while holding an object. */

@@ -33,7 +33,10 @@ export function CameraTile({ camera, stale }: CameraTileProps) {
         </span>
       )}
       {frozen && (
-        <span className={`${styles.frozenOverlay} ${styles.badge} lvl-attention`}>
+        <span
+          className={`${styles.frozenOverlay} ${styles.badge} lvl-attention`}
+          data-testid={big ? undefined : 'camera-frozen'}
+        >
           <Icon name="pause" size={14} />
           {t.camera.frozen}
         </span>
@@ -56,12 +59,6 @@ export function CameraTile({ camera, stale }: CameraTileProps) {
         {ageMs !== null && (
           <span className={`${styles.stat} mono`}>
             {fmt(t.camera.age, { n: (ageMs / 1000).toFixed(1) })}
-          </span>
-        )}
-        {frozen && (
-          <span className={`${styles.badge} lvl-attention`} data-testid="camera-frozen">
-            <Icon name="pause" size={14} />
-            {t.camera.frozen}
           </span>
         )}
         {lowFps && (

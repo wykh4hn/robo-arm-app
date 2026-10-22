@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import styles from './Tooltip.module.css';
 
 interface TooltipProps {
@@ -8,20 +8,16 @@ interface TooltipProps {
   align?: 'start' | 'end';
 }
 
-/** Short hint shown on hover and keyboard focus. Escape hides it. */
+/** Short hint shown on hover and keyboard focus. Escape or a click hides it. */
 export function Tooltip({ text, children, align = 'start' }: TooltipProps) {
   const id = useId();
   const [hidden, setHidden] = useState(false);
-  useEffect(() => {
-    if (!hidden) return;
-    const reset = () => setHidden(false);
-    window.addEventListener('pointermove', reset, { once: true });
-    return () => window.removeEventListener('pointermove', reset);
-  }, [hidden]);
   return (
     <span
       className={styles.wrap}
       onKeyDown={(e) => e.key === 'Escape' && setHidden(true)}
+      onPointerDown={() => setHidden(true)}
+      onPointerLeave={() => setHidden(false)}
       onBlur={() => setHidden(false)}
     >
       {children(id)}

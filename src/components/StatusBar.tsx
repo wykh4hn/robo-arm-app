@@ -40,7 +40,17 @@ function Chip({ label, level, tip, icon, dim, children }: ChipProps) {
 export function StatusBar({ derived }: { derived: DerivedStatus }) {
   const t = useT();
   const { connection, robot, task, stale, ageMs } = derived;
-  const updated = ageMs === null ? t.status.noData : fmt(t.status.updated, { n: formatAge(ageMs) });
+  const [before, after] = t.status.updated.split('{n}');
+  const updated =
+    ageMs === null ? (
+      t.status.noData
+    ) : (
+      <>
+        {before}
+        <span className="mono">{formatAge(ageMs)}</span>
+        {after}
+      </>
+    );
 
   return (
     <div className={styles.bar} role="group" aria-label={t.status.overall}>
@@ -77,7 +87,7 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
         <Tooltip text={t.status.tipUpdated} align="end">
           {(id) => (
             <span
-              className={`${styles.updated} mono ${stale ? 'stale-dim' : ''}`}
+              className={`${styles.updated} ${stale ? 'stale-dim' : ''}`}
               tabIndex={0}
               aria-describedby={id}
             >

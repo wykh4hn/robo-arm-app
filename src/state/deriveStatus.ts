@@ -23,6 +23,7 @@ export interface ChipStatus<V> {
 
 export interface DerivedStatus {
   overall: Level;
+  /** Values on screen may be out of date (no fresh message, or not connected): dim them. */
   stale: boolean;
   /** Whole seconds since the last message (null before the first one). */
   ageMs: number | null;
@@ -166,7 +167,7 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
 
   return {
     overall: worst(problems.map((p) => p.level)),
-    stale,
+    stale: stale || (!live && s.lastMessageAt !== null),
     ageMs,
     connection: { level: connLevel, value: { web: s.web, usb: webUp ? s.usb : 'unknown' } },
     robot: { level: robotLevel, value: robotValue },

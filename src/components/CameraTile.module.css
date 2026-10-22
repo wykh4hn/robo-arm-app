@@ -41,6 +41,8 @@
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
+  /* keep both tiles + command box within one desktop screen */
+  max-height: max(180px, calc((100vh - 470px) / 2));
   padding: 0;
   border: 0;
   background: #d9dee3;
@@ -116,6 +118,7 @@
 
 .dialog .media {
   cursor: default;
+  max-height: 80vh;
 }
 
 .dim {
