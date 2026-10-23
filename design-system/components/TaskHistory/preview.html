@@ -1,0 +1,49 @@
+<!-- @dsCard group="Command" height=490 width=680 subtitle="Newest first, running task pinned" -->
+<!doctype html>
+<html lang="vi">
+<head><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../bundle.css"><meta charset="utf-8"><title>TaskHistory — preview</title></head>
+<body>
+<div class="rb-demo" style="flex-wrap: nowrap;">
+  <section class="rb-card" style="width: 300px;" aria-labelledby="th">
+    <div class="rb-card__head" style="align-items:center;">
+      <h2 class="rb-card__title" id="th" style="flex:1">Lịch sử task</h2>
+      <span class="rb-muted" style="font-size:12px;">Mới nhất ở trên</span>
+    </div>
+    <div class="rb-card__body">
+      <ol class="rb-history">
+        <li class="rb-task rb-task--running">
+          <div class="rb-task__row"><span class="rb-task__id">#13</span><span class="rb-task__status rb-task__status--running"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg>Đang chạy</span></div>
+          <div class="rb-task__cmd">Gắp vịt đỏ bỏ vào hộp</div>
+          <div class="rb-task__meta">Bắt đầu <span class="rb-mono">09:42:10</span> · <span class="rb-mono">8 s</span></div>
+        </li>
+        <li class="rb-task">
+          <div class="rb-task__row"><span class="rb-task__id">#12</span><span class="rb-task__status rb-task__status--done"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /></svg>Xong</span></div>
+          <div class="rb-task__cmd">Gắp vịt vàng bỏ vào hộp</div>
+          <div class="rb-task__meta"><span class="rb-mono">09:40:31</span> · <span class="rb-mono">21 s</span></div>
+        </li>
+        <li class="rb-task">
+          <div class="rb-task__row"><span class="rb-task__id">#11</span><span class="rb-task__status rb-task__status--failed"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="m15 9-6 6" /> <path d="m9 9 6 6" /></svg>Thất bại</span></div>
+          <div class="rb-task__cmd">Gắp khối lập phương bỏ vào hộp</div>
+          <div class="rb-task__meta"><span class="rb-mono">09:38:02</span> · <span class="rb-mono">30 s</span></div>
+          <div class="rb-task__reason">Không gắp được vật — kẹp đóng hết hành trình.</div>
+        </li>
+        <li class="rb-task">
+          <div class="rb-task__row"><span class="rb-task__id">#10</span><span class="rb-task__status rb-task__status--stopped"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="M8 12h8" /></svg>Đã dừng</span></div>
+          <div class="rb-task__cmd">Gắp hộp nhỏ màu hồng bỏ vào hộp</div>
+          <div class="rb-task__meta"><span class="rb-mono">09:35:47</span> · <span class="rb-mono">12 s</span> · dừng bằng STOP</div>
+        </li>
+      </ol>
+    </div>
+  </section>
+  <section class="rb-card" style="width: 300px;" aria-labelledby="th2">
+    <div class="rb-card__head" style="align-items:center;">
+      <h2 class="rb-card__title" id="th2" style="flex:1">Lịch sử task</h2>
+      <span class="rb-muted" style="font-size:12px;">Mới nhất ở trên</span>
+    </div>
+    <div class="rb-card__body">
+      <p class="rb-empty" style="margin:0">Chưa có task nào trong phiên này.<br>Chọn vật thể ở thẻ Ra lệnh rồi bấm Gửi lệnh.</p>
+    </div>
+  </section>
+</div>
+</body>
+</html>

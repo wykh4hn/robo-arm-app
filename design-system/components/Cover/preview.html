@@ -1,0 +1,94 @@
+<!-- @dsCard height=320 -->
+<!doctype html>
+<html lang="en">
+<head><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../bundle.css">
+<meta charset="utf-8">
+<title>SO-101 Monitor</title>
+<style>
+  html, body { margin:0; height:100%; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font-sans); overflow:hidden; }
+  .cover { position:relative; width:960px; height:320px; overflow:hidden; }
+  .art { position:absolute; top:0; left:480px; width:480px; height:320px; overflow:hidden; }
+  .art svg { display:block; width:480px; height:320px; }
+  .slate { fill:var(--header); }
+  .blue { fill:var(--primary); }
+  .red { fill:var(--stop); }
+  .card { fill:var(--surface); stroke:var(--border); stroke-width:1; }
+  .dot { fill:var(--on-header-muted); }
+  .lg { rx:var(--radius-lg); }
+  .md { rx:var(--radius-md); }
+  .words { position:absolute; left:var(--space-6); bottom:var(--space-6); max-width:440px; }
+  .name { margin:0; font-size:100px; line-height:.95; font-weight:600; letter-spacing:-.02em; color:var(--text); }
+  .tag { margin:var(--space-3) 0 0 4px; font-size:14px; line-height:20px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 480 320" width="480" height="320">
+<!--
+  blocks      header slate 240x312 bled off the top (the identity: the dark control bar) · primary 192x168 (the one action colour) · surface card 192x88 with its 1px border (the white panels on bg) · stop 64x44, once and small (STOP is size-stop tall; red only ever means stop) — about 40% of 960x320
+  arrangement one tall slate slab with satellites; bottoms on one line space-6 above the edge; space-4 gutters
+  pattern     dot grid, from "Numbers line up / precise, technical, mono": r2 dots at a space-8 pitch in on-header-muted over the slab — the 3D floor grid and chart grid, a corner left clear
+  scales      sides in space-4 multiples; gutters space-4; pitch space-8; corners radius-lg on blocks, radius-md on the STOP block
+-->
+<rect class="slate lg" x="16" y="-12" width="240" height="308" rx="8"/>
+<circle class="dot" cx="48" cy="40" r="2"/>
+<circle class="dot" cx="48" cy="72" r="2"/>
+<circle class="dot" cx="48" cy="104" r="2"/>
+<circle class="dot" cx="48" cy="136" r="2"/>
+<circle class="dot" cx="48" cy="168" r="2"/>
+<circle class="dot" cx="48" cy="200" r="2"/>
+<circle class="dot" cx="48" cy="232" r="2"/>
+<circle class="dot" cx="48" cy="264" r="2"/>
+<circle class="dot" cx="80" cy="40" r="2"/>
+<circle class="dot" cx="80" cy="72" r="2"/>
+<circle class="dot" cx="80" cy="104" r="2"/>
+<circle class="dot" cx="80" cy="136" r="2"/>
+<circle class="dot" cx="80" cy="168" r="2"/>
+<circle class="dot" cx="80" cy="200" r="2"/>
+<circle class="dot" cx="80" cy="232" r="2"/>
+<circle class="dot" cx="80" cy="264" r="2"/>
+<circle class="dot" cx="112" cy="40" r="2"/>
+<circle class="dot" cx="112" cy="72" r="2"/>
+<circle class="dot" cx="112" cy="104" r="2"/>
+<circle class="dot" cx="112" cy="136" r="2"/>
+<circle class="dot" cx="112" cy="168" r="2"/>
+<circle class="dot" cx="112" cy="200" r="2"/>
+<circle class="dot" cx="112" cy="232" r="2"/>
+<circle class="dot" cx="112" cy="264" r="2"/>
+<circle class="dot" cx="144" cy="40" r="2"/>
+<circle class="dot" cx="144" cy="72" r="2"/>
+<circle class="dot" cx="144" cy="104" r="2"/>
+<circle class="dot" cx="144" cy="136" r="2"/>
+<circle class="dot" cx="144" cy="168" r="2"/>
+<circle class="dot" cx="144" cy="200" r="2"/>
+<circle class="dot" cx="144" cy="232" r="2"/>
+<circle class="dot" cx="144" cy="264" r="2"/>
+<circle class="dot" cx="176" cy="136" r="2"/>
+<circle class="dot" cx="176" cy="168" r="2"/>
+<circle class="dot" cx="176" cy="200" r="2"/>
+<circle class="dot" cx="176" cy="232" r="2"/>
+<circle class="dot" cx="176" cy="264" r="2"/>
+<circle class="dot" cx="208" cy="136" r="2"/>
+<circle class="dot" cx="208" cy="168" r="2"/>
+<circle class="dot" cx="208" cy="200" r="2"/>
+<circle class="dot" cx="208" cy="232" r="2"/>
+<circle class="dot" cx="208" cy="264" r="2"/>
+<circle class="dot" cx="240" cy="136" r="2"/>
+<circle class="dot" cx="240" cy="168" r="2"/>
+<circle class="dot" cx="240" cy="200" r="2"/>
+<circle class="dot" cx="240" cy="232" r="2"/>
+<circle class="dot" cx="240" cy="264" r="2"/>
+<rect class="card lg" x="272" y="32" width="192" height="88" rx="8"/>
+<rect class="red md" x="288" y="56" width="64" height="44" rx="6"/>
+<rect class="blue lg" x="272" y="136" width="192" height="160" rx="8"/>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">SO-101<br>Monitor</h1>
+<p class="tag">A calm, industrial interface for the SO-101 pick-and-place arm.</p>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!-- @dsCard group="Screens" height=1180 width=1440 page subtitle="Top of the screen in four ?scenario= states: robot-error, stop-ok, web-disconnected, estop" -->
+<!doctype html>
+<html lang="vi">
+<head><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../bundle.css"><meta charset="utf-8"><title>ScenarioStates — preview</title>
+<style>
+  .sc { display: grid; gap: 0; margin-bottom: var(--space-4); border-bottom: 1px solid var(--border); padding-bottom: var(--space-3); }
+  .sc__label { font-size: 12px; line-height: 16px; color: var(--muted); padding: var(--space-3) var(--space-4) var(--space-2); }
+  .sc__label b { font-family: var(--font-mono); font-weight: 500; color: var(--text); }
+</style>
+</head>
+<body>
+<div class="rb-app" style="min-height:0;">
+
+  <!-- robot-error -->
+  <section class="sc" aria-label="robot-error">
+    <p class="sc__label"><b>?scenario=robot-error</b> — robot báo lỗi giữa task; mức Cần xử lý</p>
+    <header class="rb-header">
+      <button class="rb-stop" type="button"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="M8 12h8" /></svg>STOP</button>
+      <nav class="rb-header__tabs" role="tablist"><button class="rb-htab" role="tab" aria-selected="true">Monitoring</button><button class="rb-htab" role="tab" aria-selected="false">Tutorial</button></nav>
+      <div class="rb-header__project"><div class="rb-header__name">[Tên dự án]</div><div class="rb-header__sub">Tay robot SO-101 · gắp vật bỏ vào hộp</div></div>
+      <div class="rb-lang" role="group"><button type="button" aria-pressed="true">VI</button><button type="button" aria-pressed="false">EN</button></div>
+    </header>
+    <div class="rb-statusbar" role="status">
+      <span class="rb-chip rb-chip--lamp rb-chip--critical"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="m15 9-6 6" /> <path d="m9 9 6 6" /></svg>Cần xử lý</span>
+      <span class="rb-chip"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h.01" /> <path d="M2 8.82a15 15 0 0 1 20 0" /> <path d="M5 12.859a10 10 0 0 1 14 0" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /></svg><span class="rb-chip__label">Kết nối</span><span class="rb-chip__value">Web <span class="rb-chip__num">11 ms</span> · USB ổn</span></span>
+      <span class="rb-chip rb-chip--critical"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 8V4H8" /> <rect width="16" height="12" x="4" y="8" rx="2" /> <path d="M2 14h2" /> <path d="M20 14h2" /> <path d="M15 13v2" /> <path d="M9 13v2" /></svg><span class="rb-chip__label">Robot</span><span class="rb-chip__value">Lỗi</span></span>
+      <span class="rb-chip rb-chip--critical"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 17 2 2 4-4" /> <path d="m3 7 2 2 4-4" /> <path d="M13 6h8" /> <path d="M13 12h8" /> <path d="M13 18h8" /></svg><span class="rb-chip__label">Task</span><span class="rb-chip__value"><span class="rb-chip__num">#13</span> Thất bại</span></span>
+      <span class="rb-chip"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <line x1="22" x2="18" y1="12" y2="12" /> <line x1="6" x2="2" y1="12" y2="12" /> <line x1="12" x2="12" y1="6" y2="2" /> <line x1="12" x2="12" y1="22" y2="18" /></svg><span class="rb-chip__label">Độ bám lệnh</span><span class="rb-chip__value">—</span></span>
+      <span class="rb-statusbar__updated"><svg class="rb-ic rb-ic--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /></svg>Cập nhật <span class="rb-mono">0,2 s</span> trước</span>
+    </div>
+    <div class="rb-banner-slot">
+      <div class="rb-banner" role="alert"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="m15 9-6 6" /> <path d="m9 9 6 6" /></svg>
+        <div><p class="rb-banner__title">Robot báo lỗi: quá tải ở khớp elbow_flex</p>
+          <dl class="rb-banner__facts"><dt>Robot</dt><dd>Đã dừng — task #13 bị huỷ.</dd><dt>Việc cần làm</dt><dd>Gỡ vật cản quanh khuỷu tay, kiểm tra dây servo, rồi bấm <strong>Sẵn sàng</strong> và gửi lệnh mới.</dd></dl></div>
+        <div class="rb-banner__actions"><button class="rb-btn" type="button"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /> <path d="M12 17h.01" /></svg>Xem hướng dẫn</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- stop-ok -->
+  <section class="sc" aria-label="stop-ok">
+    <p class="sc__label"><b>?scenario=stop-ok</b> — đã bấm STOP và có xác nhận; mức Chờ người dùng, không có banner vì không có lỗi</p>
+    <header class="rb-header">
+      <button class="rb-stop" type="button" data-state="stopped"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /></svg>Đã dừng</button>
+      <button class="rb-hbtn" type="button"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polygon points="6 3 20 12 6 21 6 3" /></svg>Sẵn sàng</button>
+      <nav class="rb-header__tabs" role="tablist"><button class="rb-htab" role="tab" aria-selected="true">Monitoring</button><button class="rb-htab" role="tab" aria-selected="false">Tutorial</button></nav>
+      <div class="rb-header__project"><div class="rb-header__name">[Tên dự án]</div><div class="rb-header__sub">Tay robot SO-101 · gắp vật bỏ vào hộp</div></div>
+      <div class="rb-lang" role="group"><button type="button" aria-pressed="true">VI</button><button type="button" aria-pressed="false">EN</button></div>
+    </header>
+    <div class="rb-statusbar" role="status">
+      <span class="rb-chip rb-chip--lamp rb-chip--info"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" /> <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" /> <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" /> <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" /></svg>Chờ người dùng</span>
+      <span class="rb-chip"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h.01" /> <path d="M2 8.82a15 15 0 0 1 20 0" /> <path d="M5 12.859a10 10 0 0 1 14 0" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /></svg><span class="rb-chip__label">Kết nối</span><span class="rb-chip__value">Web <span class="rb-chip__num">12 ms</span> · USB ổn</span></span>
+      <span class="rb-chip rb-chip--info"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="M8 12h8" /></svg><span class="rb-chip__label">Robot</span><span class="rb-chip__value">Đã dừng · bấm Sẵn sàng</span></span>
+      <span class="rb-chip rb-chip--warn"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 17 2 2 4-4" /> <path d="m3 7 2 2 4-4" /> <path d="M13 6h8" /> <path d="M13 12h8" /> <path d="M13 18h8" /></svg><span class="rb-chip__label">Task</span><span class="rb-chip__value"><span class="rb-chip__num">#13</span> Đã dừng</span></span>
+      <span class="rb-chip"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <line x1="22" x2="18" y1="12" y2="12" /> <line x1="6" x2="2" y1="12" y2="12" /> <line x1="12" x2="12" y1="6" y2="2" /> <line x1="12" x2="12" y1="22" y2="18" /></svg><span class="rb-chip__label">Độ bám lệnh</span><span class="rb-chip__value">—</span></span>
+      <span class="rb-statusbar__updated"><svg class="rb-ic rb-ic--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /></svg>Cập nhật <span class="rb-mono">0,1 s</span> trước</span>
+    </div>
+  </section>
+
+  <!-- web-disconnected -->
+  <section class="sc" aria-label="web-disconnected">
+    <p class="sc__label"><b>?scenario=web-disconnected</b> — mất kết nối web; số liệu mờ, Gửi lệnh khoá đến khi tải lại trạng thái</p>
+    <header class="rb-header">
+      <button class="rb-stop" type="button"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="M8 12h8" /></svg>STOP</button>
+      <nav class="rb-header__tabs" role="tablist"><button class="rb-htab" role="tab" aria-selected="true">Monitoring</button><button class="rb-htab" role="tab" aria-selected="false">Tutorial</button></nav>
+      <div class="rb-header__project"><div class="rb-header__name">[Tên dự án]</div><div class="rb-header__sub">Tay robot SO-101 · gắp vật bỏ vào hộp</div></div>
+      <div class="rb-lang" role="group"><button type="button" aria-pressed="true">VI</button><button type="button" aria-pressed="false">EN</button></div>
+    </header>
+    <div class="rb-statusbar" role="status">
+      <span class="rb-chip rb-chip--lamp rb-chip--critical"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="m15 9-6 6" /> <path d="m9 9 6 6" /></svg>Cần xử lý</span>
+      <span class="rb-chip rb-chip--critical"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h.01" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /> <path d="M5 12.859a10 10 0 0 1 5.17-2.69" /> <path d="M19 12.859a10 10 0 0 0-2.007-1.523" /> <path d="M2 8.82a15 15 0 0 1 4.177-2.643" /> <path d="M22 8.82a15 15 0 0 0-11.288-3.764" /> <path d="m2 2 20 20" /></svg><span class="rb-chip__label">Kết nối</span><span class="rb-chip__value">Web mất · thử lại lần 3</span></span>
+      <span class="rb-chip is-stale"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 8V4H8" /> <rect width="16" height="12" x="4" y="8" rx="2" /> <path d="M2 14h2" /> <path d="M20 14h2" /> <path d="M15 13v2" /> <path d="M9 13v2" /></svg><span class="rb-chip__label">Robot</span><span class="rb-chip__value">Không rõ</span></span>
+      <span class="rb-chip is-stale"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 17 2 2 4-4" /> <path d="m3 7 2 2 4-4" /> <path d="M13 6h8" /> <path d="M13 12h8" /> <path d="M13 18h8" /></svg><span class="rb-chip__label">Task</span><span class="rb-chip__value"><span class="rb-chip__num">#13</span> Không rõ</span></span>
+      <span class="rb-chip is-stale"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <line x1="22" x2="18" y1="12" y2="12" /> <line x1="6" x2="2" y1="12" y2="12" /> <line x1="12" x2="12" y1="6" y2="2" /> <line x1="12" x2="12" y1="22" y2="18" /></svg><span class="rb-chip__label">Độ bám lệnh</span><span class="rb-chip__value">—</span></span>
+      <span class="rb-statusbar__updated"><span class="rb-tag rb-tag--warn"><svg class="rb-ic rb-ic--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /></svg>Dữ liệu cũ</span>Cập nhật <span class="rb-mono">6,8 s</span> trước</span>
+    </div>
+    <div class="rb-pipeline"><span class="rb-pipeline__title">Chuỗi xử lý</span>
+      <span class="rb-pipe-step rb-pipe-step--empty">Camera <span class="rb-pipe-step__ms">—</span></span><svg class="rb-ic rb-pipe-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6" /></svg><span class="rb-pipe-step rb-pipe-step--empty">AI <span class="rb-pipe-step__ms">—</span></span><svg class="rb-ic rb-pipe-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6" /></svg><span class="rb-pipe-step rb-pipe-step--empty">Gateway <span class="rb-pipe-step__ms">—</span></span><svg class="rb-ic rb-pipe-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6" /></svg><span class="rb-pipe-step rb-pipe-step--empty">Robot <span class="rb-pipe-step__ms">—</span></span><svg class="rb-ic rb-pipe-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6" /></svg><span class="rb-pipe-step rb-pipe-step--empty">Kết quả <span class="rb-pipe-step__ms">—</span></span>
+    </div>
+    <div class="rb-banner-slot">
+      <div class="rb-banner" role="alert"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h.01" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /> <path d="M5 12.859a10 10 0 0 1 5.17-2.69" /> <path d="M19 12.859a10 10 0 0 0-2.007-1.523" /> <path d="M2 8.82a15 15 0 0 1 4.177-2.643" /> <path d="M22 8.82a15 15 0 0 0-11.288-3.764" /> <path d="m2 2 20 20" /></svg>
+        <div><p class="rb-banner__title">Mất kết nối tới gateway</p>
+          <dl class="rb-banner__facts"><dt>Robot</dt><dd>Không rõ — robot có thể vẫn đang chạy task #13.</dd><dt>Việc cần làm</dt><dd>Nếu cần dừng ngay, dùng nút dừng khẩn cấp vật lý. Khi có lại kết nối, giao diện tải lại trạng thái rồi mới mở khoá điều khiển.</dd></dl></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- estop -->
+  <section class="sc" aria-label="estop" style="border-bottom:0;">
+    <p class="sc__label"><b>?scenario=estop</b> — nút dừng khẩn cấp vật lý đang được nhấn; mức nặng nhất</p>
+    <header class="rb-header">
+      <button class="rb-stop" type="button"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="M8 12h8" /></svg>STOP</button>
+      <nav class="rb-header__tabs" role="tablist"><button class="rb-htab" role="tab" aria-selected="true">Monitoring</button><button class="rb-htab" role="tab" aria-selected="false">Tutorial</button></nav>
+      <div class="rb-header__project"><div class="rb-header__name">[Tên dự án]</div><div class="rb-header__sub">Tay robot SO-101 · gắp vật bỏ vào hộp</div></div>
+      <div class="rb-lang" role="group"><button type="button" aria-pressed="true">VI</button><button type="button" aria-pressed="false">EN</button></div>
+    </header>
+    <div class="rb-statusbar" role="status">
+      <span class="rb-chip rb-chip--lamp rb-chip--estop"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 16h.01" /> <path d="M12 8v4" /> <path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z" /></svg>Dừng khẩn cấp</span>
+      <span class="rb-chip"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h.01" /> <path d="M2 8.82a15 15 0 0 1 20 0" /> <path d="M5 12.859a10 10 0 0 1 14 0" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /></svg><span class="rb-chip__label">Kết nối</span><span class="rb-chip__value">Web <span class="rb-chip__num">12 ms</span> · USB ổn</span></span>
+      <span class="rb-chip rb-chip--critical"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 8V4H8" /> <rect width="16" height="12" x="4" y="8" rx="2" /> <path d="M2 14h2" /> <path d="M20 14h2" /> <path d="M15 13v2" /> <path d="M9 13v2" /></svg><span class="rb-chip__label">Robot</span><span class="rb-chip__value">Dừng khẩn cấp</span></span>
+      <span class="rb-chip rb-chip--warn"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m3 17 2 2 4-4" /> <path d="m3 7 2 2 4-4" /> <path d="M13 6h8" /> <path d="M13 12h8" /> <path d="M13 18h8" /></svg><span class="rb-chip__label">Task</span><span class="rb-chip__value"><span class="rb-chip__num">#13</span> Đã dừng</span></span>
+      <span class="rb-chip"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <line x1="22" x2="18" y1="12" y2="12" /> <line x1="6" x2="2" y1="12" y2="12" /> <line x1="12" x2="12" y1="6" y2="2" /> <line x1="12" x2="12" y1="22" y2="18" /></svg><span class="rb-chip__label">Độ bám lệnh</span><span class="rb-chip__value">—</span></span>
+      <span class="rb-statusbar__updated"><svg class="rb-ic rb-ic--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /></svg>Cập nhật <span class="rb-mono">0,1 s</span> trước</span>
+    </div>
+    <div class="rb-banner-slot">
+      <div class="rb-banner" role="alert"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 16h.01" /> <path d="M12 8v4" /> <path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z" /></svg>
+        <div><p class="rb-banner__title">Nút dừng khẩn cấp vật lý đang được nhấn</p>
+          <dl class="rb-banner__facts"><dt>Robot</dt><dd>Đã dừng bởi nút dừng khẩn cấp; task #13 bị huỷ.</dd><dt>Việc cần làm</dt><dd>Kiểm tra an toàn quanh robot, nhả nút dừng khẩn cấp, rồi bấm <strong>Sẵn sàng</strong>. Robot không tự chạy lại.</dd></dl></div>
+      </div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

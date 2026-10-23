@@ -1,0 +1,40 @@
+<!-- @dsCard group="Shell" height=330 width=1000 subtitle="What happened · did the robot stop · what to do next. Never auto-dismisses." -->
+<!doctype html>
+<html lang="vi">
+<head><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../bundle.css"><meta charset="utf-8"><title>ErrorBanner — preview</title></head>
+<body>
+<div class="rb-demo rb-demo--col">
+  <div class="rb-banner" role="alert">
+    <svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="m15 9-6 6" /> <path d="m9 9 6 6" /></svg>
+    <div>
+      <p class="rb-banner__title">Robot báo lỗi: quá tải ở khớp elbow_flex</p>
+      <dl class="rb-banner__facts">
+        <dt>Robot</dt><dd>Đã dừng — task #13 bị huỷ.</dd>
+        <dt>Việc cần làm</dt><dd>Gỡ vật cản quanh khuỷu tay, kiểm tra dây servo, rồi bấm <strong>Sẵn sàng</strong> và gửi lệnh mới.</dd>
+      </dl>
+    </div>
+    <div class="rb-banner__actions"><button class="rb-btn" type="button"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /> <path d="M12 17h.01" /></svg>Xem hướng dẫn</button></div>
+  </div>
+  <div class="rb-banner" role="alert">
+    <svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 16h.01" /> <path d="M12 8v4" /> <path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z" /></svg>
+    <div>
+      <p class="rb-banner__title">Chưa xác nhận lệnh dừng sau 2 s</p>
+      <dl class="rb-banner__facts">
+        <dt>Robot</dt><dd>Không rõ — robot có thể vẫn đang chuyển động.</dd>
+        <dt>Việc cần làm</dt><dd>Bấm nút dừng khẩn cấp vật lý trên robot ngay.</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="rb-banner rb-banner--warn" role="alert">
+    <svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /></svg>
+    <div>
+      <p class="rb-banner__title">Dữ liệu cũ: không nhận được tin nhắn trong 3,4 s</p>
+      <dl class="rb-banner__facts">
+        <dt>Robot</dt><dd>Không rõ. Nút Gửi lệnh tạm khoá.</dd>
+        <dt>Việc cần làm</dt><dd>Kiểm tra mạng và gateway. Giao diện tự mở khoá khi dữ liệu mới về.</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+</body>
+</html>

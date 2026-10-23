@@ -1,0 +1,1 @@
+Inter 4.1 (Regular 400, Medium 500, SemiBold 600, Bold 700) and JetBrains Mono 2.242 (Regular 400, Medium 500), full character sets including Vietnamese. Both are under the SIL Open Font License 1.1 — see `Inter-OFL.txt` and `JetBrainsMono-OFL.txt`.

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SO-101 Monitor — design system</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="components/bundle.css">
+<style>
+  .g-wrap { max-width: 1240px; margin: 0 auto; padding: var(--space-6) var(--space-4) var(--space-8); display: grid; gap: var(--space-4); }
+  .g-top h1 { margin: 0; font-size: 24px; line-height: 32px; font-weight: 600; }
+  .g-top p { margin: var(--space-1) 0 0; color: var(--muted); }
+  .g-top a, .g-card a { color: var(--primary); }
+  .g-h { margin: var(--space-4) 0 0; font-size: 18px; line-height: 26px; font-weight: 600; }
+  .g-frame { margin: 0 var(--space-4) var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; background: var(--bg); }
+  .g-frame iframe { display: block; border: 0; transform-origin: 0 0; }
+</style>
+</head>
+<body>
+<div class="g-wrap">
+  <div class="g-top">
+    <h1>SO-101 Monitor — design system</h1>
+    <p>Rules: <a href="README.md">README.md</a> · tokens: <a href="tokens.json">tokens.json</a> → <a href="tokens.css">tokens.css</a> · component styles: <a href="components/bundle.css">components/bundle.css</a></p>
+  </div>
+  <h2 class="g-h">Cover</h2><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">SO-101 Monitor</h3><p class="rb-card__sub"><a href="components/Cover/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="960" data-h="320"><iframe loading="lazy" title="SO-101 Monitor preview" src="components/Cover/preview.html" width="960" height="320"></iframe></div>
+</section><h2 class="g-h">Screens</h2><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">MonitoringScreen</h3><p class="rb-card__sub">The Monitoring tab at 1440 px — task #13 running, everything normal · <a href="components/MonitoringScreen/README.md">guidelines</a> · <a href="components/MonitoringScreen/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="1440" data-h="1170"><iframe loading="lazy" title="MonitoringScreen preview" src="components/MonitoringScreen/preview.html" width="1440" height="1170"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">ScenarioStates</h3><p class="rb-card__sub">Top of the screen in four ?scenario= states: robot-error, stop-ok, web-disconnected, estop · <a href="components/ScenarioStates/README.md">guidelines</a> · <a href="components/ScenarioStates/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="1440" data-h="1180"><iframe loading="lazy" title="ScenarioStates preview" src="components/ScenarioStates/preview.html" width="1440" height="1180"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">TutorialScreen</h3><p class="rb-card__sub">The Tutorial tab — header, status bar and STOP stay on top · <a href="components/TutorialScreen/README.md">guidelines</a> · <a href="components/TutorialScreen/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="1440" data-h="2260"><iframe loading="lazy" title="TutorialScreen preview" src="components/TutorialScreen/preview.html" width="1440" height="2260"></iframe></div>
+</section><h2 class="g-h">Safety</h2><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">StopButton</h3><p class="rb-card__sub">STOP → Đang dừng → Đã dừng; no confirmation, on every tab · <a href="components/StopButton/README.md">guidelines</a> · <a href="components/StopButton/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="960" data-h="200"><iframe loading="lazy" title="StopButton preview" src="components/StopButton/preview.html" width="960" height="200"></iframe></div>
+</section><h2 class="g-h">Shell</h2><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">AppHeader</h3><p class="rb-card__sub">Dark slate bar: STOP, tabs, project name, VI·EN · <a href="components/AppHeader/README.md">guidelines</a> · <a href="components/AppHeader/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="1200" data-h="150"><iframe loading="lazy" title="AppHeader preview" src="components/AppHeader/preview.html" width="1200" height="150"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">ErrorBanner</h3><p class="rb-card__sub">What happened · did the robot stop · what to do next. Never auto-dismisses. · <a href="components/ErrorBanner/README.md">guidelines</a> · <a href="components/ErrorBanner/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="1000" data-h="330"><iframe loading="lazy" title="ErrorBanner preview" src="components/ErrorBanner/preview.html" width="1000" height="330"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">FirstVisitHint</h3><p class="rb-card__sub">Shown once, dismissible · <a href="components/FirstVisitHint/README.md">guidelines</a> · <a href="components/FirstVisitHint/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="1000" data-h="84"><iframe loading="lazy" title="FirstVisitHint preview" src="components/FirstVisitHint/preview.html" width="1000" height="84"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">PipelineStrip</h3><p class="rb-card__sub">Camera → AI → Gateway → Robot → Result, ms per step · <a href="components/PipelineStrip/README.md">guidelines</a> · <a href="components/PipelineStrip/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="1000" data-h="120"><iframe loading="lazy" title="PipelineStrip preview" src="components/PipelineStrip/preview.html" width="1000" height="120"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">StatusBar</h3><p class="rb-card__sub">Overall lamp + Connection, Robot, Task, Tracking; time since last message · <a href="components/StatusBar/README.md">guidelines</a> · <a href="components/StatusBar/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="1440" data-h="150"><iframe loading="lazy" title="StatusBar preview" src="components/StatusBar/preview.html" width="1440" height="150"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">StatusChip</h3><p class="rb-card__sub">Lamp levels and detail chips — icon + word, never colour alone · <a href="components/StatusChip/README.md">guidelines</a> · <a href="components/StatusChip/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="1000" data-h="196"><iframe loading="lazy" title="StatusChip preview" src="components/StatusChip/preview.html" width="1000" height="196"></iframe></div>
+</section><h2 class="g-h">Command</h2><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">CommandPanel</h3><p class="rb-card__sub">Template + object → exact string → Send; disabled with a written reason · <a href="components/CommandPanel/README.md">guidelines</a> · <a href="components/CommandPanel/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="980" data-h="500"><iframe loading="lazy" title="CommandPanel preview" src="components/CommandPanel/preview.html" width="980" height="500"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">LifecycleStepper</h3><p class="rb-card__sub">Sent → Received → Running → Done / Failed — never success before ACK · <a href="components/LifecycleStepper/README.md">guidelines</a> · <a href="components/LifecycleStepper/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="960" data-h="180"><iframe loading="lazy" title="LifecycleStepper preview" src="components/LifecycleStepper/preview.html" width="960" height="180"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">TaskHistory</h3><p class="rb-card__sub">Newest first, running task pinned · <a href="components/TaskHistory/README.md">guidelines</a> · <a href="components/TaskHistory/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="680" data-h="490"><iframe loading="lazy" title="TaskHistory preview" src="components/TaskHistory/preview.html" width="680" height="490"></iframe></div>
+</section><h2 class="g-h">Robot data</h2><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">CameraTile</h3><p class="rb-card__sub">Name, FPS, frame age; frozen overlay; swap with the 3D slot · <a href="components/CameraTile/README.md">guidelines</a> · <a href="components/CameraTile/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="980" data-h="256"><iframe loading="lazy" title="CameraTile preview" src="components/CameraTile/preview.html" width="980" height="256"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">JointTable</h3><p class="rb-card__sub">Position, velocity, command, error, limit — one fixed colour per joint · <a href="components/JointTable/README.md">guidelines</a> · <a href="components/JointTable/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="980" data-h="480"><iframe loading="lazy" title="JointTable preview" src="components/JointTable/preview.html" width="980" height="480"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">LimitBar</h3><p class="rb-card__sub">Position within the joint range; amber zones past nearLimitRatio (0.9) · <a href="components/LimitBar/README.md">guidelines</a> · <a href="components/LimitBar/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="960" data-h="110"><iframe loading="lazy" title="LimitBar preview" src="components/LimitBar/preview.html" width="960" height="110"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">RobotViewer3D</h3><p class="rb-card__sub">Measured robot (solid), commanded ghost, 10 s trail, planned path · <a href="components/RobotViewer3D/README.md">guidelines</a> · <a href="components/RobotViewer3D/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="680" data-h="624"><iframe loading="lazy" title="RobotViewer3D preview" src="components/RobotViewer3D/preview.html" width="680" height="624"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">TrajectoryCharts</h3><p class="rb-card__sub">10 s window, state solid / command dashed, same colour per joint · <a href="components/TrajectoryCharts/README.md">guidelines</a> · <a href="components/TrajectoryCharts/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="980" data-h="650"><iframe loading="lazy" title="TrajectoryCharts preview" src="components/TrajectoryCharts/preview.html" width="980" height="650"></iframe></div>
+</section><h2 class="g-h">Controls</h2><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">Button</h3><p class="rb-card__sub">Primary, secondary, quiet, icon, live, disabled · <a href="components/Button/README.md">guidelines</a> · <a href="components/Button/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="960" data-h="210"><iframe loading="lazy" title="Button preview" src="components/Button/preview.html" width="960" height="210"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">Checkbox</h3><p class="rb-card__sub">3D layer toggles and chart legend toggles · <a href="components/Checkbox/README.md">guidelines</a> · <a href="components/Checkbox/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="960" data-h="80"><iframe loading="lazy" title="Checkbox preview" src="components/Checkbox/preview.html" width="960" height="80"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">Field</h3><p class="rb-card__sub">Label + select, read-only command preview, helper text · <a href="components/Field/README.md">guidelines</a> · <a href="components/Field/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="960" data-h="190"><iframe loading="lazy" title="Field preview" src="components/Field/preview.html" width="960" height="190"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">SegmentedControl</h3><p class="rb-card__sub">View presets, units, chart tabs · <a href="components/SegmentedControl/README.md">guidelines</a> · <a href="components/SegmentedControl/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="960" data-h="96"><iframe loading="lazy" title="SegmentedControl preview" src="components/SegmentedControl/preview.html" width="960" height="96"></iframe></div>
+</section><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">Tooltip</h3><p class="rb-card__sub">Plain-language help for technical terms · <a href="components/Tooltip/README.md">guidelines</a> · <a href="components/Tooltip/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="960" data-h="130"><iframe loading="lazy" title="Tooltip preview" src="components/Tooltip/preview.html" width="960" height="130"></iframe></div>
+</section><h2 class="g-h">Layout</h2><section class="rb-card g-card">
+  <div class="rb-card__head"><div class="rb-card__titles"><h3 class="rb-card__title">Card</h3><p class="rb-card__sub">White panel, 1px border, 8px radius — no shadow · <a href="components/Card/README.md">guidelines</a> · <a href="components/Card/preview.html">open</a></p></div></div>
+  <div class="g-frame" data-w="960" data-h="210"><iframe loading="lazy" title="Card preview" src="components/Card/preview.html" width="960" height="210"></iframe></div>
+</section>
+</div>
+<script>
+  function fit() {
+    document.querySelectorAll('.g-frame').forEach(function (f) {
+      var w = +f.dataset.w, h = +f.dataset.h, s = Math.min(1, f.clientWidth / w);
+      var i = f.querySelector('iframe');
+      i.style.transform = 'scale(' + s + ')';
+      f.style.height = Math.ceil(h * s) + 'px';
+    });
+  }
+  addEventListener('resize', fit); fit();
+</script>
+</body>
+</html>

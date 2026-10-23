@@ -1,0 +1,38 @@
+<!-- @dsCard group="Shell" height=150 width=1200 subtitle="Dark slate bar: STOP, tabs, project name, VI·EN" -->
+<!doctype html>
+<html lang="vi">
+<head><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../bundle.css"><meta charset="utf-8"><title>AppHeader — preview</title></head>
+<body>
+<div style="display:grid; gap: var(--space-3); padding: var(--space-3); background: var(--bg);">
+  <header class="rb-header">
+    <button class="rb-stop" type="button"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="M8 12h8" /></svg>STOP</button>
+    <nav class="rb-header__tabs" role="tablist" aria-label="Trang">
+      <button class="rb-htab" role="tab" aria-selected="true">Monitoring</button>
+      <button class="rb-htab" role="tab" aria-selected="false">Tutorial</button>
+    </nav>
+    <div class="rb-header__project">
+      <div class="rb-header__name">[Tên dự án]</div>
+      <div class="rb-header__sub">Tay robot SO-101 · gắp vật bỏ vào hộp</div>
+    </div>
+    <div class="rb-lang" role="group" aria-label="Ngôn ngữ">
+      <button type="button" aria-pressed="true">VI</button><button type="button" aria-pressed="false">EN</button>
+    </div>
+  </header>
+  <header class="rb-header">
+    <button class="rb-stop" type="button" data-state="stopped"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /></svg>Đã dừng</button>
+    <button class="rb-hbtn" type="button"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polygon points="6 3 20 12 6 21 6 3" /></svg>Sẵn sàng</button>
+    <nav class="rb-header__tabs" role="tablist" aria-label="Trang">
+      <button class="rb-htab" role="tab" aria-selected="false">Monitoring</button>
+      <button class="rb-htab" role="tab" aria-selected="true">Tutorial</button>
+    </nav>
+    <div class="rb-header__project">
+      <div class="rb-header__name">[Tên dự án]</div>
+      <div class="rb-header__sub">Tay robot SO-101 · gắp vật bỏ vào hộp</div>
+    </div>
+    <div class="rb-lang" role="group" aria-label="Language">
+      <button type="button" aria-pressed="false">VI</button><button type="button" aria-pressed="true">EN</button>
+    </div>
+  </header>
+</div>
+</body>
+</html>
