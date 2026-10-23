@@ -1,3 +1,7 @@
 dist
 coverage
 package-lock.json
+design-system
+public/robot
+docs
+CLAUDE.md

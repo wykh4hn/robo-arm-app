@@ -13,9 +13,14 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "lucide-react": "^1.61.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "three": "^0.186.1",
     "uplot": "^1.6.32",
+    "urdf-loader": "^0.13.1",
     "zustand": "^5.0.16"
   },
   "devDependencies": {
@@ -25,6 +30,7 @@
     "@testing-library/user-event": "^14.6.8",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^6.1.2",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",

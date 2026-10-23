@@ -1,17 +1,19 @@
 import { ALL_JOINTS } from '../config';
 import type { LogEvent, MonitorState, Sample } from '../state/types';
 
-/** CSV with one row per joint per sample: t_ms, joint, action, state. */
+/** CSV with one row per joint per sample: t_ms, joint, action, state, velocity. */
 export function samplesToCsv(samples: Sample[]): string {
-  const rows = ['t_ms,joint,action,state'];
+  const rows = ['t_ms,joint,action,state,velocity'];
   for (const s of samples) {
     for (const j of ALL_JOINTS) {
       const v = s.joints[j];
-      rows.push(`${s.ts},${j},${v.action},${v.state}`);
+      rows.push(`${s.ts},${j},${v.action},${v.state},${round(v.velocity)}`);
     }
   }
   return rows.join('\n') + '\n';
 }
+
+const round = (v: number) => Math.round(v * 1000) / 1000;
 
 export interface EventsExport {
   exportedAt: string;

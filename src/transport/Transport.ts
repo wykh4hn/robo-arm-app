@@ -1,4 +1,4 @@
-import type { IncomingMessage, OutgoingMessage } from './protocol';
+import type { IncomingMessage, OutgoingMessage } from '../types/messages';
 
 export type Listener = (msg: IncomingMessage) => void;
 

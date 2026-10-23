@@ -1,17 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { ALL_JOINTS } from '../config';
-import type { JointName, JointSample } from '../transport/protocol';
+import type { JointName } from '../types/messages';
 import { initialTracking, trackingError, trackingQuality } from './trackingQuality';
-import type { Sample, TrackingState } from './types';
+import type { JointReading, Sample, TrackingState } from './types';
 
-const cfg = { trackingWindowMs: 1000, trackingHoldMs: 1500, trackingWarn: 8, trackingStuck: 20 };
+const cfg = {
+  trackingWindowMs: 1000,
+  trackingHoldMs: 1500,
+  trackingWarnDeg: 8,
+  trackingStuckDeg: 20,
+};
 
 function sample(t: number, diff: number, gripperDiff = 0): Sample {
-  const joints = {} as Record<JointName, JointSample>;
+  const joints = {} as Record<JointName, JointReading>;
   for (const j of ALL_JOINTS) {
-    joints[j] = { action: 10, state: 10 - (j === 'gripper' ? gripperDiff : diff) };
+    joints[j] = { action: 10, state: 10 - (j === 'gripper' ? gripperDiff : diff), velocity: 0 };
   }
-  return { t, ts: t, joints };
+  return { t, ts: t, joints, velocityEstimated: false };
 }
 
 /** Feeds a constant error from `from` to `to` at 10 Hz. */

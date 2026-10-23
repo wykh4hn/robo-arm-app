@@ -1,121 +1,89 @@
 import { config } from '../config';
-import { LEVEL_META } from '../config/statusLevels';
 import type { DerivedStatus } from '../state/deriveStatus';
 import { useStore } from '../state/store';
-import type { Alert, ProblemKind } from '../state/types';
+import type { Problem } from '../state/types';
 import { fmt, useT, type Strings } from '../strings';
+import { formatNumber } from '../utils/units';
 import { Icon } from './Icon';
-import styles from './ErrorBanner.module.css';
 
 type BannerKind = keyof Strings['banner']['titles'];
 
-function isBannerKind(kind: ProblemKind, t: Strings): kind is BannerKind {
-  return kind in t.banner.titles;
+function title(t: Strings, p: Problem, lang: 'vi' | 'en'): string {
+  const kind = p.kind as BannerKind;
+  if (kind === 'robotError') {
+    const codes = t.banner.errorCodes as Record<string, string>;
+    const tpl = codes[String(p.params.code)] ?? t.banner.errorCodes.default;
+    return fmt(t.banner.titles.robotError, { detail: fmt(tpl, p.params) });
+  }
+  if (kind === 'stale') {
+    return fmt(t.banner.titles.stale, { s: formatNumber(Number(p.params.seconds), 1, lang) });
+  }
+  if (kind === 'stopUnconfirmed') {
+    return fmt(t.banner.titles.stopUnconfirmed, { s: config.ackTimeoutMs / 1000 });
+  }
+  return t.banner.titles[kind];
 }
 
 /**
- * Problems that need the user's attention. Never auto-dismisses: an alert
- * whose problem has cleared stays (marked "resolved") until the user closes it.
+ * Under the status bar only when something is wrong: what happened, whether
+ * the robot stopped, what to do next. No close button; it stays while the
+ * condition lasts.
  */
 export function ErrorBanner({ derived }: { derived: DerivedStatus }) {
   const t = useT();
-  const alerts = useStore((s) => s.alerts);
-  const visible = alerts.filter((a) => !a.dismissed);
-
-  return (
-    <section
-      className={styles.region}
-      aria-label={t.banner.region}
-      aria-live="assertive"
-      role="alert"
-    >
-      {visible.map((a) => (
-        <AlertItem key={a.key} alert={a} derived={derived} />
-      ))}
-    </section>
-  );
-}
-
-function AlertItem({ alert, derived }: { alert: Alert; derived: DerivedStatus }) {
-  const t = useT();
-  const dismiss = useStore((s) => s.dismissAlert);
+  const lang = useStore((s) => s.lang);
+  const setTab = useStore((s) => s.setTab);
   const reconnectUsb = useStore((s) => s.reconnectUsb);
-  const sendReady = useStore((s) => s.sendReady);
-  const { problem, active } = alert;
-  if (!isBannerKind(problem.kind, t)) return null;
-  const kind = problem.kind;
-  const meta = LEVEL_META[problem.level];
-
-  const params: Record<string, string | number> = { ...problem.params };
-  let title = t.banner.titles[kind];
-  if (typeof params.camera === 'string') {
-    const cam = config.cameras.find((c) => c.id === params.camera);
-    if (cam) title += ` — ${t.camera.names[cam.id]}`;
-  }
+  if (derived.banner.length === 0) return null;
 
   return (
-    <div
-      className={`${styles.alert} ${meta.cls} ${active ? '' : styles.inactive}`}
-      data-kind={kind}
-      data-active={active}
-    >
-      <span className={styles.icon}>
-        <Icon name={meta.icon} size={20} />
-      </span>
-      <div className={styles.body}>
-        <p className={styles.title}>
-          {title}
-          {!active && (
-            <span className={styles.resolved}>
-              <Icon name="check" size={12} />
-              {t.banner.resolved}
-            </span>
-          )}
-        </p>
-        <p>{fmt(t.banner.messages[kind], params)}</p>
-        {active && (
-          <>
-            <p className={styles.row}>
-              <strong>{t.banner.robotLabel}</strong>
-              {t.banner.robotStopped[problem.robotStopped]}
-            </p>
-            <p className={styles.row}>
-              <strong>{t.banner.todoLabel}</strong>
-              {t.banner.todo[kind]}
-            </p>
-            {(kind === 'usbLost' ||
-              ((kind === 'robotError' || kind === 'estop') && derived.needsReady)) && (
-              <div className={styles.actions}>
-                {kind === 'usbLost' && (
-                  <button type="button" className="btn btn-primary" onClick={reconnectUsb}>
-                    <Icon name="usb" />
-                    {t.banner.reconnect}
-                  </button>
-                )}
-                {kind !== 'usbLost' && (
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={sendReady}
-                    disabled={!derived.canReady}
-                  >
-                    <Icon name="check" />
-                    {t.banner.ready}
-                  </button>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-      <button
-        type="button"
-        className={styles.close}
-        onClick={() => dismiss(alert.key)}
-        aria-label={`${t.banner.close}: ${title}`}
-      >
-        <Icon name="close" />
-      </button>
+    <div className="rb-banner-slot app-banners">
+      {derived.banner.map((p) => {
+        const kind = p.kind as BannerKind;
+        const warn = p.banner === 'warn';
+        return (
+          <div
+            key={p.key}
+            className={`rb-banner ${warn ? 'rb-banner--warn' : ''}`}
+            role="alert"
+            data-kind={kind}
+          >
+            <Icon name={kind === 'estop' ? 'estop' : warn ? 'warn' : 'critical'} size="lg" />
+            <div>
+              <p className="rb-banner__title">{title(t, p, lang)}</p>
+              <dl className="rb-banner__facts">
+                <dt>{t.banner.robotLabel}</dt>
+                <dd>{t.banner.robot[kind]}</dd>
+                <dt>{t.banner.todoLabel}</dt>
+                <dd>{t.banner.todo[kind]}</dd>
+              </dl>
+            </div>
+            <div className="rb-banner__actions">
+              {kind === 'usbLost' && (
+                <button type="button" className="rb-btn rb-btn--primary" onClick={reconnectUsb}>
+                  <Icon name="unplug" />
+                  {t.banner.reconnectUsb}
+                </button>
+              )}
+              {kind !== 'stopUnconfirmed' && (
+                <button
+                  type="button"
+                  className="rb-btn"
+                  onClick={() => {
+                    setTab('tutorial');
+                    requestAnimationFrame(() =>
+                      document.getElementById('tut-incidents')?.scrollIntoView(),
+                    );
+                  }}
+                >
+                  <Icon name="help" />
+                  {t.banner.openTutorial}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

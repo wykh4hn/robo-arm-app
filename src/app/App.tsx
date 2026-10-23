@@ -7,10 +7,9 @@ import { useStore } from '../state/store';
 import { useDerived } from '../state/useDerived';
 import { useT } from '../strings';
 import type { Transport } from '../transport';
-import type { ScenarioName } from '../transport/scenarios';
-import styles from './App.module.css';
+import { SCENARIOS, type ScenarioName } from '../transport/scenarios';
 import { DevPanel } from './DevPanel';
-import { FirstRunHint } from './FirstRunHint';
+import { FirstVisitHint } from './FirstVisitHint';
 import { Header } from './Header';
 import { MonitoringPage } from './MonitoringPage';
 
@@ -37,42 +36,34 @@ export function App({ createTransport, scenario, showDevPanel = false }: AppProp
   }, []);
 
   useEffect(() => {
-    useStore.getState().syncAlerts(derived.problems);
-  }, [derived.problems]);
-
-  useEffect(() => {
     document.documentElement.lang = lang;
     document.title = t.appTitle;
   }, [lang, t.appTitle]);
 
   return (
-    <>
-      <a className="skip-link" href="#main">
+    <div className="rb-app">
+      <a className="app-skip" href="#main">
         {t.skipToMain}
       </a>
-      <div className={styles.top}>
-        <Header />
+      <div className="rb-top">
+        <Header derived={derived} />
         <StatusBar derived={derived} />
+        {tab === 'monitoring' && <PipelineStrip stale={derived.stale} />}
       </div>
-      {tab === 'monitoring' && <PipelineStrip stale={derived.stale} />}
-      <main
-        id="main"
-        className={styles.page}
-        role="tabpanel"
-        aria-labelledby={`tab-${tab}`}
-        tabIndex={-1}
-      >
-        <ErrorBanner derived={derived} />
+      <ErrorBanner derived={derived} />
+      <main id="main" role="tabpanel" aria-labelledby={`tab-${tab}`} tabIndex={-1}>
         {tab === 'monitoring' ? (
           <>
-            <FirstRunHint />
-            <MonitoringPage derived={derived} />
+            <div className="app-hint-slot">
+              <FirstVisitHint />
+            </div>
+            <MonitoringPage derived={derived} noUrdf={!!SCENARIOS[scenario].noUrdf} />
           </>
         ) : (
           <TutorialPage />
         )}
       </main>
       {showDevPanel && <DevPanel scenario={scenario} />}
-    </>
+    </div>
   );
 }

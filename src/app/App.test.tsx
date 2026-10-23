@@ -1,7 +1,7 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useStore } from '../state/store';
+import { initialUi, useStore } from '../state/store';
 import { MockTransport } from '../transport/MockTransport';
 import type { ScenarioName } from '../transport/scenarios';
 import { App } from './App';
@@ -17,86 +17,114 @@ async function advance(ms: number) {
   });
 }
 
+const stopButton = () =>
+  screen.getByRole('button', { name: /^(STOP|Đang dừng…|Đã dừng|Chưa xác nhận dừng)$/ });
+
 describe('App', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     localStorage.clear();
     useStore.getState().reset();
-    useStore.setState({ tab: 'monitoring', lang: 'vi' });
+    useStore.setState({ ...initialUi(), lang: 'vi' });
   });
   afterEach(() => vi.useRealTimers());
 
-  it('Stop works by keyboard on both tabs and shows "Đã dừng" only after ACK', async () => {
+  it('STOP is the first control and works by keyboard on both tabs; "Đã dừng" only after ACK', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderScenario('stop-ok');
     await advance(1500);
 
-    await user.click(screen.getByRole('tab', { name: 'Hướng dẫn' }));
-    expect(screen.getByRole('heading', { name: 'Hướng dẫn sử dụng' })).toBeInTheDocument();
+    await user.tab(); // skip link
+    await user.tab();
+    expect(stopButton()).toHaveFocus();
 
-    const stop = screen.getByRole('button', { name: /Dừng/ });
-    stop.focus();
+    await user.click(screen.getByRole('tab', { name: 'Tutorial' }));
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Hướng dẫn sử dụng' }),
+    ).toBeInTheDocument();
+
+    stopButton().focus();
     await user.keyboard('{Enter}');
-    expect(stop).toHaveTextContent('Đang dừng');
+    expect(stopButton()).toHaveTextContent('Đang dừng…');
     await advance(400);
-    expect(stop).toHaveTextContent('Đã dừng');
+    expect(stopButton()).toHaveTextContent('Đã dừng');
 
-    await user.click(screen.getByRole('tab', { name: 'Giám sát' }));
-    expect(screen.getByRole('button', { name: 'Đã dừng' })).toBeInTheDocument();
-    expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Sẵn sàng');
+    await user.click(screen.getByRole('tab', { name: 'Monitoring' }));
+    expect(screen.getByTestId('lamp')).toHaveTextContent('Chờ người dùng');
+    expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Bấm Sẵn sàng');
+    // Robot never restarts by itself: Ready is required, then a new command.
+    await user.click(screen.getByRole('button', { name: 'Sẵn sàng' }));
+    await advance(400);
+    expect(screen.getByTestId('lamp')).toHaveTextContent('Hệ thống ổn');
+    expect(screen.queryByTestId('cmd-reason')).not.toBeInTheDocument();
   });
 
-  it('warns to use the physical E-stop when the stop is not acknowledged', async () => {
+  it('without a stop ACK it says to use the physical emergency stop', async () => {
     renderScenario('stop-no-ack');
     await advance(1500);
-    screen.getByRole('button', { name: /Dừng/ }).focus();
-    await act(async () => {
-      screen.getByRole('button', { name: /Dừng/ }).click();
-    });
+    await act(async () => stopButton().click());
     await advance(2100);
-    expect(screen.getAllByText(/nút dừng khẩn vật lý/).length).toBeGreaterThan(0);
+    expect(stopButton()).toHaveTextContent('Chưa xác nhận dừng');
+    expect(screen.getByText('Dùng nút dừng khẩn cấp vật lý trên robot.')).toBeInTheDocument();
+    const banner = screen.getByRole('alert');
+    expect(within(banner).getByText(/Chưa xác nhận lệnh dừng sau 2 s/)).toBeInTheDocument();
   });
 
-  it('shows the NACK reason and never a success state', async () => {
+  it('shows the exact command, the NACK reason, and never a success state', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderScenario('cmd-nack');
     await advance(1500);
-    await user.selectOptions(screen.getByLabelText('Vật'), 'red_duck');
+    await user.selectOptions(screen.getByLabelText('Vật thể'), 'yellow_duck');
     expect(screen.getByTestId('cmd-preview')).toHaveTextContent(
-      'pick the red duck and put it in the box',
+      'pick the yellow duck and put it in the box',
     );
-    await user.click(screen.getByRole('button', { name: 'Gửi' }));
+    await user.click(screen.getByRole('button', { name: 'Gửi lệnh' }));
+    expect(screen.getByTestId('cmd-lifecycle')).toHaveAttribute('data-phase', 'sent');
     await advance(300);
     const lifecycle = screen.getByTestId('cmd-lifecycle');
     expect(lifecycle).toHaveAttribute('data-phase', 'rejected');
     expect(lifecycle).not.toHaveTextContent('Xong');
-    expect(screen.getAllByText(/vật nằm ngoài vùng/).length).toBeGreaterThan(0);
+    expect(lifecycle).toHaveTextContent('không thấy vật trong hình camera');
   });
 
-  it('shows the empty history state and the first-run hint', async () => {
+  it('Send stays disabled with a written reason while a task runs', async () => {
+    renderScenario('running');
+    await advance(1500);
+    const send = screen.getByRole('button', { name: 'Gửi lệnh' });
+    expect(send).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Đang có task chạy (#13)');
+  });
+
+  it('shows the empty history state and the first-visit hint', async () => {
     renderScenario('empty-history');
     await advance(1000);
-    expect(screen.getByText(/Chưa có nhiệm vụ nào/)).toBeInTheDocument();
-    expect(screen.getByTestId('first-run-hint')).toBeInTheDocument();
+    expect(screen.getByText(/Chưa có task nào trong phiên này\./)).toBeInTheDocument();
+    expect(screen.getByTestId('first-visit-hint')).toBeInTheDocument();
   });
 
-  it('error banner stays until closed by the user', async () => {
+  it('USB lost: critical banner with Reconnect; it clears only when the condition clears', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderScenario('usb-lost');
     await advance(4000);
-    expect(screen.getByText('Mất kết nối với cánh tay.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Kết nối lại/ }));
+    expect(screen.getByText('Mất kết nối USB với tay robot')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Kết nối lại USB/ }));
     await advance(1500);
-    // Problem resolved, but the alert is latched until closed.
-    expect(screen.getByText('Đã hết')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Đóng thông báo/ }));
-    expect(screen.queryByText('Mất kết nối với cánh tay.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mất kết nối USB với tay robot')).not.toBeInTheDocument();
+    expect(screen.getByTestId('lamp')).toHaveTextContent('Chờ người dùng');
+  });
+
+  it('runs without the URDF / WebGL and renders the joint table', async () => {
+    renderScenario('no-urdf');
+    await advance(1500);
+    const table = screen.getByRole('table');
+    expect(within(table).getAllByRole('row')).toHaveLength(7);
+    expect(screen.getByText(/không hỗ trợ WebGL/)).toBeInTheDocument();
   });
 
   it('switches language', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderScenario('idle');
     await user.click(screen.getByRole('button', { name: 'EN' }));
-    expect(screen.getByRole('tab', { name: 'Tutorial' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send command' })).toBeInTheDocument();
   });
 });

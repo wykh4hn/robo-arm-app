@@ -1,22 +1,31 @@
 import { create } from 'zustand';
-import { config } from '../config';
-import type { IncomingMessage, OutgoingMessage, TaskInfo } from '../transport/protocol';
+import { ALL_JOINTS, config, type AngleUnit, type ViewPreset } from '../config';
 import type { Transport } from '../transport/Transport';
+import type {
+  IncomingMessage,
+  JointName,
+  OutgoingMessage,
+  TaskInfo,
+  TelemetryMsg,
+} from '../types/messages';
+import { storage } from '../utils/storage';
 import { initialTracking, trackingQuality } from './trackingQuality';
 import type {
-  Alert,
+  ChartTab,
   CommandKind,
   CommandPhase,
   CommandRecord,
+  JointReading,
   Lang,
+  LargeSlot,
+  Layers,
   LogEvent,
   MonitorState,
-  Problem,
+  Sample,
   Tab,
   UiState,
 } from './types';
-import type { ViewMode } from '../config';
-import { storage } from '../utils/storage';
+import { estimateVelocity, servoVelocity } from './velocity';
 
 export interface Actions {
   attachTransport: (t: Transport) => () => void;
@@ -28,9 +37,15 @@ export interface Actions {
   reconnectUsb: () => void;
   setLang: (lang: Lang) => void;
   setTab: (tab: Tab) => void;
-  setViewMode: (mode: ViewMode) => void;
-  syncAlerts: (problems: Problem[]) => void;
-  dismissAlert: (key: string) => void;
+  setUnit: (unit: AngleUnit) => void;
+  setChartTab: (tab: ChartTab) => void;
+  selectJoint: (joint: JointName | null) => void;
+  setLayer: (layer: keyof Layers, on: boolean) => void;
+  setViewPreset: (preset: ViewPreset) => void;
+  resetView: () => void;
+  swapLarge: (slot: LargeSlot) => void;
+  pauseCharts: (at: number | null) => void;
+  setRobot: (source: UiState['robotSource'], limits: UiState['robotLimits']) => void;
   reset: () => void;
 }
 
@@ -40,8 +55,10 @@ export function initialMonitorState(now = Date.now()): MonitorState {
   return {
     now,
     web: 'connecting',
+    reconnectAttempt: 0,
     synced: false,
     lastMessageAt: null,
+    latencyMs: null,
     usb: 'unknown',
     robot: 'unknown',
     robotError: null,
@@ -59,13 +76,20 @@ export function initialMonitorState(now = Date.now()): MonitorState {
   };
 }
 
-function initialUi(): UiState {
-  const lang = storage.get('lang');
+export function initialUi(): UiState {
   return {
-    lang: lang === 'en' ? 'en' : 'vi',
+    lang: storage.get('lang') === 'en' ? 'en' : 'vi',
     tab: 'monitoring',
-    viewMode: config.defaultViewMode,
-    alerts: [],
+    unit: storage.get('unit') === 'rad' ? 'rad' : 'deg',
+    chartTab: 'position',
+    selectedJoint: null,
+    layers: { ghost: true, trail: true, plan: true, axes: false, labels: false },
+    viewPreset: 'perspective',
+    viewResetKey: 0,
+    largeSlot: 'viewer',
+    chartPausedAt: null,
+    robotLimits: {},
+    robotSource: 'loading',
   };
 }
 
@@ -98,6 +122,30 @@ const taskPhase: Partial<Record<TaskInfo['state'], CommandPhase>> = {
   stopped: 'stopped',
 };
 
+/** Builds one sample: servo velocity when present, else estimated from positions. */
+export function toSample(prev: Sample | undefined, msg: TelemetryMsg, at: number): Sample {
+  const joints = {} as Record<JointName, JointReading>;
+  let estimated = false;
+  for (const j of ALL_JOINTS) {
+    const v = msg.joints[j];
+    let velocity: number;
+    if (v.velocity !== undefined) {
+      velocity = servoVelocity(v.velocity, config.servoVelocityUnit);
+    } else {
+      estimated = true;
+      const p = prev?.joints[j];
+      velocity = estimateVelocity(
+        p && prev ? { t: prev.ts, pos: p.state, vel: p.velocity } : null,
+        msg.ts,
+        v.state,
+        config.velocitySmoothing,
+      ).vel;
+    }
+    joints[j] = { action: v.action, state: v.state, velocity };
+  }
+  return { t: at, ts: msg.ts, joints, velocityEstimated: estimated };
+}
+
 /** Pure reducer for one incoming message. `at` is the browser receive time. */
 export function applyMessage(
   s: MonitorState,
@@ -107,6 +155,7 @@ export function applyMessage(
   if (msg.type === 'connection') {
     const patch: Partial<MonitorState> = {
       web: msg.web,
+      reconnectAttempt: msg.attempt ?? (msg.web === 'connected' ? 0 : s.reconnectAttempt),
       events: logEvent(s, 'connection', { web: msg.web }, at),
     };
     // After any (re)connect, controls stay disabled until fresh state arrives.
@@ -118,10 +167,8 @@ export function applyMessage(
 
   switch (msg.type) {
     case 'telemetry': {
-      const samples = cap(
-        [...s.samples, { t: at, ts: msg.ts, joints: msg.joints }],
-        config.sampleBufferMax,
-      );
+      const sample = toSample(s.samples[s.samples.length - 1], msg, at);
+      const samples = cap([...s.samples, sample], config.sampleBufferMax);
       return { ...base, samples, tracking: trackingQuality(s.tracking, samples, at) };
     }
     case 'status': {
@@ -138,6 +185,7 @@ export function applyMessage(
         ...base,
         synced: s.web === 'connected' ? true : s.synced,
         usb: msg.link.usb,
+        latencyMs: msg.link.latencyMs ?? null,
         robot: msg.robot.state,
         robotError: msg.robot.error ?? null,
         estop: !!msg.estop,
@@ -157,14 +205,21 @@ export function applyMessage(
         ? updateCommand(
             s.commands,
             (c) => c.kind === 'command' && (c.id === t.commandId || c.taskId === t.id),
-            { phase, taskId: t.id, ...(t.reason ? { reason: t.reason } : {}) },
+            {
+              phase,
+              taskId: t.id,
+              ...(t.reason ? { reason: t.reason } : {}),
+              ...(t.endedTs !== undefined ? { endedAt: at } : {}),
+            },
           )
         : s.commands;
+      const prev = s.tasks.find((x) => x.id === t.id);
+      const changed = !prev || prev.state !== t.state;
       return {
         ...base,
         tasks: mergeTask(s.tasks, t),
         commands,
-        events: logEvent(s, 'task', t, at),
+        events: changed ? logEvent(s, 'task', t, at) : s.events,
       };
     }
     case 'ack': {
@@ -227,40 +282,17 @@ let transport: Transport | null = null;
 let seq = 0;
 const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${++seq}`;
 
-export function syncAlertList(alerts: Alert[], problems: Problem[]): Alert[] {
-  const banner = problems.filter((p) => p.banner);
-  const next: Alert[] = [];
-  for (const a of alerts) {
-    const p = banner.find((b) => b.key === a.key);
-    if (p) next.push({ ...a, problem: p, active: true });
-    else if (!a.dismissed) next.push({ ...a, active: false });
-    // dismissed + resolved: drop, so a recurrence shows again
-  }
-  for (const p of banner) {
-    if (!alerts.some((a) => a.key === p.key)) {
-      next.push({ key: p.key, problem: p, active: true, dismissed: false });
-    }
-  }
-  return next;
-}
-
-function sameAlerts(a: Alert[], b: Alert[]): boolean {
-  if (a.length !== b.length) return false;
-  return a.every((x, i) => {
-    const y = b[i]!;
-    return (
-      x.key === y.key &&
-      x.active === y.active &&
-      x.dismissed === y.dismissed &&
-      JSON.stringify(x.problem.params) === JSON.stringify(y.problem.params)
-    );
-  });
-}
-
 export const useStore = create<StoreState>()((set, get) => {
   const track = (kind: CommandKind, text: string, msg: OutgoingMessage) => {
     const now = Date.now();
-    const record: CommandRecord = { id: msg.id, kind, text, sentAt: now, phase: 'sent' };
+    const record: CommandRecord = {
+      id: msg.id,
+      kind,
+      text,
+      sentAt: now,
+      phase: 'sent',
+      ...(msg.type === 'command' ? { templateId: msg.templateId, params: msg.params } : {}),
+    };
     set((s) => ({
       commands: cap([...s.commands, record], 200),
       events: logEvent(s, 'command', msg, now),
@@ -311,6 +343,7 @@ export const useStore = create<StoreState>()((set, get) => {
         stop: { phase: 'stopping', id, requestedAt: now },
         events: logEvent(s, 'stop', { id }, now),
       }));
+      // Sent even when the link is down: the click is always logged.
       transport?.stop(id);
       setTimeout(() => {
         set((s) =>
@@ -336,20 +369,20 @@ export const useStore = create<StoreState>()((set, get) => {
       set({ lang });
     },
     setTab: (tab) => set({ tab }),
-    setViewMode: (viewMode) => set({ viewMode }),
-
-    syncAlerts: (problems) => {
-      const next = syncAlertList(get().alerts, problems);
-      if (!sameAlerts(next, get().alerts)) set({ alerts: next });
+    setUnit: (unit) => {
+      storage.set('unit', unit);
+      set({ unit });
     },
+    setChartTab: (chartTab) => set({ chartTab }),
+    selectJoint: (joint) =>
+      set((s) => ({ selectedJoint: s.selectedJoint === joint ? null : joint })),
+    setLayer: (layer, on) => set((s) => ({ layers: { ...s.layers, [layer]: on } })),
+    setViewPreset: (viewPreset) => set((s) => ({ viewPreset, viewResetKey: s.viewResetKey + 1 })),
+    resetView: () => set((s) => ({ viewResetKey: s.viewResetKey + 1 })),
+    swapLarge: (slot) => set((s) => ({ largeSlot: s.largeSlot === slot ? 'viewer' : slot })),
+    pauseCharts: (chartPausedAt) => set({ chartPausedAt }),
+    setRobot: (robotSource, robotLimits) => set({ robotSource, robotLimits }),
 
-    dismissAlert: (key) =>
-      set((s) => ({
-        alerts: s.alerts.flatMap((a) =>
-          a.key !== key ? [a] : a.active ? [{ ...a, dismissed: true }] : [],
-        ),
-      })),
-
-    reset: () => set({ ...initialMonitorState(), alerts: [] }),
+    reset: () => set({ ...initialMonitorState(), ...initialUi() }),
   };
 });

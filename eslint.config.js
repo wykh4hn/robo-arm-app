@@ -21,4 +21,9 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // three.js scenes are imperative: objects created in hooks are mutated on purpose.
+    files: ['src/three/**/*.{ts,tsx}'],
+    rules: { 'react-hooks/immutability': 'off' },
+  },
 );

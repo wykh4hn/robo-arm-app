@@ -1,36 +1,45 @@
 import { useStore } from '../state/store';
+import type { StopPhase } from '../state/types';
 import { useT } from '../strings';
-import { Icon } from './Icon';
-import styles from './StopButton.module.css';
+import { Icon, type IconName } from './Icon';
 
-/** Software stop. No confirmation dialog; "Stopped" only after the robot's ACK. */
+const ICON: Record<StopPhase, IconName> = {
+  idle: 'stop',
+  stopping: 'running',
+  stopped: 'ok',
+  unconfirmed: 'warn',
+};
+
+/**
+ * Software STOP: first control in the header on every tab, no confirmation,
+ * never disabled. "Đã dừng" only after the robot's ACK.
+ */
 export function StopButton() {
   const t = useT();
   const phase = useStore((s) => s.stop.phase);
   const requestStop = useStore((s) => s.requestStop);
-
-  const label =
-    phase === 'stopping' ? t.stop.stopping : phase === 'stopped' ? t.stop.stopped : t.stop.idle;
+  const label = phase === 'idle' ? t.stop.idle : t.stop[phase];
 
   return (
-    <div className={styles.wrap}>
+    <>
       <button
         type="button"
-        className={styles.stop}
+        className="rb-stop"
+        data-state={phase === 'idle' ? undefined : phase}
         onClick={requestStop}
-        title={t.stop.title}
-        aria-describedby={phase === 'unconfirmed' ? 'stop-unconfirmed' : undefined}
-        data-phase={phase}
+        aria-describedby={phase === 'unconfirmed' ? 'stop-note' : undefined}
       >
-        <Icon name="octagon" size={20} />
-        <span>{label}</span>
+        <Icon name={ICON[phase]} />
+        {label}
       </button>
       {phase === 'unconfirmed' && (
-        <span id="stop-unconfirmed" className={styles.note} role="alert">
-          <Icon name="warning" />
-          {t.stop.unconfirmed}
+        <span className="rb-stop-note" id="stop-note">
+          {t.stop.note}
         </span>
       )}
-    </div>
+      <span className="rb-sr" aria-live="polite">
+        {t.stop.announce[phase]}
+      </span>
+    </>
   );
 }

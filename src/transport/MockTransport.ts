@@ -4,14 +4,26 @@ import type {
   IncomingMessage,
   JointName,
   JointSample,
+  JointValues,
   OutgoingMessage,
   PipelineMsg,
   RobotError,
   RobotState,
   TaskInfo,
+  TaskPhase,
   TaskState,
   UsbLink,
-} from './protocol';
+} from '../types/messages';
+import {
+  actionAt,
+  buildCycle,
+  CYCLE_MS,
+  GRIP_HOLD,
+  holdingAt,
+  HOME,
+  phaseAt,
+  type Cycle,
+} from './motion';
 import { SCENARIOS, type ScenarioDef, type ScenarioName } from './scenarios';
 import type { Listener, Transport } from './Transport';
 
@@ -19,22 +31,8 @@ const TELEMETRY_MS = 100;
 const HEARTBEAT_MS = 500;
 const CAMERA_MS = 250;
 const PIPELINE_MS = 500;
-const MOTION_PERIOD_MS = 8000;
-const TASK_MS = 12_000;
-const INITIAL_TASK_MS = 25_000;
-
-const MOTION: Record<JointName, { base: number; amp: number; phase: number }> = {
-  shoulder_pan: { base: 0, amp: 50, phase: 0 },
-  shoulder_lift: { base: -20, amp: 55, phase: 1.1 },
-  elbow_flex: { base: 20, amp: 55, phase: 2.2 },
-  wrist_flex: { base: 30, amp: 40, phase: 0.6 },
-  wrist_roll: { base: -40, amp: 30, phase: 1.7 },
-  gripper: { base: 50, amp: 45, phase: 0.3 },
-};
-/** The gripper cannot close beyond this while holding an object. */
-const GRIP_HOLD = 12;
-
-type Joints = Record<JointName, number>;
+/** Joints that sag under load in the slow-tracking scenario. */
+const LOADED: JointName[] = ['shoulder_lift', 'elbow_flex', 'wrist_flex'];
 
 /** In-browser simulation of the gateway + robot, emitting backend-shaped messages. */
 export class MockTransport implements Transport {
@@ -52,12 +50,15 @@ export class MockTransport implements Transport {
   private taskStatus: { id: number | null; state: TaskState } = { id: null, state: 'idle' };
   private current: TaskInfo | null = null;
   private tasks: TaskInfo[] = [];
-  private nextTaskId = 11;
-  private taskTimer: ReturnType<typeof setTimeout> | null = null;
+  private nextTaskId = 13;
 
+  private cycle: Cycle = buildCycle('red_duck');
   private motionT = 0;
-  private actionHistory: { t: number; a: Joints }[] = [];
-  private frozenState: Joints | null = null;
+  private lastTickAt: number | null = null;
+  private lastAction: JointValues = HOME;
+  private actionHistory: { t: number; a: JointValues }[] = [];
+  private prevState: JointValues | null = null;
+  private frozenState: JointValues | null = null;
   private frozenFrameTs: number | null = null;
   private pipelineFail: PipelineMsg['failed'];
 
@@ -74,21 +75,34 @@ export class MockTransport implements Transport {
     const now = Date.now();
     this.emitLocal('connecting');
     if (this.def.history) {
+      const t = (cmd: string, object: string) => ({
+        command: cmd,
+        templateId: 'pick_into_box',
+        params: { object },
+      });
       this.tasks = [
         {
-          id: 9,
-          command: 'pick the red duck and put it in the box',
-          state: 'done',
-          startedTs: now - 180_000,
-          endedTs: now - 164_000,
+          id: 10,
+          ...t('pick the pink small box and put it in the box', 'pink_box'),
+          state: 'stopped',
+          startedTs: now - 420_000,
+          endedTs: now - 408_000,
+          reason: 'dừng bằng STOP',
         },
         {
-          id: 10,
-          command: 'pick the yellow duck and put it in the box',
+          id: 11,
+          ...t('pick the cube and put it in the box', 'cube'),
           state: 'failed',
-          startedTs: now - 120_000,
-          endedTs: now - 108_000,
-          reason: 'Không tìm thấy vật trong ảnh camera',
+          startedTs: now - 300_000,
+          endedTs: now - 270_000,
+          reason: 'không gắp được vật — kẹp đóng hết hành trình',
+        },
+        {
+          id: 12,
+          ...t('pick the yellow duck and put it in the box', 'yellow_duck'),
+          state: 'done',
+          startedTs: now - 160_000,
+          endedTs: now - 139_000,
         },
       ];
     }
@@ -97,7 +111,11 @@ export class MockTransport implements Transport {
       this.emitting = true;
       this.emitLocal('connected');
       if (this.def.startRunning) {
-        this.startTask('pick the pink small box and put it in the box', undefined, INITIAL_TASK_MS);
+        this.startTask(
+          'pick the red duck and put it in the box',
+          { object: 'red_duck' },
+          undefined,
+        );
       }
       this.sendSnapshot();
       this.intervals.push(
@@ -114,7 +132,6 @@ export class MockTransport implements Transport {
   disconnect(): void {
     this.timers.forEach(clearTimeout);
     this.intervals.forEach(clearInterval);
-    if (this.taskTimer) clearTimeout(this.taskTimer);
     this.timers = [];
     this.intervals = [];
     this.connected = false;
@@ -127,41 +144,32 @@ export class MockTransport implements Transport {
       case 'command':
         this.later(150, () => {
           if (this.def.nackCommands) {
-            return this.emit({
-              type: 'nack',
-              ts: Date.now(),
-              id: msg.id,
-              reason: 'vật nằm ngoài vùng với tới của cánh tay',
-            });
+            this.pipelineFail = { step: 'ai', reason: 'không thấy vật' };
+            this.later(4000, () => (this.pipelineFail = undefined));
+            return this.nack(msg.id, 'không thấy vật trong hình camera');
           }
           const busy = this.current !== null;
           if (this.robot !== 'ready' || this.estop || this.usb !== 'plugged' || busy) {
-            return this.emit({
-              type: 'nack',
-              ts: Date.now(),
-              id: msg.id,
-              reason: busy ? 'robot đang bận' : 'robot chưa sẵn sàng',
-            });
+            return this.nack(msg.id, busy ? 'robot đang bận' : 'robot chưa sẵn sàng');
           }
-          const taskId = this.nextTaskId;
-          this.emit({ type: 'ack', ts: Date.now(), id: msg.id, taskId });
-          this.later(300, () => this.startTask(msg.text, msg.id, TASK_MS));
+          this.emit({ type: 'ack', ts: Date.now(), id: msg.id, taskId: this.nextTaskId });
+          this.later(300, () => this.startTask(msg.text, msg.params, msg.id));
         });
         break;
       case 'ready':
         this.later(200, () => {
           if (this.estop || this.usb !== 'plugged') {
-            return this.emit({
-              type: 'nack',
-              ts: Date.now(),
-              id: msg.id,
-              reason: this.estop ? 'nút dừng khẩn vẫn đang được nhấn' : 'chưa có kết nối USB',
-            });
+            return this.nack(
+              msg.id,
+              this.estop ? 'nút dừng khẩn cấp vẫn đang được nhấn' : 'chưa có kết nối USB',
+            );
           }
           this.robot = 'ready';
           this.robotError = undefined;
           this.taskStatus = { id: null, state: 'idle' };
           this.pipelineFail = undefined;
+          this.frozenState = null;
+          this.motionT = 0;
           this.emitStatus();
           this.emit({ type: 'ack', ts: Date.now(), id: msg.id });
         });
@@ -182,7 +190,7 @@ export class MockTransport implements Transport {
   stop(id: string): void {
     if (!this.connected || !this.emitting || !this.def.stopAck) return;
     this.later(300, () => {
-      if (this.current) this.finishTask('stopped', 'dừng bởi người dùng');
+      if (this.current) this.finishTask('stopped', 'dừng bằng STOP');
       if (this.robot !== 'error') this.robot = 'stopped';
       this.emitStatus();
       this.emit({ type: 'stop_ack', ts: Date.now(), id });
@@ -195,8 +203,14 @@ export class MockTransport implements Transport {
     this.timers.push(setTimeout(fn, ms));
   }
 
-  private emitLocal(web: 'connecting' | 'connected' | 'disconnected') {
-    this.listeners.forEach((l) => l({ type: 'connection', web }));
+  private nack(id: string, reason: string) {
+    this.emit({ type: 'nack', ts: Date.now(), id, reason });
+  }
+
+  private emitLocal(web: 'connecting' | 'connected' | 'disconnected', attempt?: number) {
+    this.listeners.forEach((l) =>
+      l({ type: 'connection', web, ...(attempt !== undefined ? { attempt } : {}) }),
+    );
   }
 
   private emit(msg: IncomingMessage) {
@@ -213,19 +227,31 @@ export class MockTransport implements Transport {
     this.emit({
       type: 'status',
       ts: Date.now(),
-      link: { web: 'connected', usb: this.usb },
+      link: { web: 'connected', usb: this.usb, latencyMs: 10 + Math.round(Math.random() * 4) },
       robot: { state: this.robot, ...(this.robotError ? { error: this.robotError } : {}) },
       task: { ...this.taskStatus },
       ...(this.estop ? { estop: true } : {}),
     });
   }
 
-  private startTask(command: string, commandId: string | undefined, durationMs: number) {
+  private startTask(
+    command: string,
+    params: Record<string, string>,
+    commandId: string | undefined,
+  ) {
+    this.cycle = buildCycle(params.object);
+    this.motionT = 0;
     const task: TaskInfo = {
       id: this.nextTaskId++,
       command,
+      templateId: 'pick_into_box',
+      params,
       state: 'running',
+      phase: 'reach',
       startedTs: Date.now(),
+      plan: this.cycle.plan,
+      pickIndex: this.cycle.pickIndex,
+      dropIndex: this.cycle.dropIndex,
       ...(commandId ? { commandId } : {}),
     };
     this.current = task;
@@ -234,20 +260,21 @@ export class MockTransport implements Transport {
     this.taskStatus = { id: task.id, state: 'running' };
     this.emit({ type: 'task', ts: Date.now(), task: { ...task } });
     this.emitStatus();
-    this.taskTimer = setTimeout(() => this.finishTask('done'), durationMs);
   }
 
   private finishTask(state: TaskState, reason?: string) {
     const task = this.current;
     if (!task) return;
-    if (this.taskTimer) clearTimeout(this.taskTimer);
-    this.taskTimer = null;
     task.state = state;
     task.endedTs = Date.now();
+    delete task.phase;
     if (reason) task.reason = reason;
     this.current = null;
     this.taskStatus = { id: task.id, state };
-    if (state === 'done') this.robot = 'ready';
+    if (state === 'done') {
+      this.robot = 'ready';
+      this.motionT = 0;
+    }
     this.emit({ type: 'task', ts: Date.now(), task: { ...task } });
     this.emitStatus();
   }
@@ -255,20 +282,20 @@ export class MockTransport implements Transport {
   private applyFault(kind: NonNullable<ScenarioDef['fault']>['kind']) {
     switch (kind) {
       case 'freezeState':
-        this.frozenState = this.stateAt(Date.now());
+        this.frozenState = this.prevState ?? HOME;
         break;
       case 'usbLost':
         this.usb = 'lost';
         this.robot = 'unknown';
-        this.pipelineFail = { step: 'robot', severity: 'critical' };
-        this.finishTask('failed', 'mất kết nối USB với cánh tay');
+        this.pipelineFail = { step: 'robot', reason: 'mất USB' };
+        this.finishTask('failed', 'mất kết nối USB với tay robot');
         this.emitStatus();
         break;
       case 'robotError':
         this.robot = 'error';
-        this.robotError = { code: 'E21', message: 'overload on elbow_flex' };
-        this.pipelineFail = { step: 'robot', severity: 'critical' };
-        this.finishTask('failed', 'robot báo lỗi E21');
+        this.robotError = { code: 'OVERLOAD', joint: 'elbow_flex' };
+        this.pipelineFail = { step: 'robot', reason: 'quá tải' };
+        this.finishTask('failed', 'robot báo lỗi quá tải ở khớp elbow_flex');
         this.emitStatus();
         break;
       case 'stale':
@@ -277,12 +304,14 @@ export class MockTransport implements Transport {
         break;
       case 'cameraFrozen':
         this.frozenFrameTs = Date.now();
-        this.pipelineFail = { step: 'camera', severity: 'warn' };
+        this.pipelineFail = { step: 'camera', reason: 'hình đứng' };
         break;
       case 'webDrop':
         this.emitting = false;
-        this.emitLocal('disconnected');
-        this.later(3000, () => this.emitLocal('connecting'));
+        this.emitLocal('disconnected', 1);
+        this.later(1000, () => this.emitLocal('disconnected', 2));
+        this.later(2000, () => this.emitLocal('disconnected', 3));
+        this.later(3000, () => this.emitLocal('connecting', 4));
         this.later(4000, () => this.emitLocal('connected'));
         this.later(5000, () => {
           this.emitting = true;
@@ -292,41 +321,47 @@ export class MockTransport implements Transport {
       case 'estop':
         this.estop = true;
         this.robot = 'stopped';
-        this.finishTask('stopped', 'nút dừng khẩn được nhấn');
+        this.finishTask('stopped', 'nút dừng khẩn cấp được nhấn');
         this.emitStatus();
         break;
     }
   }
 
-  private actionAt(motionT: number): Joints {
-    const out = {} as Joints;
-    for (const j of ALL_JOINTS) {
-      const m = MOTION[j];
-      const v = m.base + m.amp * Math.sin((2 * Math.PI * motionT) / MOTION_PERIOD_MS + m.phase);
-      out[j] = Math.round(v * 100) / 100;
-    }
-    return out;
-  }
-
-  /** Actual position: the commanded action, delayed by the scenario lag. */
-  private stateAt(t: number): Joints {
+  /** Measured position: the commanded action, delayed by the scenario lag. */
+  private stateAt(t: number): JointValues {
     if (this.frozenState) return this.frozenState;
     const target = t - this.def.lagMs;
-    let found = this.actionHistory[0]?.a ?? this.actionAt(this.motionT);
+    let found = this.actionHistory[0]?.a ?? this.lastAction;
     for (const h of this.actionHistory) {
       if (h.t > target) break;
       found = h.a;
     }
     const out = { ...found };
-    if (out.gripper < GRIP_HOLD) out.gripper = GRIP_HOLD;
+    if (this.current && this.def.loadBiasDeg) {
+      for (const j of LOADED) out[j] -= this.def.loadBiasDeg;
+    }
+    if (this.current && holdingAt(this.motionT) && out.gripper < GRIP_HOLD) out.gripper = GRIP_HOLD;
     return out;
   }
 
   private telemetry() {
     if (this.usb !== 'plugged') return;
     const now = Date.now();
-    if (this.robot === 'moving') this.motionT += TELEMETRY_MS;
-    const action = this.actionAt(this.motionT);
+    // Wall-clock based so a busy main thread does not slow the motion down.
+    const dt = Math.min(500, now - (this.lastTickAt ?? now - TELEMETRY_MS));
+    this.lastTickAt = now;
+    if (this.robot === 'moving' && this.current) {
+      this.motionT += dt;
+      const phase: TaskPhase = phaseAt(this.motionT);
+      if (phase !== this.current.phase) {
+        this.current.phase = phase;
+        this.emit({ type: 'task', ts: now, task: { ...this.current } });
+      }
+      if (this.motionT >= CYCLE_MS) this.finishTask('done');
+    }
+    const moving = this.robot === 'moving' && this.current !== null;
+    const action = moving ? actionAt(this.cycle, this.motionT) : this.lastAction;
+    this.lastAction = action;
     this.actionHistory.push({ t: now, a: action });
     while (this.actionHistory.length > 0 && this.actionHistory[0]!.t < now - 3000) {
       this.actionHistory.shift();
@@ -334,20 +369,34 @@ export class MockTransport implements Transport {
     const state = this.stateAt(now);
     const joints = {} as Record<JointName, JointSample>;
     for (const j of ALL_JOINTS) {
-      const noise = this.frozenState ? 0 : (Math.random() - 0.5) * 0.4;
-      joints[j] = { action: action[j], state: Math.round((state[j] + noise) * 100) / 100 };
+      const noise = this.frozenState ? 0 : (Math.random() - 0.5) * 0.3;
+      const value = round(state[j] + noise);
+      const prev = this.prevState?.[j] ?? value;
+      joints[j] = {
+        action: round(action[j]),
+        state: value,
+        ...(this.def.servoVelocity
+          ? { velocity: round((value - prev) / (Math.max(dt, 1) / 1000)) }
+          : {}),
+      };
     }
+    this.prevState = Object.fromEntries(ALL_JOINTS.map((j) => [j, joints[j].state])) as JointValues;
     this.emit({ type: 'telemetry', ts: now, joints });
   }
 
   private cameras() {
     const now = Date.now();
-    const ids: CameraId[] = ['panoramic', 'object'];
+    const ids: CameraId[] = ['object', 'overview'];
     for (const camera of ids) {
-      const low = this.def.lowFpsCamera === camera;
-      const fps = low ? 6 : 15 + Math.round(Math.random() * 2);
-      const frameTs = camera === 'panoramic' && this.frozenFrameTs ? this.frozenFrameTs : now;
-      this.emit({ type: 'camera', ts: now, camera, fps, frameTs });
+      const frozen = camera === 'overview' && this.frozenFrameTs !== null;
+      const fps = frozen ? 4 : 29 + Math.round(Math.random() * 2);
+      this.emit({
+        type: 'camera',
+        ts: now,
+        camera,
+        fps,
+        frameTs: frozen ? this.frozenFrameTs! : now,
+      });
     }
   }
 
@@ -355,17 +404,17 @@ export class MockTransport implements Transport {
     const jitter = (v: number, d: number) => Math.max(1, Math.round(v + (Math.random() - 0.5) * d));
     const steps: PipelineMsg['steps'] = { camera: jitter(33, 6) };
     if (this.current) {
-      steps.ai = jitter(120, 30);
+      steps.ai = jitter(118, 30);
       steps.gateway = jitter(4, 2);
-      steps.robot = jitter(12, 6);
-      steps.result = (steps.camera ?? 0) + steps.ai + steps.gateway + steps.robot;
+      steps.robot = jitter(46, 10);
     }
     const fail = this.pipelineFail;
     if (fail) {
       const order = ['camera', 'ai', 'gateway', 'robot', 'result'] as const;
-      const idx = order.indexOf(fail.step);
-      order.slice(idx).forEach((k) => delete steps[k]);
+      order.slice(order.indexOf(fail.step)).forEach((k) => delete steps[k]);
     }
     this.emit({ type: 'pipeline', ts: Date.now(), steps, ...(fail ? { failed: fail } : {}) });
   }
 }
+
+const round = (v: number) => Math.round(v * 100) / 100;

@@ -1,4 +1,4 @@
-import type { OutgoingMessage } from './protocol';
+import type { OutgoingMessage } from '../types/messages';
 import type { Listener, Transport } from './Transport';
 
 /** Placeholder for the real backend connection (VITE_BACKEND_URL). */

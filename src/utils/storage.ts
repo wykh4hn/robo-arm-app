@@ -26,3 +26,13 @@ export const storage = {
     }
   },
 };
+
+const TUTORIAL_KEY = 'tutorialSeen';
+
+export function tutorialSeen(): boolean {
+  return storage.get(TUTORIAL_KEY) === '1';
+}
+
+export function markTutorialSeen(): void {
+  storage.set(TUTORIAL_KEY, '1');
+}

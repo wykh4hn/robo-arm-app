@@ -1,27 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { ALL_JOINTS } from '../config';
-import type { JointName, JointSample } from '../transport/protocol';
-import type { Sample } from '../state/types';
+import type { JointName } from '../types/messages';
+import type { JointReading, Sample } from '../state/types';
 import { eventsToJson, logFileStem, samplesToCsv } from './exportLog';
 
 function sample(ts: number): Sample {
-  const joints = {} as Record<JointName, JointSample>;
-  ALL_JOINTS.forEach((j, i) => (joints[j] = { action: i, state: i - 0.5 }));
-  return { t: ts + 3, ts, joints };
+  const joints = {} as Record<JointName, JointReading>;
+  ALL_JOINTS.forEach((j, i) => (joints[j] = { action: i, state: i - 0.5, velocity: i * 2 }));
+  return { t: ts + 3, ts, joints, velocityEstimated: false };
 }
 
 describe('exportLog', () => {
-  it('writes one CSV row per joint per sample with the sender timestamp', () => {
+  it('writes one CSV row per joint per sample with the sender timestamp and velocity', () => {
     const csv = samplesToCsv([sample(1000), sample(1100)]);
     const lines = csv.trim().split('\n');
-    expect(lines[0]).toBe('t_ms,joint,action,state');
+    expect(lines[0]).toBe('t_ms,joint,action,state,velocity');
     expect(lines).toHaveLength(1 + 2 * ALL_JOINTS.length);
-    expect(lines[1]).toBe('1000,shoulder_pan,0,-0.5');
-    expect(lines[6]).toBe('1000,gripper,5,4.5');
+    expect(lines[1]).toBe('1000,shoulder_pan,0,-0.5,0');
+    expect(lines[6]).toBe('1000,gripper,5,4.5,10');
   });
 
   it('writes only the header for an empty log', () => {
-    expect(samplesToCsv([])).toBe('t_ms,joint,action,state\n');
+    expect(samplesToCsv([])).toBe('t_ms,joint,action,state,velocity\n');
   });
 
   it('exports tasks, commands and events as JSON', () => {

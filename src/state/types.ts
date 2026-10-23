@@ -1,8 +1,7 @@
-import type { ViewMode } from '../config';
+import type { AngleUnit, ViewPreset } from '../config';
 import type {
   CameraId,
   JointName,
-  JointSample,
   PipelineMsg,
   RobotError,
   RobotState,
@@ -10,7 +9,7 @@ import type {
   TaskState,
   UsbLink,
   WebLink,
-} from '../transport/protocol';
+} from '../types/messages';
 
 /** Status levels, most severe first. */
 export const LEVELS = ['estop', 'action', 'waiting', 'attention', 'ok'] as const;
@@ -20,7 +19,7 @@ export type TrackingLevel = 'good' | 'slow' | 'stuck';
 
 export interface TrackingState {
   level: TrackingLevel;
-  /** Mean |action - state| over the window, null when there is no data. */
+  /** Mean |action - state| (deg) over the window, null when there is no data. */
   error: number | null;
   aboveWarnSince: number | null;
   aboveStuckSince: number | null;
@@ -28,12 +27,21 @@ export interface TrackingState {
   belowStuckSince: number | null;
 }
 
+export interface JointReading {
+  action: number;
+  state: number;
+  /** deg/s (gripper %/s): from the servo, or estimated. */
+  velocity: number;
+}
+
 export interface Sample {
   /** Browser receive time (ms). */
   t: number;
   /** Sender timestamp (ms). */
   ts: number;
-  joints: Record<JointName, JointSample>;
+  joints: Record<JointName, JointReading>;
+  /** Velocity was estimated from positions (no servo velocity in the data). */
+  velocityEstimated: boolean;
 }
 
 export type CommandKind = 'command' | 'ready' | 'reconnect_usb';
@@ -44,10 +52,13 @@ export interface CommandRecord {
   id: string;
   kind: CommandKind;
   text: string;
+  templateId?: string;
+  params?: Record<string, string>;
   sentAt: number;
   phase: CommandPhase;
   taskId?: number;
   reason?: string;
+  endedAt?: number;
 }
 
 export type StopPhase = 'idle' | 'stopping' | 'stopped' | 'unconfirmed';
@@ -67,6 +78,8 @@ export interface LogEvent {
 
 export type Tab = 'monitoring' | 'tutorial';
 export type Lang = 'vi' | 'en';
+export type ChartTab = 'position' | 'velocity' | 'error';
+export type LargeSlot = 'viewer' | CameraId;
 
 export type ProblemKind =
   | 'estop'
@@ -80,36 +93,36 @@ export type ProblemKind =
   | 'trackingStuck'
   | 'trackingSlow'
   | 'cameraFrozen'
-  | 'cameraLowFps'
   | 'cmdRejected'
   | 'cmdNoAck'
   | 'taskFailed'
   | 'awaitingReady';
 
 export interface Problem {
-  /** Stable identity, used to latch banner alerts. */
   key: string;
   kind: ProblemKind;
   level: Level;
-  /** Shown in the error banner. */
-  banner: boolean;
-  robotStopped: 'yes' | 'no' | 'unknown';
+  /** Shown in the error banner, and how. */
+  banner: 'critical' | 'warn' | null;
   params: Record<string, string | number>;
 }
 
-export interface Alert {
-  key: string;
-  problem: Problem;
-  active: boolean;
-  dismissed: boolean;
+export interface Layers {
+  ghost: boolean;
+  trail: boolean;
+  plan: boolean;
+  axes: boolean;
+  labels: boolean;
 }
 
 export interface MonitorState {
   now: number;
   web: WebLink;
+  reconnectAttempt: number;
   /** True once a status message arrived after the latest (re)connect. */
   synced: boolean;
   lastMessageAt: number | null;
+  latencyMs: number | null;
   usb: UsbLink;
   robot: RobotState;
   robotError: RobotError | null;
@@ -130,6 +143,17 @@ export interface MonitorState {
 export interface UiState {
   lang: Lang;
   tab: Tab;
-  viewMode: ViewMode;
-  alerts: Alert[];
+  unit: AngleUnit;
+  chartTab: ChartTab;
+  selectedJoint: JointName | null;
+  layers: Layers;
+  viewPreset: ViewPreset;
+  /** Bumped by "Reset view" so the viewer re-applies the preset. */
+  viewResetKey: number;
+  largeSlot: LargeSlot;
+  /** Live charts, or frozen at a time (browser ms) while hovering. */
+  chartPausedAt: number | null;
+  /** Joint ranges (data units) from the loaded URDF; config.limits otherwise. */
+  robotLimits: Partial<Record<JointName, [number, number]>>;
+  robotSource: 'loading' | 'urdf' | 'placeholder';
 }

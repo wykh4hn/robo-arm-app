@@ -1,7 +1,7 @@
 // Scenario table: drives the mock AND serves as test data for deriveStatus.
 import type { Level, ProblemKind } from '../state/types';
 import type { SendBlockReason } from '../state/deriveStatus';
-import type { CameraId } from './protocol';
+import type { CameraId } from '../types/messages';
 
 export const SCENARIO_NAMES = [
   'running',
@@ -19,6 +19,7 @@ export const SCENARIO_NAMES = [
   'estop',
   'first-run',
   'empty-history',
+  'no-urdf',
 ] as const;
 
 export type ScenarioName = (typeof SCENARIO_NAMES)[number];
@@ -42,6 +43,12 @@ export interface ScenarioDef {
   history: boolean;
   /** State lags action by this much (ms). */
   lagMs: number;
+  /** Extra steady error (deg) on loaded joints while a task runs. */
+  loadBiasDeg?: number;
+  /** Telemetry carries servo velocity (otherwise the UI estimates it). */
+  servoVelocity: boolean;
+  /** Pretend the URDF files are missing (placeholder chain). */
+  noUrdf?: boolean;
   fault?: { kind: FaultKind; atMs: number };
   stopAck: boolean;
   nackCommands: boolean;
@@ -56,7 +63,8 @@ export interface ScenarioDef {
 const base: ScenarioDef = {
   startRunning: true,
   history: true,
-  lagMs: 150,
+  lagMs: 250,
+  servoVelocity: true,
   stopAck: true,
   nackCommands: false,
   expect: [],
@@ -74,12 +82,13 @@ export const SCENARIOS: Record<ScenarioName, ScenarioDef> = {
   },
   'slow-tracking': {
     ...base,
-    lagMs: 400,
+    lagMs: 600,
+    loadBiasDeg: 14,
     expect: [{ atMs: 6000, overall: 'attention', canSend: false, problems: ['trackingSlow'] }],
   },
   'joint-stuck': {
     ...base,
-    fault: { kind: 'freezeState', atMs: 2000 },
+    fault: { kind: 'freezeState', atMs: 1000 },
     expect: [{ atMs: 7000, overall: 'action', canSend: false, problems: ['trackingStuck'] }],
   },
   'usb-lost': {
@@ -158,7 +167,7 @@ export const SCENARIOS: Record<ScenarioName, ScenarioDef> = {
         atMs: 7000,
         overall: 'attention',
         canSend: true,
-        problems: ['cameraFrozen', 'cameraLowFps'],
+        problems: ['cameraFrozen'],
       },
     ],
   },
@@ -213,7 +222,13 @@ export const SCENARIOS: Record<ScenarioName, ScenarioDef> = {
     ...base,
     startRunning: false,
     history: false,
+    servoVelocity: false,
     expect: [{ atMs: 3000, overall: 'ok', canSend: true, problems: [] }],
+  },
+  'no-urdf': {
+    ...base,
+    noUrdf: true,
+    expect: [{ atMs: 5000, overall: 'ok', canSend: false, sendBlockReason: 'busy', problems: [] }],
   },
 };
 

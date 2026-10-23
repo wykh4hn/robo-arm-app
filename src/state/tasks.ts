@@ -1,4 +1,4 @@
-import type { TaskInfo } from '../transport/protocol';
+import type { TaskInfo } from '../types/messages';
 
 /** Running task pinned on top, then newest first. */
 export function sortTasks(tasks: TaskInfo[]): TaskInfo[] {
