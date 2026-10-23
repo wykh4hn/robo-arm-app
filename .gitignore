@@ -1,5 +1,10 @@
-node_modules
-dist
-coverage
 *.log
+.DS_Store
+.env
+.env.*
 .env.local
+coverage
+dist
+dist/
+node_modules
+node_modules/

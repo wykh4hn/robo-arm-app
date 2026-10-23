@@ -1,0 +1,30 @@
+<!-- @dsCard group="Shell" height=196 width=1000 subtitle="Lamp levels and detail chips — icon + word, never colour alone" -->
+<!doctype html>
+<html lang="vi">
+<head><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../bundle.css"><meta charset="utf-8"><title>StatusChip — preview</title></head>
+<body>
+<div class="rb-demo rb-demo--col rb-demo--surface" style="gap: var(--space-4);">
+  <div class="rb-demo-cell">
+    <p class="rb-demo-label">Đèn tổng — mức nặng nhất thắng</p>
+    <div style="display:flex; flex-wrap:wrap; gap: var(--space-2);">
+      <span class="rb-chip rb-chip--lamp rb-chip--ok"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /></svg>Hệ thống ổn</span>
+      <span class="rb-chip rb-chip--lamp rb-chip--warn"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></svg>Cần chú ý</span>
+      <span class="rb-chip rb-chip--lamp rb-chip--info"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" /> <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" /> <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" /> <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" /></svg>Chờ người dùng</span>
+      <span class="rb-chip rb-chip--lamp rb-chip--critical"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="m15 9-6 6" /> <path d="m9 9 6 6" /></svg>Cần xử lý</span>
+      <span class="rb-chip rb-chip--lamp rb-chip--estop"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 16h.01" /> <path d="M12 8v4" /> <path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z" /></svg>Dừng khẩn cấp</span>
+    </div>
+  </div>
+  <div class="rb-demo-cell">
+    <p class="rb-demo-label">Chip chi tiết — xám khi bình thường, chỉ tô màu khi bất thường</p>
+    <div style="display:flex; flex-wrap:wrap; gap: var(--space-2);">
+      <span class="rb-chip"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20h.01" /> <path d="M2 8.82a15 15 0 0 1 20 0" /> <path d="M5 12.859a10 10 0 0 1 14 0" /> <path d="M8.5 16.429a5 5 0 0 1 7 0" /></svg><span class="rb-chip__label">Kết nối</span><span class="rb-chip__value">Web <span class="rb-chip__num">12 ms</span> · USB ổn</span></span>
+      <span class="rb-chip"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 8V4H8" /> <rect width="16" height="12" x="4" y="8" rx="2" /> <path d="M2 14h2" /> <path d="M20 14h2" /> <path d="M15 13v2" /> <path d="M9 13v2" /></svg><span class="rb-chip__label">Robot</span><span class="rb-chip__value">Đang chạy</span></span>
+      <span class="rb-chip rb-chip--warn"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <line x1="22" x2="18" y1="12" y2="12" /> <line x1="6" x2="2" y1="12" y2="12" /> <line x1="12" x2="12" y1="6" y2="2" /> <line x1="12" x2="12" y1="22" y2="18" /></svg><span class="rb-chip__label">Độ bám lệnh</span><span class="rb-chip__value">Chậm</span></span>
+      <span class="rb-chip rb-chip--critical"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m19 5 3-3" /> <path d="m2 22 3-3" /> <path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z" /> <path d="M7.5 13.5 10 11" /> <path d="M10.5 16.5 13 14" /> <path d="m12 6 6 6 2.3-2.3a2.4 2.4 0 0 0 0-3.4l-2.6-2.6a2.4 2.4 0 0 0-3.4 0Z" /></svg><span class="rb-chip__label">USB</span><span class="rb-chip__value">Mất kết nối</span></span>
+      <span class="rb-chip rb-chip--info"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="M8 12h8" /></svg><span class="rb-chip__label">Robot</span><span class="rb-chip__value">Đã dừng · bấm Sẵn sàng</span></span>
+      <span class="rb-chip is-stale"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 8V4H8" /> <rect width="16" height="12" x="4" y="8" rx="2" /> <path d="M2 14h2" /> <path d="M20 14h2" /> <path d="M15 13v2" /> <path d="M9 13v2" /></svg><span class="rb-chip__label">Robot</span><span class="rb-chip__value">Không rõ</span><span class="rb-tag rb-tag--warn"><svg class="rb-ic rb-ic--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /></svg>Dữ liệu cũ</span></span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

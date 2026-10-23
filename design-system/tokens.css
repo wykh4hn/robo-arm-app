@@ -1,0 +1,110 @@
+/* SO-101 Monitor — generated from tokens.json */
+:root, [data-theme="light"] {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --surface-2: #f6f8fa;
+  --border: #cbd2d9;
+  --border-subtle: #e4e7eb;
+  --border-control: #7b8794;
+  --text: #1f2933;
+  --muted: #52606d;
+  --header: #1f2a37;
+  --header-raised: #2d3a4b;
+  --header-line: #3e4c5e;
+  --on-header: #ffffff;
+  --on-header-muted: #b8c2cc;
+  --primary: #1f6feb;
+  --primary-hover: #1858c4;
+  --on-primary: #ffffff;
+  --focus: var(--primary);
+  --ok-text: #146c2e;
+  --ok-bg: #e6f4ea;
+  --ok-line: #9fd3ae;
+  --warn-text: #92400e;
+  --warn-bg: #fef3c7;
+  --warn-line: #f4c55b;
+  --critical-text: #b71c1c;
+  --critical-bg: #fdecea;
+  --critical-line: #f4b4ae;
+  --info-text: #1a56c4;
+  --info-bg: #e8f0fe;
+  --info-line: #a9c4f5;
+  --stop: #d32f2f;
+  --stop-hover: #b71c1c;
+  --stop-edge: #ef9a9a;
+  --on-stop: #ffffff;
+  --disabled-bg: #e4e7eb;
+  --joint-shoulder_pan: #2563eb;
+  --joint-shoulder_lift: #ea7a0c;
+  --joint-elbow_flex: #0d9488;
+  --joint-wrist_flex: #7c3aed;
+  --joint-wrist_roll: #db2777;
+  --joint-gripper: #64748b;
+  --robot-body: #7b8794;
+  --robot-ghost: var(--primary);
+  --ee-trail: var(--text);
+  --planned-path: var(--primary);
+  --viewport-floor: var(--surface-2);
+  --viewport-grid: var(--border-subtle);
+  --chart-grid: var(--border-subtle);
+  --chart-axis: var(--border);
+  --camera-bg: var(--header);
+  --camera-text: var(--on-header-muted);
+  --tooltip-bg: var(--text);
+  --on-tooltip: #ffffff;
+  --selected-bg: var(--info-bg);
+  --shadow-popover: 0 4px 12px #1f29332e, 0 1px 3px #1f29331f;
+  --focus-ring: 0 0 0 2px #ffffff, 0 0 0 4px #1f6feb;
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+  --size-header: 56px;
+  --size-stop: 44px;
+  --size-control: 32px;
+  --size-field: 36px;
+  --size-control-lg: 40px;
+  --size-chip: 28px;
+  --size-row: 44px;
+  --col-left: 300px;
+  --col-right: 460px;
+  --viewer-height: 360px;
+  --camera-height: 168px;
+  --bp-stack: 1024px;
+  --opacity-ghost: 0.3;
+  --opacity-dim: 0.25;
+  --opacity-trail-min: 0.15;
+  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.t-app-title { font-family: var(--font-sans); font-size: 15px; line-height: 20px; font-weight: 600; }
+.t-card-title { font-family: var(--font-sans); font-size: 15px; line-height: 20px; font-weight: 600; }
+.t-section { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 600; }
+.t-body { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 400; }
+.t-body-strong { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 600; }
+.t-label { font-family: var(--font-sans); font-size: 13px; line-height: 18px; font-weight: 500; }
+.t-caption { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 400; }
+.t-micro { font-family: var(--font-sans); font-size: 11px; line-height: 14px; font-weight: 500; }
+.t-stop { font-family: var(--font-sans); font-size: 16px; line-height: 20px; font-weight: 700; letter-spacing: 0.04em; }
+.t-doc-title { font-family: var(--font-sans); font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; }
+.t-doc-heading { font-family: var(--font-sans); font-size: 18px; line-height: 26px; font-weight: 600; }
+.t-doc-body { font-family: var(--font-sans); font-size: 15px; line-height: 24px; font-weight: 400; }
+.t-value { font-family: var(--font-mono); font-size: 13px; line-height: 18px; font-weight: 400; }
+.t-value-strong { font-family: var(--font-mono); font-size: 13px; line-height: 18px; font-weight: 500; }
+.t-meta { font-family: var(--font-mono); font-size: 12px; line-height: 16px; font-weight: 400; }
+.t-command { font-family: var(--font-mono); font-size: 13px; line-height: 20px; font-weight: 400; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("fonts/Inter-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("fonts/JetBrainsMono-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("fonts/JetBrainsMono-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }

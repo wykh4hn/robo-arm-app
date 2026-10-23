@@ -1,0 +1,52 @@
+<!-- @dsCard group="Robot data" height=480 width=980 subtitle="Position, velocity, command, error, limit — one fixed colour per joint" -->
+<!doctype html>
+<html lang="vi">
+<head><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../bundle.css"><meta charset="utf-8"><title>JointTable — preview</title></head>
+<body>
+<div class="rb-demo" style="flex-wrap: nowrap;">
+  <section class="rb-card" style="width: 460px;" aria-labelledby="jt1">
+    <div class="rb-card__head" style="align-items:center;">
+      <h2 class="rb-card__title" id="jt1" style="flex:1">Trạng thái khớp</h2>
+      <div class="rb-seg" role="group" aria-label="Đơn vị góc"><button type="button" aria-pressed="true">độ</button><button type="button" aria-pressed="false">rad</button></div>
+    </div>
+    <table class="rb-joints">
+      <thead><tr><th scope="col">Khớp</th><th scope="col">Vị trí °</th><th scope="col">Vận tốc °/s</th><th scope="col">Lệnh °</th><th scope="col">Sai số</th><th scope="col">Giới hạn</th></tr></thead>
+      <tbody>
+        <tr><td><span class="rb-joint"><span class="rb-joint__swatch" style="background:var(--joint-shoulder_pan)"></span><span class="rb-joint__name">shoulder_pan</span><span class="rb-joint__desc">xoay đế</span></span></td><td>12,4</td><td>0,2</td><td>12,6</td><td>0,2</td><td style="text-align:left"><span class="rb-limit" role="meter" aria-valuemin="-110" aria-valuemax="110" aria-valuenow="12.4" aria-label="Giới hạn shoulder_pan"><span class="rb-limit__mark" style="left:55.6%"></span></span></td></tr>
+        <tr><td><span class="rb-joint"><span class="rb-joint__swatch" style="background:var(--joint-shoulder_lift)"></span><span class="rb-joint__name">shoulder_lift</span><span class="rb-joint__desc">nâng vai</span></span></td><td>−41,0</td><td>0,5</td><td>−40,6</td><td>0,4</td><td style="text-align:left"><span class="rb-limit" role="meter" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="-41" aria-label="Giới hạn shoulder_lift"><span class="rb-limit__mark" style="left:29.5%"></span></span></td></tr>
+        <tr><td><span class="rb-joint"><span class="rb-joint__swatch" style="background:var(--joint-elbow_flex)"></span><span class="rb-joint__name">elbow_flex</span><span class="rb-joint__desc">gập khuỷu</span></span></td><td>88,2</td><td>1,6</td><td>87,6</td><td>0,6</td><td style="text-align:left"><span class="rb-limit-wrap"><span class="rb-limit is-near" role="meter" aria-valuemin="-97" aria-valuemax="97" aria-valuenow="88.2" aria-label="Giới hạn elbow_flex, gần biên"><span class="rb-limit__mark" style="left:95.5%"></span></span><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></svg></span></td></tr>
+        <tr><td><span class="rb-joint"><span class="rb-joint__swatch" style="background:var(--joint-wrist_flex)"></span><span class="rb-joint__name">wrist_flex</span><span class="rb-joint__desc">gập cổ tay</span></span></td><td>−20,5</td><td>0,8</td><td>−20,1</td><td>0,4</td><td style="text-align:left"><span class="rb-limit" role="meter" aria-valuemin="-95" aria-valuemax="95" aria-valuenow="-20.5" aria-label="Giới hạn wrist_flex"><span class="rb-limit__mark" style="left:39.2%"></span></span></td></tr>
+        <tr><td><span class="rb-joint"><span class="rb-joint__swatch" style="background:var(--joint-wrist_roll)"></span><span class="rb-joint__name">wrist_roll</span><span class="rb-joint__desc">xoay cổ tay</span></span></td><td>3,1</td><td>0,0</td><td>3,1</td><td>0,0</td><td style="text-align:left"><span class="rb-limit" role="meter" aria-valuemin="-157" aria-valuemax="163" aria-valuenow="3.1" aria-label="Giới hạn wrist_roll"><span class="rb-limit__mark" style="left:50%"></span></span></td></tr>
+        <tr><td><span class="rb-joint"><span class="rb-joint__swatch" style="background:var(--joint-gripper)"></span><span class="rb-joint__name">gripper</span><span class="rb-joint__desc">kẹp · % mở</span></span></td><td>62 %</td><td>0,0</td><td>60 %</td><td class="rb-na">—</td><td style="text-align:left"><span class="rb-limit" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="62" aria-label="Độ mở kẹp"><span class="rb-limit__mark" style="left:62%"></span></span></td></tr>
+      </tbody>
+    </table>
+    <div class="rb-card__foot" style="display:grid; gap: 4px; border-top:0;">
+      <span class="rb-joints-quality" role="status"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /></svg><span><strong>Độ bám lệnh: Tốt</strong> · sai số TB <span class="rb-mono">0,3°</span> trên 5 khớp</span></span>
+      <span>Vận tốc đo từ servo. Kẹp không tính vào độ bám lệnh, vì khi giữ vật lệnh luôn đóng sâu hơn vị trí thật.</span>
+    </div>
+  </section>
+
+  <section class="rb-card" style="width: 460px;" aria-labelledby="jt2">
+    <div class="rb-card__head" style="align-items:center;">
+      <h2 class="rb-card__title" id="jt2" style="flex:1">Trạng thái khớp</h2>
+      <div class="rb-seg" role="group" aria-label="Đơn vị góc"><button type="button" aria-pressed="false">độ</button><button type="button" aria-pressed="true">rad</button></div>
+    </div>
+    <table class="rb-joints">
+      <thead><tr><th scope="col">Khớp</th><th scope="col">Vị trí rad</th><th scope="col">Vận tốc rad/s<br><span class="rb-tag">ước tính</span></th><th scope="col">Lệnh rad</th><th scope="col">Sai số</th><th scope="col">Giới hạn</th></tr></thead>
+      <tbody>
+        <tr><td><span class="rb-joint"><span class="rb-joint__swatch" style="background:var(--joint-shoulder_pan)"></span><span class="rb-joint__name">shoulder_pan</span><span class="rb-joint__desc">xoay đế</span></span></td><td>0,216</td><td>0,21</td><td>0,349</td><td>0,133</td><td style="text-align:left"><span class="rb-limit"><span class="rb-limit__mark" style="left:55.6%"></span></span></td></tr>
+        <tr><td><span class="rb-joint"><span class="rb-joint__swatch" style="background:var(--joint-shoulder_lift)"></span><span class="rb-joint__name">shoulder_lift</span><span class="rb-joint__desc">nâng vai</span></span></td><td>−0,716</td><td>0,35</td><td>−0,524</td><td class="is-warn">0,192</td><td style="text-align:left"><span class="rb-limit"><span class="rb-limit__mark" style="left:29.5%"></span></span></td></tr>
+        <tr aria-selected="true"><td><span class="rb-joint"><span class="rb-joint__swatch" style="background:var(--joint-elbow_flex)"></span><span class="rb-joint__name">elbow_flex</span><span class="rb-joint__desc">gập khuỷu</span></span></td><td>1,539</td><td>0,28</td><td>1,361</td><td class="is-warn">0,178</td><td style="text-align:left"><span class="rb-limit-wrap"><span class="rb-limit is-near"><span class="rb-limit__mark" style="left:95.5%"></span></span><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></svg></span></td></tr>
+        <tr><td><span class="rb-joint"><span class="rb-joint__swatch" style="background:var(--joint-wrist_flex)"></span><span class="rb-joint__name">wrist_flex</span><span class="rb-joint__desc">gập cổ tay</span></span></td><td>−0,358</td><td>0,19</td><td>−0,201</td><td class="is-warn">0,157</td><td style="text-align:left"><span class="rb-limit"><span class="rb-limit__mark" style="left:39.2%"></span></span></td></tr>
+        <tr><td><span class="rb-joint"><span class="rb-joint__swatch" style="background:var(--joint-wrist_roll)"></span><span class="rb-joint__name">wrist_roll</span><span class="rb-joint__desc">xoay cổ tay</span></span></td><td>0,054</td><td>0,24</td><td>0,192</td><td>0,138</td><td style="text-align:left"><span class="rb-limit"><span class="rb-limit__mark" style="left:50%"></span></span></td></tr>
+        <tr><td><span class="rb-joint"><span class="rb-joint__swatch" style="background:var(--joint-gripper)"></span><span class="rb-joint__name">gripper</span><span class="rb-joint__desc">kẹp · % mở</span></span></td><td>62 %</td><td class="rb-na">—</td><td>60 %</td><td class="rb-na">—</td><td style="text-align:left"><span class="rb-limit"><span class="rb-limit__mark" style="left:62%"></span></span></td></tr>
+      </tbody>
+    </table>
+    <div class="rb-card__foot" style="display:grid; gap: 4px; border-top:0;">
+      <span class="rb-joints-quality is-warn" role="status"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></svg><span><strong>Độ bám lệnh: Chậm</strong> · sai số TB <span class="rb-mono">0,160 rad</span> (ngưỡng <span class="rb-mono">0,140</span>)</span></span>
+      <span>Không có vận tốc từ servo: đang ước tính từ vị trí (sai phân, làm mượt).</span>
+    </div>
+  </section>
+</div>
+</body>
+</html>

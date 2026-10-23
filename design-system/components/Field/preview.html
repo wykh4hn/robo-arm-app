@@ -1,0 +1,21 @@
+<!-- @dsCard group="Controls" height=190 subtitle="Label + select, read-only command preview, helper text" -->
+<!doctype html>
+<html lang="vi">
+<head><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../bundle.css"><meta charset="utf-8"><title>Field — preview</title></head>
+<body>
+<div class="rb-demo rb-demo--surface" style="gap: var(--space-6);">
+  <div style="display:grid; gap: var(--space-4); width: 268px;">
+    <label class="rb-field"><span class="rb-field__label">Mẫu lệnh</span>
+      <select class="rb-select"><option>Gắp [vật] bỏ vào hộp</option></select></label>
+    <label class="rb-field"><span class="rb-field__label">Vật thể</span>
+      <select class="rb-select"><option>vịt đỏ</option><option>vịt vàng</option><option>khối lập phương</option><option>hộp nhỏ màu hồng</option></select></label>
+  </div>
+  <div style="display:grid; gap: var(--space-4); width: 268px;">
+    <div class="rb-field"><span class="rb-field__label" id="pv">Lệnh sẽ gửi</span>
+      <output class="rb-preview-cmd" aria-labelledby="pv">pick the red duck and put it in the box</output></div>
+    <label class="rb-field"><span class="rb-field__label">Vật thể (khoá khi task đang chạy)</span>
+      <select class="rb-select" disabled><option>vịt đỏ</option></select></label>
+  </div>
+</div>
+</body>
+</html>

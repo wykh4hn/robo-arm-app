@@ -1,0 +1,30 @@
+<!-- @dsCard group="Robot data" height=256 width=980 subtitle="Name, FPS, frame age; frozen overlay; swap with the 3D slot" -->
+<!doctype html>
+<html lang="vi">
+<head><link rel="stylesheet" href="../../tokens.css"><link rel="stylesheet" href="../bundle.css"><meta charset="utf-8"><title>CameraTile — preview</title></head>
+<body>
+<div class="rb-demo" style="flex-wrap: nowrap;">
+  <section class="rb-camera" style="width: 306px;" aria-label="Nhìn vật (trên xuống)">
+    <div class="rb-camera__head">
+      <div><div class="rb-camera__name">Nhìn vật (trên xuống)</div><div class="rb-camera__meta">30 fps · 0,03 s</div></div>
+      <button class="rb-btn rb-btn--quiet rb-btn--icon" type="button" aria-label="Đổi chỗ với mô hình 3D"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 3 21 3 21 9" /> <polyline points="9 21 3 21 3 15" /> <line x1="21" x2="14" y1="3" y2="10" /> <line x1="3" x2="10" y1="21" y2="14" /></svg></button>
+    </div>
+    <div class="rb-camera__img"><div class="rb-camera__ph"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /> <circle cx="12" cy="13" r="3" /></svg><span>[Luồng camera 1]</span></div></div>
+  </section>
+  <section class="rb-camera is-frozen" style="width: 306px;" aria-label="Toàn cảnh">
+    <div class="rb-camera__head">
+      <div><div class="rb-camera__name">Toàn cảnh</div><div class="rb-camera__meta">4 fps · 4,2 s</div></div>
+      <button class="rb-btn rb-btn--quiet rb-btn--icon" type="button" aria-label="Đổi chỗ với mô hình 3D"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 3 21 3 21 9" /> <polyline points="9 21 3 21 3 15" /> <line x1="21" x2="14" y1="3" y2="10" /> <line x1="3" x2="10" y1="21" y2="14" /></svg></button>
+    </div>
+    <div class="rb-camera__img"><div class="rb-camera__ph"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /> <circle cx="12" cy="13" r="3" /></svg><span>[Luồng camera 2]</span></div><span class="rb-camera__frozen rb-tag rb-tag--warn" role="status"><svg class="rb-ic rb-ic--sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></svg>Hình bị đứng</span></div>
+  </section>
+  <section class="rb-camera" style="width: 306px;" aria-label="Camera chưa cấu hình">
+    <div class="rb-camera__head">
+      <div><div class="rb-camera__name">Toàn cảnh</div><div class="rb-camera__meta">— fps · —</div></div>
+      <button class="rb-btn rb-btn--quiet rb-btn--icon" type="button" aria-label="Đổi chỗ với mô hình 3D"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 3 21 3 21 9" /> <polyline points="9 21 3 21 3 15" /> <line x1="21" x2="14" y1="3" y2="10" /> <line x1="3" x2="10" y1="21" y2="14" /></svg></button>
+    </div>
+    <div class="rb-camera__img"><div class="rb-camera__ph"><svg class="rb-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><line x1="2" x2="22" y1="2" y2="22" /> <path d="M7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16" /> <path d="M9.5 4h5L17 7h3a2 2 0 0 1 2 2v7.5" /> <path d="M14.121 15.121A3 3 0 1 1 9.88 10.88" /></svg><span>Chưa có URL camera trong config</span></div></div>
+  </section>
+</div>
+</body>
+</html>

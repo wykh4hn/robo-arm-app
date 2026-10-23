@@ -1,0 +1,296 @@
+/* SO-101 Monitor — component styles. Every colour, space and radius comes from tokens.css.
+   Class prefix: rb- . No gradients, no shadows except popovers, no transitions. */
+
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-sans); font-size: 14px; line-height: 20px; color: var(--text); background: var(--bg); -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+.rb-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.rb-muted { color: var(--muted); }
+.rb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* preview scaffolding */
+.rb-demo { padding: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-start; }
+.rb-demo--col { flex-direction: column; align-items: stretch; }
+.rb-demo--surface { background: var(--surface); }
+.rb-demo-label { font-size: 11px; line-height: 14px; font-weight: 500; color: var(--muted); margin: 0 0 var(--space-1); }
+.rb-demo--dark { background: var(--header); color: var(--on-header); }
+.rb-demo--dark .rb-demo-label { color: var(--on-header-muted); }
+.rb-demo-cell { display: grid; gap: var(--space-1); align-content: start; }
+
+/* focus — one ring for everything */
+:where(button, a, select, input, [tabindex], summary):focus-visible { outline: 2px solid transparent; box-shadow: var(--focus-ring); }
+
+/* icons (Lucide, 24-grid, 2px stroke, currentColor) */
+.rb-ic { width: 16px; height: 16px; flex: none; display: inline-block; vertical-align: middle; }
+.rb-ic--sm { width: 14px; height: 14px; }
+.rb-ic--lg { width: 20px; height: 20px; }
+
+/* ---------- Header ---------- */
+.rb-header { height: var(--size-header); background: var(--header); color: var(--on-header); display: flex; align-items: center; gap: var(--space-4); padding: 0 var(--space-4); }
+.rb-header__tabs { display: flex; gap: var(--space-1); height: 100%; align-items: center; }
+.rb-htab { height: 36px; padding: 0 var(--space-3); border: 0; border-radius: var(--radius-md); background: transparent; color: var(--on-header-muted); font-size: 14px; font-weight: 500; cursor: pointer; position: relative; }
+.rb-htab:hover { background: var(--header-raised); color: var(--on-header); }
+.rb-htab[aria-selected="true"] { background: var(--header-raised); color: var(--on-header); font-weight: 600; }
+.rb-htab[aria-selected="true"]::after { content: ""; position: absolute; left: var(--space-3); right: var(--space-3); bottom: 0; height: 2px; background: var(--primary); }
+.rb-header__project { margin-left: auto; text-align: right; min-width: 0; }
+.rb-header__name { font-size: 15px; line-height: 20px; font-weight: 600; color: var(--on-header); white-space: nowrap; }
+.rb-header__sub { font-size: 12px; line-height: 16px; color: var(--on-header-muted); white-space: nowrap; }
+.rb-lang { display: inline-flex; border: 1px solid var(--header-line); border-radius: var(--radius-md); overflow: hidden; }
+.rb-lang button { height: 28px; min-width: 36px; padding: 0 var(--space-2); border: 0; background: transparent; color: var(--on-header-muted); font-size: 12px; font-weight: 600; cursor: pointer; }
+.rb-lang button[aria-pressed="true"] { background: var(--on-header); color: var(--header); }
+.rb-hbtn { height: var(--size-control); padding: 0 var(--space-3); border: 1px solid var(--on-header-muted); border-radius: var(--radius-md); background: transparent; color: var(--on-header); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; }
+.rb-hbtn:hover { background: var(--header-raised); }
+
+/* ---------- STOP ---------- */
+.rb-stop { height: var(--size-stop); min-width: 120px; padding: 0 var(--space-4) 0 var(--space-3); border: 1px solid var(--stop-edge); border-radius: var(--radius-md); background: var(--stop); color: var(--on-stop); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); font-size: 16px; line-height: 20px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+.rb-stop .rb-ic { width: 20px; height: 20px; }
+.rb-stop:hover, .rb-stop:active { background: var(--stop-hover); }
+.rb-stop[data-state="stopping"] { text-transform: none; letter-spacing: 0; font-size: 15px; }
+.rb-stop[data-state="stopped"] { background: var(--stop-hover); text-transform: none; letter-spacing: 0; font-size: 15px; }
+.rb-stop[data-state="unconfirmed"] { text-transform: none; letter-spacing: 0; font-size: 14px; }
+.rb-stop-note { font-size: 12px; line-height: 16px; color: var(--on-header-muted); max-width: 220px; }
+
+/* ---------- Status bar & chips ---------- */
+.rb-statusbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: var(--space-2) var(--space-4); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.rb-statusbar__updated { margin-left: auto; font-size: 12px; line-height: 16px; color: var(--muted); display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.rb-chip { height: var(--size-chip); display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); font-size: 13px; line-height: 18px; white-space: nowrap; color: var(--text); }
+.rb-chip__label { color: var(--muted); font-weight: 500; }
+.rb-chip__value { font-weight: 600; }
+.rb-chip__num { font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.rb-chip--lamp { font-weight: 600; }
+.rb-chip--ok { background: var(--ok-bg); border-color: var(--ok-line); color: var(--ok-text); }
+.rb-chip--warn { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-text); }
+.rb-chip--critical { background: var(--critical-bg); border-color: var(--critical-line); color: var(--critical-text); }
+.rb-chip--info { background: var(--info-bg); border-color: var(--info-line); color: var(--info-text); }
+.rb-chip--estop { background: var(--stop); border-color: var(--stop); color: var(--on-stop); }
+.rb-chip--ok .rb-chip__label, .rb-chip--warn .rb-chip__label, .rb-chip--critical .rb-chip__label, .rb-chip--info .rb-chip__label, .rb-chip--estop .rb-chip__label { color: inherit; font-weight: 500; }
+.rb-chip.is-stale { background: var(--surface); border-style: dashed; border-color: var(--border-control); }
+.rb-chip.is-stale .rb-chip__value, .rb-chip.is-stale .rb-chip__num { color: var(--muted); font-weight: 400; }
+.rb-tag { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 6px; border-radius: var(--radius-sm); font-size: 11px; line-height: 14px; font-weight: 500; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); white-space: nowrap; }
+.rb-tag--warn { background: var(--warn-bg); color: var(--warn-text); border-color: var(--warn-line); }
+.rb-tag--info { background: var(--info-bg); color: var(--info-text); border-color: var(--info-line); }
+
+/* ---------- Pipeline strip ---------- */
+.rb-pipeline { background: var(--surface-2); border-bottom: 1px solid var(--border); padding: 6px var(--space-4); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: 12px; line-height: 16px; }
+.rb-pipeline__title { color: var(--muted); font-weight: 600; margin-right: var(--space-1); }
+.rb-pipe-step { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 var(--space-2); border-radius: var(--radius-sm); color: var(--text); }
+.rb-pipe-step__ms { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); }
+.rb-pipe-step--empty .rb-pipe-step__ms { color: var(--muted); }
+.rb-pipe-step--failed { background: var(--warn-bg); color: var(--warn-text); border: 1px solid var(--warn-line); font-weight: 600; }
+.rb-pipe-step--failed .rb-pipe-step__ms { color: var(--warn-text); }
+.rb-pipe-arrow { color: var(--muted); width: 14px; height: 14px; }
+
+/* ---------- Banner & hint ---------- */
+.rb-banner { display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-3); align-items: start; padding: var(--space-3) var(--space-4); border: 1px solid var(--critical-line); border-radius: var(--radius-lg); background: var(--critical-bg); color: var(--text); }
+.rb-banner > .rb-ic { color: var(--critical-text); width: 20px; height: 20px; margin-top: 1px; }
+.rb-banner__title { font-size: 14px; line-height: 20px; font-weight: 600; color: var(--critical-text); margin: 0; }
+.rb-banner__facts { margin: var(--space-1) 0 0; display: grid; grid-template-columns: max-content 1fr; column-gap: var(--space-3); row-gap: 2px; font-size: 13px; line-height: 18px; }
+.rb-banner__facts dt { color: var(--muted); font-weight: 500; }
+.rb-banner__facts dd { margin: 0; }
+.rb-banner__actions { display: flex; gap: var(--space-2); align-items: center; }
+.rb-banner--warn { border-color: var(--warn-line); background: var(--warn-bg); }
+.rb-banner--warn > .rb-ic, .rb-banner--warn .rb-banner__title { color: var(--warn-text); }
+.rb-banner--warn .rb-banner__facts dt { color: var(--text); }
+.rb-hint { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--info-line); border-radius: var(--radius-lg); background: var(--info-bg); color: var(--info-text); font-size: 13px; line-height: 18px; }
+.rb-hint__text { color: var(--text); }
+.rb-hint__text strong { color: var(--info-text); }
+.rb-hint .rb-btn { margin-left: auto; }
+
+/* ---------- Card ---------- */
+.rb-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); min-width: 0; }
+.rb-card__head { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.rb-card__titles { min-width: 0; flex: 1; }
+.rb-card__title { margin: 0; font-size: 15px; line-height: 20px; font-weight: 600; color: var(--text); }
+.rb-card__sub { margin: 2px 0 0; font-size: 12px; line-height: 16px; color: var(--muted); }
+.rb-card__actions { display: flex; align-items: center; gap: var(--space-2); flex: none; }
+.rb-card__body { padding: 0 var(--space-4) var(--space-4); }
+.rb-card__foot { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border-subtle); font-size: 12px; line-height: 16px; color: var(--muted); }
+
+/* ---------- Buttons ---------- */
+.rb-btn { height: var(--size-control); padding: 0 var(--space-3); border: 1px solid var(--border-control); border-radius: var(--radius-md); background: var(--surface); color: var(--text); font-size: 13px; line-height: 18px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap; }
+.rb-btn:hover { background: var(--surface-2); }
+.rb-btn--primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
+.rb-btn--primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+.rb-btn--quiet { border-color: transparent; background: transparent; color: var(--muted); }
+.rb-btn--quiet:hover { background: var(--surface-2); color: var(--text); }
+.rb-btn--lg { height: var(--size-control-lg); font-size: 14px; }
+.rb-btn--block { width: 100%; }
+.rb-btn--icon { width: var(--size-control); padding: 0; }
+.rb-btn--live { color: var(--info-text); border-color: var(--info-line); background: var(--info-bg); font-weight: 600; }
+.rb-btn:disabled, .rb-btn[aria-disabled="true"] { background: var(--disabled-bg); border-color: var(--disabled-bg); color: var(--muted); cursor: not-allowed; }
+.rb-live-dot { width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--info-text); flex: none; }
+
+/* ---------- Segmented ---------- */
+.rb-seg { display: inline-flex; border: 1px solid var(--border-control); border-radius: var(--radius-md); overflow: hidden; background: var(--surface); }
+.rb-seg button { height: 28px; padding: 0 10px; border: 0; border-left: 1px solid var(--border); background: transparent; color: var(--text); font-size: 13px; line-height: 18px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.rb-seg button:first-child { border-left: 0; }
+.rb-seg button:hover { background: var(--surface-2); }
+.rb-seg button[aria-pressed="true"], .rb-seg button[aria-selected="true"] { background: var(--selected-bg); color: var(--info-text); font-weight: 600; }
+
+/* ---------- Fields ---------- */
+.rb-field { display: grid; gap: 6px; }
+.rb-field__label { font-size: 13px; line-height: 18px; font-weight: 500; color: var(--muted); }
+.rb-select { height: var(--size-field); width: 100%; padding: 0 32px 0 10px; border: 1px solid var(--border-control); border-radius: var(--radius-md); background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2352606d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center; appearance: none; font-size: 14px; color: var(--text); cursor: pointer; }
+.rb-select:disabled { background-color: var(--surface-2); color: var(--muted); cursor: not-allowed; }
+.rb-preview-cmd { min-height: var(--size-field); padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); font-family: var(--font-mono); font-size: 13px; line-height: 20px; color: var(--text); word-break: break-word; }
+.rb-help { display: flex; gap: 6px; font-size: 12px; line-height: 16px; color: var(--muted); }
+.rb-help .rb-ic { width: 14px; height: 14px; margin-top: 1px; }
+
+/* ---------- Checkbox ---------- */
+.rb-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; color: var(--text); cursor: pointer; white-space: nowrap; }
+.rb-check input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); cursor: pointer; }
+.rb-checks { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
+
+/* ---------- Lifecycle stepper ---------- */
+.rb-stepper { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-1) 10px; font-size: 12px; line-height: 16px; }
+.rb-step { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+.rb-step .rb-ic { width: 14px; height: 14px; }
+.rb-step--done { color: var(--ok-text); }
+.rb-step--current { color: var(--info-text); font-weight: 600; }
+.rb-step--failed { color: var(--critical-text); font-weight: 600; }
+.rb-step--done .rb-step__text { color: var(--text); }
+.rb-nack { margin-top: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--critical-line); border-radius: var(--radius-md); background: var(--critical-bg); font-size: 12px; line-height: 16px; color: var(--text); }
+.rb-nack strong { color: var(--critical-text); }
+
+/* ---------- Task history ---------- */
+.rb-history { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.rb-task { padding: 10px var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); display: grid; gap: 2px; }
+.rb-task--running { background: var(--info-bg); border-color: var(--info-line); }
+.rb-task__row { display: flex; align-items: center; gap: var(--space-2); }
+.rb-task__id { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--text); }
+.rb-task__status { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; }
+.rb-task__status .rb-ic { width: 14px; height: 14px; }
+.rb-task__status--running { color: var(--info-text); }
+.rb-task__status--done { color: var(--ok-text); }
+.rb-task__status--failed { color: var(--critical-text); }
+.rb-task__status--stopped { color: var(--warn-text); }
+.rb-task__cmd { font-size: 14px; line-height: 20px; color: var(--text); }
+.rb-task__meta { font-size: 12px; line-height: 16px; color: var(--muted); }
+.rb-task__meta .rb-mono { font-size: 12px; }
+.rb-task__reason { font-size: 12px; line-height: 16px; color: var(--critical-text); }
+.rb-empty { padding: var(--space-6) var(--space-3); text-align: center; color: var(--muted); font-size: 13px; line-height: 18px; border: 1px dashed var(--border); border-radius: var(--radius-md); }
+
+/* ---------- Joint table ---------- */
+.rb-joints { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 18px; }
+.rb-joints th .rb-tag { margin-top: 2px; }
+.rb-joints th { text-align: right; vertical-align: bottom; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--muted); padding: 6px; background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.rb-joints th:first-child { text-align: left; padding-left: var(--space-3); }
+.rb-joints th:last-child { text-align: left; }
+.rb-joints td { padding: 0 6px; height: var(--size-row); border-bottom: 1px solid var(--border-subtle); text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rb-joints td:first-child { text-align: left; font-family: var(--font-sans); padding-left: var(--space-3); }
+.rb-joints tbody tr { cursor: pointer; }
+.rb-joints tbody tr:hover { background: var(--surface-2); }
+.rb-joints tbody tr[aria-selected="true"] { background: var(--selected-bg); }
+.rb-joint { display: grid; grid-template-columns: 10px auto; column-gap: var(--space-2); align-items: center; }
+.rb-joint__swatch { width: 10px; height: 10px; border-radius: 2px; grid-row: span 2; align-self: center; }
+.rb-joint__name { font-family: var(--font-mono); font-size: 13px; line-height: 16px; font-weight: 500; }
+.rb-joint__desc { font-size: 11px; line-height: 14px; color: var(--muted); }
+.rb-joints .is-warn { color: var(--warn-text); font-weight: 500; }
+.rb-joints .is-stale { color: var(--muted); background: var(--surface-2); }
+.rb-joints .rb-na { color: var(--muted); }
+.rb-joints-quality { display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; color: var(--text); }
+.rb-joints-quality .rb-ic { color: var(--ok-text); }
+.rb-joints-quality.is-warn .rb-ic { color: var(--warn-text); }
+
+/* limit bar */
+.rb-limit { position: relative; width: 56px; height: 8px; border-radius: var(--radius-sm); background: var(--border-subtle); display: inline-block; vertical-align: middle; overflow: visible; }
+.rb-limit::before, .rb-limit::after { content: ""; position: absolute; top: 0; bottom: 0; width: 10%; background: var(--border); }
+.rb-limit.is-near::before, .rb-limit.is-near::after { background: var(--warn-line); }
+.rb-limit::before { left: 0; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.rb-limit::after { right: 0; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.rb-limit__mark { position: absolute; top: -3px; width: 3px; height: 14px; margin-left: -1.5px; border-radius: 1px; background: var(--text); z-index: 1; }
+.rb-limit.is-near .rb-limit__mark { background: var(--warn-text); }
+.rb-limit-wrap { display: inline-flex; align-items: center; gap: 6px; }
+.rb-limit-wrap .rb-ic { color: var(--warn-text); width: 14px; height: 14px; }
+
+/* ---------- Charts ---------- */
+.rb-chart { display: grid; gap: var(--space-2); }
+.rb-chart__title { margin: 0; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--text); }
+.rb-chart__title span { font-family: var(--font-mono); font-weight: 400; color: var(--muted); font-size: 12px; }
+.rb-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.rb-chart .grid { stroke: var(--chart-grid); stroke-width: 1; }
+.rb-chart .axis { stroke: var(--chart-axis); stroke-width: 1; }
+.rb-chart .tick { fill: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.rb-chart .state { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.rb-chart .action { fill: none; stroke-width: 1.5; stroke-dasharray: 5 4; stroke-linecap: round; }
+.rb-chart .is-dim { opacity: var(--opacity-dim); }
+.rb-chart .cursor { stroke: var(--text); stroke-width: 1; stroke-dasharray: 2 2; }
+.rb-legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-size: 12px; line-height: 16px; color: var(--text); }
+.rb-legend__item { display: inline-flex; align-items: center; gap: 6px; }
+.rb-legend__item input { width: 14px; height: 14px; margin: 0; accent-color: var(--primary); }
+.rb-legend__val { font-family: var(--font-mono); color: var(--muted); }
+.rb-key { display: inline-block; width: 22px; height: 0; border-top: 2px solid currentColor; vertical-align: middle; }
+.rb-key--dash { border-top-style: dashed; border-top-width: 2px; }
+.rb-key--dot { border-top-style: dotted; border-top-width: 3px; }
+.rb-key--ghost { height: 8px; border: 0; border-radius: 2px; background: var(--robot-ghost); opacity: 0.45; }
+.rb-key--solid { height: 8px; border: 0; border-radius: 2px; background: var(--robot-body); }
+.rb-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; flex: none; }
+
+/* ---------- 3D viewer ---------- */
+.rb-viewer__toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: center; padding: 0 var(--space-4) var(--space-3); }
+.rb-viewport { position: relative; height: var(--viewer-height); margin: 0 var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
+.rb-viewport > svg, .rb-viewport > canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rb-viewport__tl { position: absolute; top: var(--space-3); left: var(--space-3); display: flex; gap: var(--space-2); }
+.rb-viewport__tr { position: absolute; top: var(--space-3); right: var(--space-3); }
+.rb-viewport__bl { position: absolute; left: var(--space-3); bottom: var(--space-3); }
+.rb-readout { display: inline-flex; align-items: center; gap: var(--space-2); height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); font-size: 12px; line-height: 16px; color: var(--muted); }
+.rb-readout b { font-family: var(--font-mono); font-weight: 500; color: var(--text); }
+.rb-viewer__legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); padding: var(--space-3) var(--space-4); font-size: 12px; line-height: 16px; color: var(--muted); }
+.rb-viewer__legend .rb-legend__item { color: var(--text); }
+.rb-notice { display: flex; align-items: center; gap: var(--space-2); margin: 0 var(--space-4) var(--space-3); padding: 6px 10px; border: 1px solid var(--info-line); border-radius: var(--radius-md); background: var(--info-bg); font-size: 12px; line-height: 16px; color: var(--text); }
+.rb-notice .rb-ic { color: var(--info-text); }
+.rb-3d-label { font-family: var(--font-mono); font-size: 11px; fill: var(--muted); }
+.rb-3d-label--strong { fill: var(--text); font-family: var(--font-sans); font-weight: 500; }
+
+/* ---------- Camera tile ---------- */
+.rb-camera { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; min-width: 0; }
+.rb-camera__head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); }
+.rb-camera__name { font-size: 13px; line-height: 18px; font-weight: 600; }
+.rb-camera__meta { font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--muted); }
+.rb-camera__head .rb-btn { margin-left: auto; }
+.rb-camera__img { position: relative; height: var(--camera-height); background: var(--camera-bg); color: var(--camera-text); display: grid; place-items: center; }
+.rb-camera__img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rb-camera__ph { display: grid; justify-items: center; gap: 6px; font-size: 12px; line-height: 16px; }
+.rb-camera__ph .rb-ic { width: 22px; height: 22px; }
+.rb-camera__frozen { position: absolute; top: var(--space-2); left: var(--space-2); }
+.rb-camera.is-frozen .rb-camera__img > :not(.rb-camera__frozen) { filter: grayscale(1); }
+
+/* ---------- Tooltip ---------- */
+.rb-term { border-bottom: 1px dotted var(--muted); cursor: help; }
+.rb-tip { position: relative; display: inline-block; max-width: 260px; padding: 6px var(--space-2); border-radius: var(--radius-md); background: var(--tooltip-bg); color: var(--on-tooltip); font-size: 12px; line-height: 16px; box-shadow: var(--shadow-popover); }
+.rb-tip b { font-family: var(--font-mono); font-weight: 500; }
+.rb-tip::before { content: ""; position: absolute; top: -5px; left: 16px; width: 10px; height: 10px; background: var(--tooltip-bg); transform: rotate(45deg); }
+
+/* ---------- Page layout ---------- */
+.rb-app { min-height: 100vh; background: var(--bg); }
+.rb-top { position: sticky; top: 0; z-index: 10; }
+.rb-main { display: flex; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-3); align-items: flex-start; }
+.rb-col { display: grid; gap: var(--space-3); min-width: 0; }
+.rb-col--left { flex: 0 0 var(--col-left); }
+.rb-col--center { flex: 1 1 480px; }
+.rb-col--right { flex: 0 0 var(--col-right); }
+.rb-cams { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.rb-banner-slot { padding: var(--space-3) var(--space-3) 0; }
+@media (max-width: 1023px) {
+  .rb-col--left, .rb-col--center, .rb-col--right { flex: 1 1 100%; }
+}
+
+/* ---------- Tutorial ---------- */
+.rb-doc { display: grid; grid-template-columns: 220px minmax(0, 720px); gap: var(--space-8); padding: var(--space-6) var(--space-8); justify-content: center; }
+.rb-doc__toc { position: sticky; top: var(--space-4); align-self: start; display: grid; gap: 2px; font-size: 13px; line-height: 18px; }
+.rb-doc__toc a { color: var(--muted); text-decoration: none; padding: 6px var(--space-2); border-radius: var(--radius-md); }
+.rb-doc__toc a:hover { background: var(--surface); color: var(--text); }
+.rb-doc__toc a[aria-current="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: inset 0 0 0 1px var(--border); }
+.rb-doc__body { display: grid; gap: var(--space-4); }
+.rb-doc h1 { margin: 0; font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; }
+.rb-doc h2 { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; }
+.rb-doc p, .rb-doc li { font-size: 15px; line-height: 24px; margin: 0; max-width: 68ch; }
+.rb-doc .rb-card__body p + p { margin-top: var(--space-2); }
+.rb-doc-table { width: 100%; border-collapse: collapse; font-size: 13px; line-height: 18px; }
+.rb-doc-table th { text-align: left; font-weight: 500; color: var(--muted); padding: 6px var(--space-2); border-bottom: 1px solid var(--border); font-size: 12px; }
+.rb-doc-table td { padding: var(--space-2); border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
+.rb-doc-table td:first-child { white-space: nowrap; }
+.rb-compare { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.rb-compare > div { border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3); background: var(--surface-2); }
+.rb-compare h3 { margin: 0 0 var(--space-1); font-size: 14px; line-height: 20px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.rb-compare p { font-size: 13px; line-height: 20px; }
