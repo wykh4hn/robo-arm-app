@@ -80,7 +80,8 @@ export const config = {
   /** Exponential smoothing factor (0..1) for estimated velocity. */
   velocitySmoothing: 0.35,
 
-  urdfPath: '/robot/so101/so101.urdf',
+  /** Relative to the app base, so the build works under any path. */
+  urdfPath: `${import.meta.env.BASE_URL}robot/so101/so101.urdf`,
   eeLink: 'gripper_frame_link',
   jointMap: {
     shoulder_pan: { sign: 1, offsetDeg: 0, scale: 1 },
