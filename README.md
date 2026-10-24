@@ -16,7 +16,7 @@ message shapes the backend will use (`src/types/messages.ts`).
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+npm start          # = npm run dev, opens http://localhost:5173 in the browser
 npm run build      # typecheck + production build into dist/
 npm run preview    # serve dist/
 npm run lint       # ESLint
@@ -26,6 +26,10 @@ npm run format     # Prettier
 ```
 
 Node 20+; targets current Chrome and Edge. Browse the design system with `npx serve design-system`.
+
+Static hosts that cannot serve `.stl` files: build with `VITE_MESHES_AS_JSON=1 npm run build`,
+then run `node scripts/stl-to-json.mjs dist/robot/so101/assets` to wrap each mesh as
+`<name>.stl.json`.
 
 ## Scenarios
 

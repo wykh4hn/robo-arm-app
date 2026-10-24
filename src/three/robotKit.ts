@@ -1,6 +1,7 @@
 // Robot geometry for the 3D viewer: the SO-101 URDF when available, otherwise
 // a placeholder kinematic chain built from cylinders. Both expose the same API.
 import * as THREE from 'three';
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import URDFLoader, { type URDFJoint, type URDFRobot } from 'urdf-loader';
 import { ALL_JOINTS, config } from '../config';
 import type { JointName } from '../types/messages';
@@ -51,10 +52,35 @@ async function loadUrdf(path: string): Promise<URDFRobot> {
     setTimeout(resolve, 20_000);
   });
   loader.workingPath = THREE.LoaderUtils.extractUrlBase(path);
+  if (import.meta.env.VITE_MESHES_AS_JSON === '1') loader.loadMeshCb = loadJsonMesh;
   const robot = loader.parse(text);
   await done;
   if (failed) throw new Error('URDF meshes failed to load');
   return robot;
+}
+
+/**
+ * Hosts that cannot serve .stl (e.g. the claude.ai artifact preview) get each mesh as
+ * `<name>.stl.json` = {"b64": base64 of the STL}; see scripts/stl-to-json.mjs.
+ */
+function loadJsonMesh(
+  url: string,
+  manager: THREE.LoadingManager,
+  material: THREE.Material,
+  done: (mesh: THREE.Object3D, err?: Error) => void,
+) {
+  manager.itemStart(url);
+  fetch(`${url}.json`)
+    .then((r) => r.json() as Promise<{ b64: string }>)
+    .then(({ b64 }) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      done(new THREE.Mesh(new STLLoader().parse(bytes.buffer), material));
+    })
+    .catch((err: Error) => {
+      manager.itemError(url);
+      done(new THREE.Object3D(), err);
+    })
+    .finally(() => manager.itemEnd(url));
 }
 
 /** Visual meshes of a link, not descending into child joints. */
