@@ -54,3 +54,4 @@ http://localhost:5173/?scenario=robot-error
 - [`docs/requirements.md`](./docs/requirements.md) — yêu cầu và phạm vi sản phẩm.
 - [`docs/sketch.png`](./docs/sketch.png) — phác thảo bố cục giao diện.
 - [`design-system/`](./design-system/) — token, kiểu chữ và các thành phần giao diện.
+- [`docs/tutorial/`](./docs/tutorial/00-bat-dau.md) — hướng dẫn tự xây lại dự án từ đầu, từng bước (10 chương).

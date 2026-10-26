@@ -219,6 +219,11 @@ main:focus {
   box-shadow: var(--shadow-popover);
 }
 
+/* Tutorial anchors land below the sticky header + status bar, not under them. */
+.rb-doc [id^='tut-'] {
+  scroll-margin-top: calc(var(--size-header) + var(--space-8) * 2 + var(--space-3));
+}
+
 /* Narrow screens: header wraps, cameras stack, tutorial single column */
 @media (max-width: 1023px) {
   .rb-doc {
