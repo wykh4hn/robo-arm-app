@@ -146,11 +146,14 @@ export function RobotScene(props: SceneProps) {
       new THREE.BufferGeometry(),
       new THREE.LineDashedMaterial({
         vertexColors: true,
-        dashSize: 0.003,
+        dashSize: 0.008,
         gapSize: 0.004,
         transparent: true,
+        // The tip sits inside the gripper, so draw the trail on top to keep it visible.
+        depthTest: false,
       }),
     );
+    line.renderOrder = 3;
     line.frustumCulled = false;
     return line;
   }, []);
