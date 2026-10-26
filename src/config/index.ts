@@ -61,7 +61,7 @@ export function objectCommandName(id: string | undefined): string {
 }
 
 export const config = {
-  projectName: '[Tên dự án]',
+  projectName: 'SuperUltimatePowerfulPromaxVIPAura5000',
   backendUrl: import.meta.env.VITE_BACKEND_URL ?? '',
 
   staleAfterMs: 1500,

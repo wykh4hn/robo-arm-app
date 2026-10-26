@@ -1,117 +1,56 @@
-# robo-arm-app — SO-101 Monitor
+# Robo Arm App — SO-101 Monitor
 
-Frontend for monitoring and commanding an **SO-101** robot arm doing pick-and-place
-("pick [object] and put it in the box"): real-time 3D model from the URDF, joint position and
-velocity, trajectories, STOP and command. React 19 + TypeScript (strict) + Vite, Zustand,
-three.js / @react-three/fiber / drei / urdf-loader, uPlot, lucide-react.
+Ứng dụng web giao diện tiếng Việt/Anh để theo dõi và trình diễn quy trình gắp vật của cánh tay robot SO-101: **chọn vật, gắp và bỏ vào hộp**.
 
-Frontend only: all data comes from an in-browser mock (`MockTransport`) that emits the same
-message shapes the backend will use (`src/types/messages.ts`).
+## Về robot SO-101
 
-- `docs/requirements.md` — the spec · `docs/sketch.png` — layout sketch
-- `design-system/` — SO-101 Monitor design system (tokens, fonts, `rb-*` component CSS, previews)
-- `CLAUDE.md` — how Claude Code uses the above
+SO-101 là cánh tay robot gồm các khớp chuyển động như `shoulder_pan`, `shoulder_lift`, `elbow_flex`, `wrist_flex`, `wrist_roll` và kẹp `gripper`. Ứng dụng hiển thị mô hình 3D từ URDF, trạng thái từng khớp và đường đi dự kiến hoặc đã di chuyển. Dữ liệu khớp hiện dùng để minh họa; cần hiệu chỉnh góc và chiều khớp với phần cứng thật trước khi tích hợp.
 
-## Run
+## Về ứng dụng web
+
+Trang **Monitoring** tập trung vào trạng thái kết nối và robot, quy trình xử lý, mô hình 3D, camera, bảng khớp, biểu đồ chuyển động, lịch sử tác vụ và bảng gửi lệnh. Trang **Tutorial** giải thích cách đọc giao diện và xử lý các trạng thái thường gặp. Có thể đổi ngôn ngữ VI/EN trên thanh đầu trang.
+
+Hiện đây là **frontend chạy bằng dữ liệu giả lập trong trình duyệt** (`MockTransport`); chưa kết nối backend hoặc điều khiển robot thật. Các lệnh và nút STOP chỉ tác động lên phiên giả lập. Không dùng giao diện này thay cho nút dừng khẩn cấp vật lý.
+
+## Cài đặt và chạy
+
+Cần Node.js 20 trở lên.
 
 ```bash
 npm install
-npm start          # = npm run dev, opens http://localhost:5173 in the browser
-npm run build      # typecheck + production build into dist/
-npm run preview    # serve dist/
-npm run lint       # ESLint
-npm run typecheck  # tsc --noEmit
-npm test           # Vitest
-npm run format     # Prettier
+npm start
 ```
 
-Node 20+; targets current Chrome and Edge. Browse the design system with `npx serve design-system`.
+Vite sẽ mở ứng dụng tại `http://localhost:5173`. Nếu không tự mở, nhập địa chỉ này vào trình duyệt Chrome hoặc Edge.
 
-Static hosts that cannot serve `.stl` files: build with `VITE_MESHES_AS_JSON=1 npm run build`,
-then run `node scripts/stl-to-json.mjs dist/robot/so101/assets` to wrap each mesh as
-`<name>.stl.json`.
+Một số lệnh hữu ích:
 
-## Scenarios
-
-Add `?scenario=<name>` to the URL (e.g. `http://localhost:5173/?scenario=robot-error`), or in
-`npm run dev` press **Ctrl+Shift+D** for the dev panel (the page reloads).
-
-| Scenario           | What happens                                                                     |
-| ------------------ | -------------------------------------------------------------------------------- |
-| `running`          | Default: task #13 runs a ~20 s pick-and-place cycle, then the robot is idle.     |
-| `idle`             | Robot ready, nothing running.                                                    |
-| `slow-tracking`    | State lags 600 ms and sags under load → tracking "Chậm".                         |
-| `joint-stuck`      | Measured state freezes at 1 s while the command moves on → "Có thể bị kẹt".      |
-| `usb-lost`         | USB lost at 3 s. Press "Kết nối lại USB", then "Sẵn sàng".                       |
-| `robot-error`      | Overload on `elbow_flex` at 3 s; robot stops, task fails.                        |
-| `stop-ok`          | Press STOP: "Đang dừng…" → "Đã dừng" after the ACK (300 ms) → press "Sẵn sàng".  |
-| `stop-no-ack`      | Press STOP: no ACK → "Chưa xác nhận dừng", use the physical emergency stop.      |
-| `stale`            | All messages stop at 3 s (socket still open) → "Dữ liệu cũ", Send disabled.      |
-| `camera-frozen`    | Overview camera freezes at 2 s (4 fps) → "Hình bị đứng".                         |
-| `cmd-nack`         | Every command is rejected (NACK: object not found).                              |
-| `web-disconnected` | Link drops at 3 s, retries, reconnects, reloads state, then re-enables controls. |
-| `estop`            | Physical emergency stop reported at 3 s.                                         |
-| `no-urdf`          | Uses the placeholder kinematic chain and shows the notice.                       |
-| `first-run`        | Clears localStorage → first-visit hint.                                          |
-| `empty-history`    | No task history; telemetry without servo velocity ("ước tính").                  |
-
-The scenario table (`src/transport/scenarios.ts`) also holds the expected status at given times;
-`src/state/scenarios.test.ts` runs each scenario through the mock + store and checks
-`deriveStatus`.
-
-## URDF (3D model)
-
-Put the SO-101 URDF and its `assets/` meshes in **`public/robot/so101/`** (path in
-`config.urdfPath`, end-effector link in `config.eeLink`). The official files from
-TheRobotStudio/SO-ARM100 (`Simulation/SO101`, Apache-2.0) are already included. If they are
-missing or invalid, the app renders a placeholder chain of cylinders and says so.
-
-Data values (LeRobot degrees, gripper % open) are mapped to URDF radians per joint with
-`config.jointMap {sign, offsetDeg, scale}` and `config.gripperMap`. **TODO (hardware team):**
-calibrate these; URDF and LeRobot zero positions differ (e.g. `shoulder_pan` may need its sign
-flipped).
-
-## Structure
-
-```
-src/app         App shell, header + tabs, monitoring layout, first-visit hint, dev panel
-src/components  StopButton, StatusBar, ErrorBanner, PipelineStrip, CommandPanel, TaskHistory,
-                RobotViewer3D, JointTable, TrajectoryCharts (+ UPlotChart), CameraTile, TutorialPage
-src/three       URDF loading + placeholder chain, R3F scene (ghost, trail, plan), labels
-src/state       Zustand store, deriveStatus, trackingQuality, velocity estimation
-src/transport   Transport interface, MockTransport + motion cycle, WebSocketTransport stub, scenarios
-src/types       messages.ts — every message type
-src/config      all tunables; levels.ts maps status levels to icons/classes (also used by the Tutorial)
-src/strings     vi.ts (default), en.ts — all UI text
-src/utils       exportLog (CSV + JSON), units (mapping, number format), time, css, storage
+```bash
+npm run build      # Kiểm tra TypeScript và tạo bản build trong dist/
+npm run preview    # Chạy thử bản build
+npm run lint       # Kiểm tra ESLint
+npm run typecheck  # Kiểm tra kiểu TypeScript
+npm test           # Chạy kiểm thử
 ```
 
-Styling: `design-system/tokens.css` + `design-system/components/bundle.css` are imported once;
-components use the `rb-*` classes from the previews. `src/styles/app.css` adds layout glue using
-tokens only.
+## Cách sử dụng
 
-## Connecting the real backend
+1. Mở trang **Monitoring** để xem trạng thái robot, dữ liệu khớp và mô hình 3D. Kéo mô hình để đổi góc nhìn; dùng các nút trên thẻ mô hình để đổi chế độ xem và lớp hiển thị.
+2. Trong thẻ lệnh, chọn mẫu lệnh và vật thể. Xem trước câu lệnh, sau đó nhấn **Gửi** để bắt đầu tác vụ giả lập. Các nút điều khiển có thể bị khóa khi robot chưa sẵn sàng hoặc dữ liệu không ở trạng thái phù hợp.
+3. Nhấn **STOP** để dừng tác vụ giả lập ngay, không cần xác nhận. Chỉ trạng thái đã nhận xác nhận mới được hiển thị là đã dừng; sau khi dừng, nhấn **Sẵn sàng** trước khi gửi lệnh khác.
+4. Dùng bảng khớp và biểu đồ để theo dõi vị trí, vận tốc và sai lệch giữa lệnh với trạng thái. Có thể tải log phiên làm việc từ giao diện.
+5. Mở **Tutorial** để xem giải thích chi tiết về các trạng thái và thao tác an toàn.
 
-`createTransport()` in `src/transport/index.ts` returns the mock today. Implement
-`WebSocketTransport` (currently throws "not implemented") for `VITE_BACKEND_URL` (see
-`.env.example`).
+### Thử các tình huống giả lập
 
-## Assumptions
+Trong môi trường phát triển, nhấn **Ctrl+Shift+D** để mở bảng chọn kịch bản. Có thể thử các tình huống như robot lỗi, mất USB, dữ liệu cũ, camera đứng hình hoặc STOP không nhận xác nhận. Cũng có thể mở trực tiếp một kịch bản bằng URL, ví dụ:
 
-- Telemetry joint values are LeRobot degrees (gripper % open); velocity is deg/s
-  (`config.servoVelocityUnit` can switch to raw `steps/s`, 4096 steps/rev). Without servo
-  velocity the UI estimates it (finite difference + exponential smoothing) and labels it "ước tính".
-- Planned path: tasks carry joint waypoints (`plan`, `pickIndex`, `dropIndex`); the viewer turns
-  them into end-effector positions with the robot model (forward kinematics), so the path always
-  matches the displayed geometry.
-- The status chip shows Web latency from an optional `link.latencyMs` in status messages.
-- Banners have no close button (design system rule) and stay until the condition clears; they
-  never disappear on a timer.
-- Charts are always in degrees (gripper %), so a fixed Y range holds; the unit toggle applies to
-  the joint table.
-- The gripper is excluded from the near-limit warning (fully open/closed is normal use) and from
-  tracking quality.
-- NACK / failure reasons are shown exactly as the backend sends them.
-- Severity mapping: Needs action — web lost, USB lost, robot error, stop not confirmed, possibly
-  stuck; Waiting — stopped, needs Ready; Attention — stale, frozen camera, slow tracking,
-  rejected command, reconnecting.
+```text
+http://localhost:5173/?scenario=robot-error
+```
+
+## Tài liệu dự án
+
+- [`docs/requirements.md`](./docs/requirements.md) — yêu cầu và phạm vi sản phẩm.
+- [`docs/sketch.png`](./docs/sketch.png) — phác thảo bố cục giao diện.
+- [`design-system/`](./design-system/) — token, kiểu chữ và các thành phần giao diện.
