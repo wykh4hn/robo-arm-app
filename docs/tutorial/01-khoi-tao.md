@@ -18,20 +18,19 @@
 
 ### 1.1. Tạo thư mục và lấy tài nguyên cung cấp sẵn
 
-Tạo thư mục project và khởi tạo git:
+Tạo repo rỗng `robo-arm-web` trên GitHub (không tick README), rồi tải về máy. Nếu chưa có repo, thay bằng `mkdir robo-arm-web && cd robo-arm-web && git init && cd ..`:
 
 ```bash
-mkdir my-robo-app
-cd my-robo-app
-git init
-cd ..
+git clone https://github.com/wykh4hn/robo-arm-web.git
 ```
+
+> Các lệnh trong hướng dẫn viết cho **bash**. Trên Windows hãy mở **Git Bash** (đi kèm Git for Windows). PowerShell không có `grep`, `while read ... done`, `cp -r`, `mkdir -p` nên sẽ báo lỗi cú pháp.
 
 Lấy `design-system/`, `docs/` và `CLAUDE.md` (quy tắc của project) từ nhánh `main` của repo gốc. Đây là tài nguyên cho sẵn, bạn không viết lại:
 
 ```bash
 git clone https://github.com/wykh4hn/robo-arm-app.git source-assets
-cp -r source-assets/design-system source-assets/docs source-assets/CLAUDE.md my-robo-app/
+cp -r source-assets/design-system source-assets/docs source-assets/CLAUDE.md robo-arm-web/
 ```
 
 Lấy mô hình robot chính thức (chỉ tải đúng thư mục cần, rồi chép file URDF và các mesh nó dùng):
@@ -40,25 +39,27 @@ Lấy mô hình robot chính thức (chỉ tải đúng thư mục cần, rồi 
 git clone --depth 1 --filter=blob:none --sparse https://github.com/TheRobotStudio/SO-ARM100.git
 cd SO-ARM100 && git sparse-checkout set Simulation/SO101 && cd ..
 
-mkdir -p my-robo-app/public/robot/so101/assets
-cp SO-ARM100/Simulation/SO101/so101_new_calib.urdf my-robo-app/public/robot/so101/so101.urdf
-grep -o 'assets/[^"]*' my-robo-app/public/robot/so101/so101.urdf | sort -u | while read f; do
-  cp "SO-ARM100/Simulation/SO101/$f" "my-robo-app/public/robot/so101/$f"
+mkdir -p robo-arm-web/public/robot/so101/assets
+cp SO-ARM100/Simulation/SO101/so101_new_calib.urdf robo-arm-web/public/robot/so101/so101.urdf
+grep -o 'assets/[^"]*' robo-arm-web/public/robot/so101/so101.urdf | sort -u | while read f; do
+  cp "SO-ARM100/Simulation/SO101/$f" "robo-arm-web/public/robot/so101/$f"
 done
-cp SO-ARM100/LICENSE my-robo-app/public/robot/so101/LICENSE
+cp SO-ARM100/LICENSE robo-arm-web/public/robot/so101/LICENSE
 ```
 
 - Dòng `grep ... | while read f` đọc file URDF, tìm mọi đường dẫn `assets/...` mà nó nhắc tới, rồi chép đúng các file đó. Nhờ vậy không phải tải cả thư mục 19 MB.
 - Thư mục `public/` đặc biệt: Vite phục vụ nguyên trạng, trình duyệt đọc được tại `/robot/so101/so101.urdf`.
-- Kiểm tra: `ls my-robo-app/public/robot/so101/assets` phải ra 13 file `.stl`.
+- Kiểm tra: `ls robo-arm-web/public/robot/so101/assets` phải ra 13 file `.stl`.
 
-Từ đây mọi lệnh chạy **bên trong** thư mục `my-robo-app`:
+Từ đây mọi lệnh chạy **bên trong** thư mục `robo-arm-web`:
 
 ```bash
-cd my-robo-app
+cd robo-arm-web
 ```
 
 Bạn có thể xoá hai thư mục tạm `source-assets` và `SO-ARM100` ở ngoài sau khi chép xong.
+
+Khi cần đẩy code lên repo của bạn: `git add -A && git commit -m "Chương 1" && git push -u origin main` (đổi `main` nếu nhánh mặc định của bạn tên khác).
 
 ### 1.2. Tạo `package.json`
 
@@ -70,7 +71,7 @@ Lệnh này tạo `package.json` với vài trường thừa. Mở file, xoá c�
 
 ```json
 {
-  "name": "my-robo-app",
+  "name": "robo-arm-web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
