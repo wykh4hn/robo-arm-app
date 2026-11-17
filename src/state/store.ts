@@ -31,7 +31,11 @@ export interface Actions {
   attachTransport: (t: Transport) => () => void;
   receive: (msg: IncomingMessage, at?: number) => void;
   tick: (now?: number) => void;
-  sendCommand: (templateId: string, params: Record<string, string>) => string | null;
+  sendCommand: (
+    templateId: string,
+    params: Record<string, string>,
+    profileId?: string,
+  ) => string | null;
   requestStop: () => void;
   sendReady: () => void;
   reconnectUsb: () => void;
@@ -141,7 +145,7 @@ export function toSample(prev: Sample | undefined, msg: TelemetryMsg, at: number
         config.velocitySmoothing,
       ).vel;
     }
-    joints[j] = { action: v.action, state: v.state, velocity };
+    joints[j] = { action: v.action ?? null, state: v.state, velocity };
   }
   return { t: at, ts: msg.ts, joints, velocityEstimated: estimated };
 }
@@ -327,12 +331,19 @@ export const useStore = create<StoreState>()((set, get) => {
 
     tick: (now = Date.now()) => set({ now }),
 
-    sendCommand: (templateId, params) => {
+    sendCommand: (templateId, params, profileId) => {
       const template = config.templates.find((tpl) => tpl.id === templateId);
       if (!template) return null;
       const text = template.build(params);
       const id = newId('cmd');
-      track('command', text, { type: 'command', id, text, templateId, params });
+      track('command', text, {
+        type: 'command',
+        id,
+        text,
+        templateId,
+        params,
+        ...(profileId ? { profileId } : {}),
+      });
       return id;
     },
 

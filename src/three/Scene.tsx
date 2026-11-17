@@ -192,12 +192,17 @@ export function RobotScene(props: SceneProps) {
       if (!sample) return;
       const state = {} as JointValues;
       const action = {} as JointValues;
+      let hasAction = true;
       for (const j of ALL_JOINTS) {
         state[j] = sample.joints[j].state;
-        action[j] = sample.joints[j].action;
+        const a = sample.joints[j].action;
+        if (a === null) hasAction = false;
+        else action[j] = a;
       }
       applyJoints(measured, state);
-      applyJoints(ghost, action);
+      // No target from the source: hide the ghost rather than draw a fake one (spec R3).
+      ghost.root.visible = hasAction;
+      if (hasAction) applyJoints(ghost, action);
       const p = eeWorld(measured, new THREE.Vector3());
       if (p) {
         trailPoints.current.push({ t: sample.t, p });

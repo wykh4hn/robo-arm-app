@@ -56,7 +56,8 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Sẵn sàng' }));
     await advance(400);
     expect(screen.getByTestId('lamp')).toHaveTextContent('Hệ thống ổn');
-    expect(screen.queryByTestId('cmd-reason')).not.toBeInTheDocument();
+    // The system no longer blocks Send; only the profile choice is left.
+    expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Chọn profile AI trước khi gửi.');
   });
 
   it('without a stop ACK it says to use the physical emergency stop', async () => {
@@ -74,9 +75,10 @@ describe('App', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderScenario('cmd-nack');
     await advance(1500);
-    await user.selectOptions(screen.getByLabelText('Vật thể'), 'yellow_duck');
+    expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Chọn profile AI trước khi gửi.');
+    await user.selectOptions(screen.getByLabelText('Profile AI'), 'smolvla-int8');
     expect(screen.getByTestId('cmd-preview')).toHaveTextContent(
-      'pick the yellow duck and put it in the box',
+      'pick the cube and put it in the box',
     );
     await user.click(screen.getByRole('button', { name: 'Gửi lệnh' }));
     expect(screen.getByTestId('cmd-lifecycle')).toHaveAttribute('data-phase', 'sent');

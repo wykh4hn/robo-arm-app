@@ -125,11 +125,11 @@ export function JointTable({ derived }: { derived: DerivedStatus }) {
               const r = latest?.joints[j];
               const isGrip = j === 'gripper';
               const dec = decimalsFor(j, unit);
-              const show = (v: number | undefined) =>
-                v === undefined
+              const show = (v: number | null | undefined) =>
+                v === undefined || v === null
                   ? '—'
                   : formatNumber(toDisplay(j, v, unit), dec, lang) + (isGrip ? ' %' : '');
-              const err = r && !isGrip ? Math.abs(r.action - r.state) : null;
+              const err = r && !isGrip && r.action !== null ? Math.abs(r.action - r.state) : null;
               const errWarn = err !== null && err > config.trackingWarnDeg;
               const cell = stale ? 'is-stale' : '';
               const range = limits[j] ?? config.limits[j];

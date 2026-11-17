@@ -23,6 +23,27 @@ export interface CommandTemplate {
   build: (params: Record<string, string>) => string;
 }
 
+/** One of the 9 AI profiles (model x numeric precision). Ids follow the backend (spec Q14). */
+export interface ProfileDef {
+  id: string;
+  model: string;
+  precision: string;
+}
+
+const PROFILE_MODELS = [
+  ['smolvla', 'SmolVLA'],
+  ['pi0', 'Pi0'],
+  ['xvla', 'X-VLA'],
+] as const;
+const PROFILE_PRECISIONS = [
+  ['fp16', 'FP16'],
+  ['int8', 'INT8-mixed'],
+  ['int4', 'INT4-mixed'],
+] as const;
+const profiles: ProfileDef[] = PROFILE_MODELS.flatMap(([m, model]) =>
+  PROFILE_PRECISIONS.map(([p, precision]) => ({ id: `${m}-${p}`, model, precision })),
+);
+
 export interface CameraDef {
   id: CameraId;
   /** MJPEG stream URL; empty shows a placeholder. */
@@ -49,15 +70,19 @@ export const ARM_JOINTS: JointName[] = [
 ];
 export const ALL_JOINTS: JointName[] = [...ARM_JOINTS, 'gripper'];
 
-const objects: ObjectDef[] = [
-  { id: 'red_duck', commandName: 'red duck' },
-  { id: 'yellow_duck', commandName: 'yellow duck' },
-  { id: 'cube', commandName: 'cube' },
-  { id: 'pink_box', commandName: 'pink small box' },
-];
+/** Project A has one task: the cube into the box (Plan F3, table 5). */
+const objects: ObjectDef[] = [{ id: 'cube', commandName: 'cube' }];
+
+/** Names of every object that may appear in history, including the mock's old demos. */
+const commandNames: Record<ObjectId, string> = {
+  red_duck: 'red duck',
+  yellow_duck: 'yellow duck',
+  cube: 'cube',
+  pink_box: 'pink small box',
+};
 
 export function objectCommandName(id: string | undefined): string {
-  return objects.find((o) => o.id === id)?.commandName ?? '';
+  return (id && commandNames[id as ObjectId]) || '';
 }
 
 export const config = {
@@ -119,6 +144,7 @@ export const config = {
   ] as CameraDef[],
 
   objects,
+  profiles,
 
   templates: [
     {

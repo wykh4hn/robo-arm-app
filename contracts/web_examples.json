@@ -1,0 +1,282 @@
+{
+  "_note": "Mẫu mọi tin web <-> BE (spec v2 mục 5). pytest (backend/tests/test_contracts.py) và vitest (src/transport/contract.test.ts) cùng đọc file này. Sửa khuôn tin thì sửa ở đây trước.",
+  "contract_version": 2,
+  "web_to_be": {
+    "command": {
+      "type": "command",
+      "id": "cmd-m1a2-1",
+      "text": "pick the cube and put it in the box",
+      "templateId": "pick_into_box",
+      "params": {
+        "object": "cube"
+      },
+      "profileId": "smolvla-int8"
+    },
+    "stop": {
+      "type": "stop",
+      "id": "stop-m1a3-2"
+    },
+    "ready": {
+      "type": "ready",
+      "id": "ready-m1a4-3"
+    },
+    "reconnect_usb": {
+      "type": "reconnect_usb",
+      "id": "usb-m1a5-4"
+    },
+    "pong": {
+      "type": "pong",
+      "id": "p-81"
+    }
+  },
+  "be_to_web": {
+    "telemetry_no_action": {
+      "type": "telemetry",
+      "ts": 1730450000123,
+      "joints": {
+        "shoulder_pan": {
+          "state": 12.4
+        },
+        "shoulder_lift": {
+          "state": -45.1
+        },
+        "elbow_flex": {
+          "state": 60.2
+        },
+        "wrist_flex": {
+          "state": 30.0
+        },
+        "wrist_roll": {
+          "state": 0.5
+        },
+        "gripper": {
+          "state": 62.0
+        }
+      }
+    },
+    "telemetry_with_action": {
+      "type": "telemetry",
+      "ts": 1730450000223,
+      "joints": {
+        "shoulder_pan": {
+          "action": 12.6,
+          "state": 12.4
+        },
+        "shoulder_lift": {
+          "action": -45.0,
+          "state": -45.1
+        },
+        "elbow_flex": {
+          "action": 60.0,
+          "state": 60.2
+        },
+        "wrist_flex": {
+          "action": 30.1,
+          "state": 30.0
+        },
+        "wrist_roll": {
+          "action": 0.5,
+          "state": 0.5
+        },
+        "gripper": {
+          "action": 60,
+          "state": 62.0
+        }
+      }
+    },
+    "status": {
+      "type": "status",
+      "ts": 1730450000200,
+      "link": {
+        "web": "connected",
+        "usb": "plugged",
+        "latencyMs": 3
+      },
+      "robot": {
+        "state": "moving"
+      },
+      "task": {
+        "id": 13,
+        "state": "running"
+      }
+    },
+    "status_idle": {
+      "type": "status",
+      "ts": 1730450000200,
+      "link": {
+        "web": "connected",
+        "usb": "unknown",
+        "latencyMs": 0
+      },
+      "robot": {
+        "state": "unknown"
+      },
+      "task": {
+        "id": null,
+        "state": "idle"
+      }
+    },
+    "status_error": {
+      "type": "status",
+      "ts": 1730450000200,
+      "link": {
+        "web": "connected",
+        "usb": "plugged",
+        "latencyMs": 2
+      },
+      "robot": {
+        "state": "error",
+        "error": {
+          "code": "SIM_OFFLINE",
+          "message": "MuJoCo không trả lời"
+        }
+      },
+      "task": {
+        "id": 13,
+        "state": "failed"
+      }
+    },
+    "task_done": {
+      "type": "task",
+      "ts": 1730450000300,
+      "task": {
+        "id": 13,
+        "command": "pick the cube and put it in the box",
+        "templateId": "pick_into_box",
+        "params": {
+          "object": "cube"
+        },
+        "state": "done",
+        "startedTs": 1730449990000,
+        "endedTs": 1730450000300,
+        "commandId": "cmd-m1a2-1",
+        "profileId": "smolvla-int8",
+        "seed": 7,
+        "outcome": "success",
+        "incomplete": false
+      }
+    },
+    "task_failed": {
+      "type": "task",
+      "ts": 1730450000300,
+      "task": {
+        "id": 13,
+        "command": "pick the cube and put it in the box",
+        "templateId": "pick_into_box",
+        "params": {
+          "object": "cube"
+        },
+        "state": "failed",
+        "startedTs": 1730449990000,
+        "endedTs": 1730450000300,
+        "commandId": "cmd-m1a2-1",
+        "profileId": "smolvla-int8",
+        "seed": 7,
+        "outcome": "failure",
+        "incomplete": false,
+        "reason": "không gắp được vật",
+        "reasonCode": "no_grasp"
+      }
+    },
+    "tasks": {
+      "type": "tasks",
+      "ts": 1730450000300,
+      "tasks": [
+        {
+          "id": 13,
+          "command": "pick the cube and put it in the box",
+          "templateId": "pick_into_box",
+          "params": {
+            "object": "cube"
+          },
+          "state": "failed",
+          "startedTs": 1730449990000,
+          "endedTs": 1730450000300,
+          "commandId": "cmd-m1a2-1",
+          "profileId": "smolvla-int8",
+          "seed": 7,
+          "outcome": "failure",
+          "incomplete": false,
+          "reason": "không gắp được vật",
+          "reasonCode": "no_grasp"
+        },
+        {
+          "id": 13,
+          "command": "pick the cube and put it in the box",
+          "templateId": "pick_into_box",
+          "params": {
+            "object": "cube"
+          },
+          "state": "done",
+          "startedTs": 1730449990000,
+          "endedTs": 1730450000300,
+          "commandId": "cmd-m1a2-1",
+          "profileId": "smolvla-int8",
+          "seed": 7,
+          "outcome": "success",
+          "incomplete": false
+        }
+      ]
+    },
+    "ack": {
+      "type": "ack",
+      "ts": 1730450000050,
+      "id": "cmd-m1a2-1",
+      "taskId": 13
+    },
+    "nack": {
+      "type": "nack",
+      "ts": 1730450000050,
+      "id": "cmd-m1a2-1",
+      "code": "busy",
+      "reason": "Đang có lần chạy khác"
+    },
+    "stop_ack": {
+      "type": "stop_ack",
+      "ts": 1730450000400,
+      "id": "stop-m1a3-2"
+    },
+    "pipeline_empty": {
+      "type": "pipeline",
+      "ts": 1730450000500,
+      "steps": {}
+    },
+    "pipeline": {
+      "type": "pipeline",
+      "ts": 1730450000500,
+      "steps": {
+        "camera": 31,
+        "ai": 122,
+        "gateway": 4,
+        "robot": 12
+      }
+    },
+    "camera": {
+      "type": "camera",
+      "ts": 1730450000500,
+      "camera": "object",
+      "fps": 10,
+      "frameTs": 1730450000450
+    },
+    "ping": {
+      "type": "ping",
+      "id": "p-81"
+    }
+  },
+  "nack_codes": [
+    "bad_schema",
+    "bad_template",
+    "bad_object",
+    "text_mismatch",
+    "unknown_profile",
+    "profile_blocked",
+    "busy",
+    "needs_ready",
+    "board_offline",
+    "robot_error",
+    "sim_offline",
+    "logger_not_ready",
+    "config_invalid",
+    "no_trials_left"
+  ]
+}

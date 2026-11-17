@@ -28,7 +28,8 @@ export interface TrackingState {
 }
 
 export interface JointReading {
-  action: number;
+  /** null when the source reports no commanded value. Never copied from `state`. */
+  action: number | null;
   state: number;
   /** deg/s (gripper %/s): from the servo, or estimated. */
   velocity: number;

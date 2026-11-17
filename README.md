@@ -55,3 +55,5 @@ http://localhost:5173/?scenario=robot-error
 - [`docs/sketch.png`](./docs/sketch.png) — phác thảo bố cục giao diện.
 - [`design-system/`](./design-system/) — token, kiểu chữ và các thành phần giao diện.
 - [`docs/tutorial/`](./docs/tutorial/00-bat-dau.md) — hướng dẫn tự xây lại dự án từ đầu, từng bước (10 chương).
+- [`docs/backend-spec.md`](./docs/backend-spec.md) — đặc tả backend (Spec v2).
+- [`backend/`](./backend/README.md) — backend FastAPI: cách chạy với MuJoCo và board giả, test, các quyết định khi code.

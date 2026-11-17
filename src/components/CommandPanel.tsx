@@ -14,19 +14,23 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
   const commands = useStore((s) => s.commands);
   const [templateId, setTemplateId] = useState<TemplateId>(config.templates[0]!.id);
   const [object, setObject] = useState<ObjectId>(config.objects[0]!.id);
+  const [profileId, setProfileId] = useState('');
 
   const template = config.templates.find((x) => x.id === templateId) ?? config.templates[0]!;
   const params = { object };
   const preview = template.build(params);
   const reason = derived.sendBlockReason
     ? fmt(t.command.blocked[derived.sendBlockReason], { task: derived.task.id ?? '' })
-    : null;
+    : !profileId
+      ? t.command.needProfile
+      : null;
+  const canSend = derived.canSend && !!profileId;
   const last = commands.findLast((c) => c.kind === 'command');
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!derived.canSend) return;
-    sendCommand(template.id, params);
+    if (!canSend) return;
+    sendCommand(template.id, params, profileId);
   };
 
   return (
@@ -65,6 +69,21 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
             ))}
           </select>
         </label>
+        <label className="rb-field">
+          <span className="rb-field__label">{t.command.profile}</span>
+          <select
+            className="rb-select"
+            value={profileId}
+            onChange={(e) => setProfileId(e.target.value)}
+          >
+            <option value="">{t.command.profilePick}</option>
+            {config.profiles.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.model} · {p.precision}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="rb-field">
           <span className="rb-field__label" id="cmd-preview-label">
             {t.command.preview}
@@ -80,7 +99,7 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
         <button
           type="submit"
           className="rb-btn rb-btn--primary rb-btn--lg rb-btn--block"
-          aria-disabled={!derived.canSend}
+          aria-disabled={!canSend}
           aria-describedby={reason ? 'cmd-why' : undefined}
         >
           <Icon name="send" />

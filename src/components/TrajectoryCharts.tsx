@@ -22,10 +22,10 @@ function windowOf(samples: Sample[], end: number): Sample[] {
   return samples.slice(lo, hi);
 }
 
-function value(s: Sample, j: JointName, tab: ChartTab, which: 'state' | 'action'): number {
+function value(s: Sample, j: JointName, tab: ChartTab, which: 'state' | 'action'): number | null {
   const r = s.joints[j];
   if (tab === 'velocity') return r.velocity;
-  if (tab === 'error') return Math.abs(r.action - r.state);
+  if (tab === 'error') return r.action === null ? null : Math.abs(r.action - r.state);
   return r[which];
 }
 

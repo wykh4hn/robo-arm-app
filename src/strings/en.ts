@@ -107,6 +107,9 @@ export const en: Strings = {
     errorCodes: {
       OVERLOAD: 'overload on joint {joint}',
       OVERHEAT: 'overheating on joint {joint}',
+      SIM_OFFLINE: 'MuJoCo is not answering',
+      STOP_UNCONFIRMED: 'the stop could not be confirmed',
+      TELEMETRY_STALE: 'MuJoCo data stopped during the run',
       default: 'code {code}',
     },
     titles: {
@@ -174,6 +177,9 @@ export const en: Strings = {
       cube: 'cube',
       pink_box: 'pink small box',
     },
+    profile: 'AI profile',
+    profilePick: '— Choose a profile —',
+    needProfile: 'Choose an AI profile before sending.',
     preview: 'Command to send',
     send: 'Send command',
     blocked: {

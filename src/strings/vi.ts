@@ -105,6 +105,9 @@ export const vi = {
     errorCodes: {
       OVERLOAD: 'quá tải ở khớp {joint}',
       OVERHEAT: 'quá nhiệt ở khớp {joint}',
+      SIM_OFFLINE: 'MuJoCo không trả lời',
+      STOP_UNCONFIRMED: 'không xác nhận được lệnh dừng',
+      TELEMETRY_STALE: 'dữ liệu MuJoCo ngừng giữa lần chạy',
       default: 'mã {code}',
     },
     titles: {
@@ -171,6 +174,9 @@ export const vi = {
       cube: 'khối lập phương',
       pink_box: 'hộp nhỏ màu hồng',
     },
+    profile: 'Profile AI',
+    profilePick: '— Chọn profile —',
+    needProfile: 'Chọn profile AI trước khi gửi.',
     preview: 'Lệnh sẽ gửi',
     send: 'Gửi lệnh',
     blocked: {

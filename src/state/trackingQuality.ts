@@ -28,7 +28,9 @@ export function trackingError(samples: Sample[], now: number, windowMs: number):
     if (s.t < now - windowMs) break;
     if (s.t > now) continue;
     for (const j of ARM_JOINTS) {
-      sum += Math.abs(s.joints[j].action - s.joints[j].state);
+      const { action, state } = s.joints[j];
+      if (action === null) continue; // no target: tracking is unknown, not perfect
+      sum += Math.abs(action - state);
       count++;
     }
   }

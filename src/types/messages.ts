@@ -14,8 +14,8 @@ export type CameraId = 'object' | 'overview';
 export type PipelineStepId = 'camera' | 'ai' | 'gateway' | 'robot' | 'result';
 
 export interface JointSample {
-  /** Commanded value (deg, gripper % open). */
-  action: number;
+  /** Commanded value (deg, gripper % open). Absent when the source has no target (spec R3). */
+  action?: number;
   /** Measured value (deg, gripper % open). */
   state: number;
   /** Servo velocity (deg/s, gripper %/s) when the hardware reports it. */
@@ -64,6 +64,12 @@ export interface TaskInfo {
   /** Indexes into `plan` of the pick and drop poses. */
   pickIndex?: number;
   dropIndex?: number;
+  /** Backend v2 extras (spec 5.3). */
+  profileId?: string;
+  seed?: number;
+  outcome?: string;
+  reasonCode?: string;
+  incomplete?: boolean;
 }
 
 export interface TaskEventMsg {
@@ -90,6 +96,8 @@ export interface NackMsg {
   type: 'nack';
   ts: number;
   id: string;
+  /** Machine-readable refusal code (spec 5.5). */
+  code?: string;
   reason: string;
 }
 
@@ -141,6 +149,9 @@ export type OutgoingMessage =
       text: string;
       templateId: string;
       params: Record<string, string>;
+      /** 1 of the 9 profiles (spec 5.2). */
+      profileId?: string;
     }
+  | { type: 'stop'; id: string }
   | { type: 'ready'; id: string }
   | { type: 'reconnect_usb'; id: string };

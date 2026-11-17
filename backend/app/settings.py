@@ -1,0 +1,115 @@
+"""Configuration read from the environment and `.env` (spec 12.3).
+
+Every timing here is provisional until contract SO101-37 lands (Q11).
+"""
+
+from __future__ import annotations
+
+from functools import lru_cache
+from pathlib import Path
+from typing import Literal
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+
+JOINT_ORDER = (
+    "shoulder_pan",
+    "shoulder_lift",
+    "elbow_flex",
+    "wrist_flex",
+    "wrist_roll",
+    "gripper",
+)
+CAMERAS = ("overhead", "wrist")
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="SO101_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
+
+    be_host: str = "0.0.0.0"
+    be_port: int = 8001
+
+    # SimPort: "mock" is the in-process FakeSim, "real" is app/sim_client.py (Phase 2).
+    sim_link: Literal["mock", "real"] = "mock"
+    sim_url: str = "http://127.0.0.1:8000"
+    sim_poll_hz: float = 10.0
+    sim_timeout_ms: int = 2000
+    # One /api/state call may not eat the whole offline budget (see README, "Khác với spec").
+    sim_poll_timeout_ms: int = 500
+    eval_poll_ms: int = 500
+
+    # BoardPort: "mock" is the in-process FakeBoard, "real" is app/board_link.py (Phase 3, Q1).
+    board_link: Literal["mock", "real"] = "mock"
+    board_timeout_ms: int = 2000
+
+    data_dir: Path = Path("./data")
+    profiles_file: Path = BACKEND_DIR / "config" / "profiles.json"
+    protocol_file: Path = BACKEND_DIR / "config" / "protocol.dev.json"
+    fe_dist_dir: Path = BACKEND_DIR.parent / "dist"
+
+    mode: Literal["dev", "scored"] = "dev"
+    evidence_class: str = "laptop"
+    allowed_origins: str = "http://localhost:5173,http://localhost:8001"
+
+    telemetry_stale_ms: int = 1500
+    prepare_timeout_s: float = 120.0
+    run_wall_timeout_s: float = 300.0
+    telemetry_web_hz: float = 10.0
+    status_period_ms: int = 500
+    ping_period_ms: int = 1000
+    stop_confirm_timeout_s: float = 10.0
+    stop_retry_ms: int = 500
+    post_stop_observe_ms: int = 1000
+
+    camera_preview: bool = True
+    camera_fps: float = 10.0
+    camera_meta_ms: int = 250
+    # MuJoCo camera name -> camera id in the FE `camera` message (spec 9.4, FE task 10).
+    camera_web_names: str = "overhead:object,wrist:overview"
+
+    # Gripper range in rad (Q6). Empty falls back to the FE gripperMap, so the 3D model matches.
+    gripper_closed_rad: float | None = None
+    gripper_open_rad: float | None = None
+
+    ws_queue_max: int = 256
+    writer_queue_max: int = 20000
+    quarantine_max_rows: int = 1000
+    history_limit: int = 50
+
+    @field_validator("gripper_closed_rad", "gripper_open_rad", mode="before")
+    @classmethod
+    def _empty_is_none(cls, v: object) -> object:
+        return None if isinstance(v, str) and not v.strip() else v
+
+    @property
+    def origins(self) -> list[str]:
+        return [o.strip().rstrip("/") for o in self.allowed_origins.split(",") if o.strip()]
+
+    @property
+    def gripper_range(self) -> tuple[float, float]:
+        """(closed, open) in rad. Defaults mirror `gripperMap` in the FE config."""
+        closed = -0.17 if self.gripper_closed_rad is None else self.gripper_closed_rad
+        opened = 1.6 if self.gripper_open_rad is None else self.gripper_open_rad
+        return closed, opened
+
+    @property
+    def camera_names(self) -> dict[str, str]:
+        pairs = (p.split(":", 1) for p in self.camera_web_names.split(",") if ":" in p)
+        return {a.strip(): b.strip() for a, b in pairs}
+
+    @property
+    def db_path(self) -> Path:
+        return self.data_dir / "so101.db"
+
+    @property
+    def runs_dir(self) -> Path:
+        return self.data_dir / "runs"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

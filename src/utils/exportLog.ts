@@ -7,7 +7,7 @@ export function samplesToCsv(samples: Sample[]): string {
   for (const s of samples) {
     for (const j of ALL_JOINTS) {
       const v = s.joints[j];
-      rows.push(`${s.ts},${j},${v.action},${v.state},${round(v.velocity)}`);
+      rows.push(`${s.ts},${j},${v.action ?? ''},${v.state},${round(v.velocity)}`);
     }
   }
   return rows.join('\n') + '\n';
