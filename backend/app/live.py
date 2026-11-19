@@ -11,6 +11,7 @@ import json
 import logging
 import time
 from collections import deque
+from urllib.parse import urlsplit
 from typing import Any, Awaitable, Callable
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -136,15 +137,23 @@ class Hub:
 
     # --- one connection ------------------------------------------------------
 
-    def origin_allowed(self, origin: str | None) -> bool:
+    def origin_allowed(self, origin: str | None, host: str | None = None) -> bool:
         """A foreign page in the same browser must not be able to press Start or Stop.
 
-        Scripts send no Origin and are let through (spec 5.1).
+        Allowed: no Origin (scripts, spec 5.1); the page the BE served itself, whatever
+        address it was opened with (localhost, 127.0.0.1, the laptop's LAN IP); and the
+        origins in SO101_ALLOWED_ORIGINS (Vite on 5173).
         """
-        return origin is None or origin.rstrip("/") in self.settings.origins
+        if origin is None or origin.rstrip("/") in self.settings.origins:
+            return True
+        try:
+            netloc = urlsplit(origin).netloc
+        except ValueError:
+            return False
+        return bool(host) and netloc.lower() == host.lower()
 
     async def serve(self, ws: WebSocket) -> None:
-        if not self.origin_allowed(ws.headers.get("origin")):
+        if not self.origin_allowed(ws.headers.get("origin"), ws.headers.get("host")):
             await ws.close(code=1008)
             return
         await ws.accept()

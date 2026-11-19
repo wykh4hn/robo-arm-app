@@ -126,6 +126,7 @@ Mỗi điểm dưới đây nằm gọn trong một chỗ, đổi được khi n
 - **Seed ở chế độ dev:** xoay vòng các seed trong `protocol.dev.json` theo từng profile. Chế độ `scored` lấy trial kế tiếp trong bảng `trials`.
 - **Camera:** tên nguồn `overhead`, `wrist` được gửi lên web thành `object`, `overview` (`SO101_CAMERA_WEB_NAMES`) cho tới khi FE đổi tên (spec 14, việc 10). Chỉ hỏi ảnh khi có người xem.
 - **Dải kẹp:** để trống thì dùng `gripperMap` của FE (−0,17 đến 1,6 rad), để mô hình 3D khớp.
+- **Origin của WebSocket:** trang do chính BE phục vụ luôn được nhận, dù mở bằng `localhost`, `127.0.0.1` hay IP LAN của laptop (iPad). `SO101_ALLOWED_ORIGINS` chỉ cần cho Vite ở cổng 5173. Spec 12.6 bảo thêm IP laptop vào danh sách; nay không cần nữa.
 - **N8:** BE chỉ lưu các trường đã biết của lệnh web; trường lạ (ví dụ token) không vào DB.
 - **Tắt máy chủ:** nên chạy kèm `--timeout-graceful-shutdown 3`, để Ctrl+C không chờ mãi một kết nối WebSocket chưa đóng.
 

@@ -41,6 +41,13 @@ def test_hello_after_a_run_sends_tasks_then_task_then_status(be):
 def test_origin_check(be):
     with pytest.raises(Exception):
         be.ws(origin="http://evil.example").recv(2)
+    port = be.url.rsplit(":", 1)[1]
+    with pytest.raises(Exception):  # same host, other port: still a foreign page
+        be.ws(origin="http://127.0.0.1:9999").recv(2)
+    # The page the BE served itself, opened as 127.0.0.1 (the bug a user hit).
+    own = be.ws(origin=f"http://127.0.0.1:{port}")
+    assert own.recv(2)["type"] == "tasks"
+    own.close()
     no_origin = be.ws(origin=None)  # scripts are allowed
     assert no_origin.recv(2)["type"] == "tasks"
     no_origin.close()

@@ -53,7 +53,8 @@ class Settings(BaseSettings):
 
     mode: Literal["dev", "scored"] = "dev"
     evidence_class: str = "laptop"
-    allowed_origins: str = "http://localhost:5173,http://localhost:8001"
+    # Vite dev server. The page the BE serves itself is always allowed (same origin).
+    allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     telemetry_stale_ms: int = 1500
     prepare_timeout_s: float = 120.0
