@@ -292,3 +292,161 @@ main:focus {
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Tablet adaptive layout */
+.rb-tablet-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.95fr) minmax(300px, 1fr);
+  align-items: start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  padding-left: max(var(--space-3), env(safe-area-inset-left));
+  padding-right: max(var(--space-3), env(safe-area-inset-right));
+}
+
+.rb-tablet-visual,
+.rb-tablet-panel {
+  min-width: 0;
+}
+
+.rb-tablet-visual {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.rb-tablet-visual__main {
+  min-width: 0;
+}
+
+.rb-tablet-visual__main .rb-viewport,
+.rb-tablet-visual__main .app-camera--large .rb-camera__img {
+  height: clamp(340px, 57vh, 680px);
+}
+
+.rb-tablet-cams {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rb-tablet-cams .rb-camera__img {
+  height: clamp(112px, 18vh, 190px);
+}
+
+.rb-tablet-cams .app-viewport--compact {
+  height: clamp(112px, 18vh, 190px);
+}
+
+.rb-tablet-panel {
+  display: grid;
+  gap: var(--space-3);
+  position: sticky;
+  top: var(--space-3);
+  max-height: calc(100dvh - var(--space-6));
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.rb-tablet-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.rb-tablet-tabs__button {
+  min-width: 0;
+  min-height: 48px;
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.rb-tablet-tabs__button[aria-selected="true"] {
+  border-color: var(--border);
+  background: var(--surface-raised, var(--surface));
+  color: var(--text);
+  box-shadow: var(--shadow-card);
+}
+
+.rb-tablet-panel__content,
+.rb-tablet-control {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.rb-tablet-control .rb-card,
+.rb-tablet-panel__content > .rb-card {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) and (orientation: portrait) {
+  .rb-tablet-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rb-tablet-visual__main .rb-viewport,
+  .rb-tablet-visual__main .app-camera--large .rb-camera__img {
+    height: clamp(320px, 43svh, 520px);
+  }
+
+  .rb-tablet-cams .rb-camera__img,
+  .rb-tablet-cams .app-viewport--compact {
+    height: clamp(104px, 15svh, 160px);
+  }
+
+  .rb-tablet-panel {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 700px) {
+  .rb-tablet-layout {
+    padding: var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .rb-tablet-visual__main .rb-viewport,
+  .rb-tablet-visual__main .app-camera--large .rb-camera__img {
+    height: clamp(280px, 42svh, 420px);
+  }
+
+  .rb-tablet-tabs__button {
+    min-height: 48px;
+    padding: 6px 3px;
+    font-size: 12px;
+  }
+
+  .rb-tablet-cams {
+    gap: var(--space-2);
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .rb-tablet-layout button,
+  .rb-tablet-layout select,
+  .rb-tablet-layout input,
+  .rb-tablet-layout [role="button"] {
+    min-height: 44px;
+  }
+
+  .rb-tablet-layout .rb-viewport canvas {
+    touch-action: none;
+  }
+
+  .app-tipwrap:hover > .rb-tip {
+    display: none;
+  }
+}
