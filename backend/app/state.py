@@ -9,14 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .models_web import (
-    LinkOut,
-    RobotErrorOut,
-    RobotOut,
-    StatusOut,
-    StatusTaskOut,
-    TaskInfoOut,
-)
+from .models_web import TaskInfoOut
 from .libero_state import LiberoState
 
 REASON_TEXT = {
@@ -63,57 +56,9 @@ class ActiveRun:
 
 @dataclass
 class SystemState:
-    sim_ok: bool | None = None  # None until the first poll
     libero: LiberoState | None = None  # native franka_ee_v1 state; never coerce to SO-101 joints
-    last_sample_mono: float | None = None
-    board_connected: bool | None = None
-    board_ever_connected: bool = False
-    awaiting_ready: bool = False
-    robot_error: tuple[str, str | None] | None = None  # (code, message)
     run: ActiveRun | None = None
     last_task: TaskInfoOut | None = None  # most recent run shown to the web
-
-    # --- derived -------------------------------------------------------------
-
-    @property
-    def usb(self) -> str:
-        """`link.usb` now means "board connected to MuJoCo"."""
-        if not self.sim_ok or self.board_connected is None:
-            return "unknown"
-        if self.board_connected:
-            return "plugged"
-        return "lost" if self.board_ever_connected else "unknown"
-
-    @property
-    def robot(self) -> str:
-        if self.robot_error is not None:
-            return "error"
-        if not self.sim_ok or self.board_connected is not True:
-            return "unknown"
-        if self.awaiting_ready:
-            return "stopped"
-        if self.run is not None and self.run.phase in ("running", "stopping"):
-            return "moving"
-        return "ready"
-
-    def status(self, ts: int, latency_ms: int) -> StatusOut:
-        run = self.run
-        # `preparing` is never shown as a task (R4): the stepper stays at "Đã nhận".
-        if run is not None and run.phase in ("running", "stopping"):
-            task = StatusTaskOut(id=run.run_id, state="running")
-        elif self.last_task is not None and run is None:
-            task = StatusTaskOut(id=self.last_task.id, state=self.last_task.state)
-        else:
-            task = StatusTaskOut(id=None, state="idle")
-        error = None
-        if self.robot_error is not None:
-            error = RobotErrorOut(code=self.robot_error[0], message=self.robot_error[1])
-        return StatusOut(
-            ts=ts,
-            link=LinkOut(usb=self.usb, latencyMs=latency_ms),  # type: ignore[arg-type]
-            robot=RobotOut(state=self.robot, error=error),  # type: ignore[arg-type]
-            task=task,
-        )
 
 
 def task_state(phase: str | None, outcome: str | None) -> str | None:

@@ -250,13 +250,13 @@ def test_new_connection_gets_tasks_open_task_and_latest_state() -> None:
         await asyncio.wait_for(serve, 2)
 
         got = [m["type"] for m in ws.sent]
-        assert got[:4] == ["tasks", "task", "status", "libero_state"]
+        assert got[:3] == ["tasks", "task", "libero_state"]
         assert [t["id"] for t in ws.sent[0]["tasks"]] == [1, 2]
         assert ws.sent[1]["task"]["id"] == 2  # only the open one
-        assert ws.sent[3]["state"]["run_id"] == "run-1"
-        for m in ws.sent[:4]:
-            if m["type"] != "status":
-                outgoing_adapter.validate_python(m)
+        assert ws.sent[2]["state"]["run_id"] == "run-1"
+        assert not any(m["type"] in ("status", "pipeline") for m in ws.sent)
+        for m in ws.sent[:3]:
+            outgoing_adapter.validate_python(m)
 
     asyncio.run(run())
 

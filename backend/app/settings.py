@@ -56,7 +56,6 @@ class Settings(BaseSettings):
     evidence_class: str = "laptop"
     allowed_origins: str = "http://localhost:5173,http://localhost:8001"
 
-    status_period_ms: int = 500
     ping_period_ms: int = 1000
 
     camera_preview: bool = True

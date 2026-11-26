@@ -1,7 +1,7 @@
 """WebSocket `/ws`: one bounded outbox per web client (spec 5.1, rule 4).
 
 A slow client loses old telemetry and only ever holds the newest
-`libero_state`; it never loses `task`, `tasks`, `status`, `ack`, `nack` or
+`libero_state`; it never loses `task`, `tasks`, `ack`, `nack` or
 `stop_ack`, and never slows the sim poll or another client
 (communication-plan §3.4).
 """
@@ -18,7 +18,7 @@ from typing import Any, Awaitable, Callable
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from .models_web import DROPPABLE, PingOut, PipelineOut
+from .models_web import DROPPABLE, PingOut
 from .settings import Settings
 from .state import SystemState
 from .storage import now_ms
@@ -47,7 +47,7 @@ class Client:
         self.closed = False
         self.dropped = 0
         self.coalesced = 0
-        self.latency_ms = 0  # R2: a number from the first status on
+        self.latency_ms = 0  # round trip / 2 from the last pong
         self.pings: dict[str, float] = {}
 
     def push(self, msg: dict[str, Any]) -> None:
@@ -256,18 +256,10 @@ class Hub:
         for c in self.clients:
             c.push_text(text, kind)
 
-    def status_for(self, client: Client) -> dict[str, Any]:
-        return self.state.status(now_ms(), client.latency_ms).wire()
-
-    def broadcast_status(self) -> None:
-        for c in self.clients:
-            c.push(self.status_for(c))
-
     # --- periodic ------------------------------------------------------------
 
     def start(self) -> None:
         self._tasks = [
-            asyncio.create_task(self._every(self.settings.status_period_ms, self._tick_status)),
             asyncio.create_task(self._every(self.settings.ping_period_ms, self._tick_ping)),
         ]
         if self.feed is not None:
@@ -291,13 +283,6 @@ class Hub:
                 fn()
             except Exception:  # noqa: BLE001 - a bad tick must not end the heartbeat
                 log.exception("periodic task failed")
-
-    def _tick_status(self) -> None:
-        # R11: the heartbeat that lets the web tell "quiet" from "dead".
-        self.broadcast_status()
-        # T0-T3 do not reach the BE while a run is live (D18): no steps, never zeros (R15).
-        self.broadcast(PipelineOut(ts=now_ms(), steps={}).wire())
-        # `libero_state` is paced by LiberoFeed, not by this tick.
 
     def _tick_ping(self) -> None:
         for c in self.clients:
@@ -341,11 +326,10 @@ class Hub:
             return
         await ws.accept()
         client = Client(ws, self.settings.ws_queue_max)
-        # R1, R8: `tasks`, then the open `task`, then `status`, then the latest
-        # `libero_state`, in this order (communication-plan §3.4 snapshot).
+        # R1, R8: `tasks`, then the open `task`, then the latest `libero_state`,
+        # in this order (communication-plan §3.4 snapshot).
         for msg in self.hello():
             client.push(msg)
-        client.push(self.status_for(client))
         snapshot = self.snapshot() if self.snapshot is not None else None
         if snapshot is not None:
             client.push(snapshot)

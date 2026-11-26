@@ -12,12 +12,8 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 JointName = Literal[
     "shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper"
 ]
-UsbLink = Literal["plugged", "lost", "unknown"]
-RobotStateName = Literal["ready", "moving", "stopped", "error", "unknown"]
 # communication-plan §4: a run goes preparing -> running -> done | failed | stopped.
 TaskStateName = Literal["preparing", "running", "done", "failed", "stopped"]
-# Only the legacy `status` message says "idle" (no run yet).
-StatusTaskStateName = Literal["idle", "preparing", "running", "done", "failed", "stopped"]
 LiberoSuite = Literal["libero_spatial", "libero_object", "libero_goal", "libero_10", "libero_90"]
 
 # communication-plan §3.2: spec 5.5 codes plus the LIBERO ones. Keep in step with
@@ -46,7 +42,6 @@ NACK_CODES = (
     "no_trials_left",
     *LIBERO_NACK_CODES,
 )
-PipelineStep = Literal["camera", "ai", "gateway", "robot", "result"]
 
 
 class _In(BaseModel):
@@ -117,44 +112,6 @@ class TelemetryOut(_Out):
     joints: dict[JointName, JointSampleOut]
 
 
-class LinkOut(_Out):
-    web: Literal["connected"] = "connected"
-    usb: UsbLink
-    latencyMs: int  # R2: always a number
-
-
-class RobotErrorOut(_Out):
-    code: str
-    joint: JointName | None = None
-    message: str | None = None
-
-
-class RobotOut(_Out):
-    state: RobotStateName
-    error: RobotErrorOut | None = None
-
-
-class StatusTaskOut(_Out):
-    id: int | None
-    state: StatusTaskStateName
-
-    def wire(self) -> dict:  # `id: null` is meaningful here
-        return {"id": self.id, "state": self.state}
-
-
-class StatusOut(_Out):
-    type: Literal["status"] = "status"
-    ts: int
-    link: LinkOut
-    robot: RobotOut
-    task: StatusTaskOut
-
-    def wire(self) -> dict:
-        d = self.model_dump(exclude_none=True)
-        d["task"] = self.task.wire()
-        return d
-
-
 class TaskInfoOut(_Out):
     id: int  # R5
     command: str
@@ -220,18 +177,6 @@ class StopPendingOut(_Out):
     reason: Literal["SIM_RESETTING"]
 
 
-class PipelineFailedOut(_Out):
-    step: PipelineStep
-    reason: str | None = None
-
-
-class PipelineOut(_Out):
-    type: Literal["pipeline"] = "pipeline"
-    ts: int
-    steps: dict[PipelineStep, float]  # R15: omit what is not measured
-    failed: PipelineFailedOut | None = None
-
-
 class CameraOut(_Out):
     type: Literal["camera"] = "camera"
     ts: int
@@ -271,7 +216,6 @@ class PingOut(_Out):
 Outgoing = Annotated[
     Union[
         TelemetryOut,
-        StatusOut,
         LiberoStateOut,
         TaskOut,
         TasksOut,
@@ -279,7 +223,6 @@ Outgoing = Annotated[
         NackOut,
         StopAckOut,
         StopPendingOut,
-        PipelineOut,
         CameraOut,
         PingOut,
     ],
@@ -288,4 +231,4 @@ Outgoing = Annotated[
 outgoing_adapter: TypeAdapter[Outgoing] = TypeAdapter(Outgoing)
 
 # Rule 4: these may be dropped for a slow client; everything else is kept.
-DROPPABLE = frozenset({"telemetry", "pipeline", "camera", "ping"})
+DROPPABLE = frozenset({"telemetry", "camera", "ping"})

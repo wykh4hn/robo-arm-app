@@ -8,7 +8,7 @@ import pytest
 
 from app import pipeline
 from app.live import Client
-from app.state import SystemState, task_info, task_state
+from app.state import task_info, task_state
 
 # --- pipeline (N2, T16) ---------------------------------------------------------
 
@@ -78,19 +78,6 @@ def test_interrupted_task_says_incomplete():
          "ui_text": "x", "created_at": 1, "ended_at": 2}
     )  # fmt: skip
     assert info.state == "failed" and "không hoàn chỉnh" in info.reason and info.incomplete
-
-
-def test_robot_and_usb_mapping():
-    st = SystemState()
-    assert (st.robot, st.usb) == ("unknown", "unknown")
-    st.sim_ok, st.board_connected = True, True
-    assert (st.robot, st.usb) == ("ready", "plugged")
-    st.board_ever_connected, st.board_connected = True, False
-    assert (st.robot, st.usb) == ("unknown", "lost")
-    st.board_connected, st.awaiting_ready = True, True
-    assert st.robot == "stopped"
-    st.robot_error = ("SIM_OFFLINE", None)
-    assert st.robot == "error"
 
 
 # --- the outbox of one web client (rule 4, T13) -------------------------------------

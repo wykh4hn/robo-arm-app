@@ -218,58 +218,6 @@
         }
       }
     },
-    "status": {
-      "type": "status",
-      "ts": 1730450000200,
-      "link": {
-        "web": "connected",
-        "usb": "plugged",
-        "latencyMs": 3
-      },
-      "robot": {
-        "state": "moving"
-      },
-      "task": {
-        "id": 13,
-        "state": "running"
-      }
-    },
-    "status_idle": {
-      "type": "status",
-      "ts": 1730450000200,
-      "link": {
-        "web": "connected",
-        "usb": "unknown",
-        "latencyMs": 0
-      },
-      "robot": {
-        "state": "unknown"
-      },
-      "task": {
-        "id": null,
-        "state": "idle"
-      }
-    },
-    "status_error": {
-      "type": "status",
-      "ts": 1730450000200,
-      "link": {
-        "web": "connected",
-        "usb": "plugged",
-        "latencyMs": 2
-      },
-      "robot": {
-        "state": "error",
-        "error": {
-          "code": "SIM_OFFLINE",
-          "message": "MuJoCo không trả lời"
-        }
-      },
-      "task": {
-        "id": 13,
-        "state": "failed"
-      }
-    },
     "task_done": {
       "type": "task",
       "ts": 1730450000300,
@@ -382,21 +330,6 @@
       "ts": 1730450000300,
       "id": "stop-m1a3-2",
       "reason": "SIM_RESETTING"
-    },
-    "pipeline_empty": {
-      "type": "pipeline",
-      "ts": 1730450000500,
-      "steps": {}
-    },
-    "pipeline": {
-      "type": "pipeline",
-      "ts": 1730450000500,
-      "steps": {
-        "camera": 31,
-        "ai": 122,
-        "gateway": 4,
-        "robot": 12
-      }
     },
     "camera": {
       "type": "camera",
