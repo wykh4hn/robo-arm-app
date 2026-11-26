@@ -26,6 +26,11 @@ export function liberoSimFresh(
   return h?.sim === 'online' && h.last_state_age_ms !== null && h.last_state_age_ms <= staleAfterMs;
 }
 
+/** The sim is alive but building a scene (reset); its state is paused, not lost (step 7). */
+export function liberoSimBusy(h: LiberoConnectionHealth | null | undefined): boolean {
+  return h?.sim_busy === true && h.sim === 'online';
+}
+
 type StatusConfig = Pick<typeof config, 'staleAfterMs' | 'cameraFrozenAfterMs' | 'fpsWarn'>;
 
 export type SendBlockReason =
@@ -40,11 +45,13 @@ export type SendBlockReason =
   | 'busy'
   | 'pending'
   | 'simOffline'
+  | 'simBusy'
   | 'boardOffline';
 
 /** One row of the status table in communication-plan §4. */
 export type LiberoView =
   | 'unknown'
+  | 'simBusy'
   | 'boardLost'
   | 'operatorLost'
   | 'boardOffline'
@@ -81,7 +88,9 @@ export function liberoView(
   const boardConnected = st.session_active && h?.board !== 'disconnected';
   const hold = st.hold_latched ? st.hold_reason : null;
   let view: LiberoView;
-  if (!live || !liberoSimFresh(h, staleAfterMs)) view = 'unknown';
+  if (!live) view = 'unknown';
+  else if (liberoSimBusy(h)) view = 'simBusy';
+  else if (!liberoSimFresh(h, staleAfterMs)) view = 'unknown';
   else if (hold && BOARD_LOST_REASONS.has(hold)) view = 'boardLost';
   else if (hold === 'OPERATOR_LOST') view = 'operatorLost';
   else if (!boardConnected) view = 'boardOffline';
@@ -93,7 +102,9 @@ export function liberoView(
   const level: Level =
     view === 'unknown'
       ? 'attention'
-      : view === 'boardLost' || view === 'operatorLost' || view === 'boardOffline'
+      : view === 'simBusy'
+        ? 'waiting'
+        : view === 'boardLost' || view === 'operatorLost' || view === 'boardOffline'
         ? 'action'
         : view === 'stopped'
           ? 'waiting'
@@ -109,7 +120,8 @@ export function liberoView(
     endReason: st.end_reason,
     holdReason: st.hold_reason,
     boardConnected,
-    stale: view === 'unknown',
+    // Numbers are the last ones before the reset: dim them until the sim answers.
+    stale: view === 'unknown' || view === 'simBusy',
   };
 }
 
@@ -247,6 +259,9 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
       case 'boardLost':
         add('liberoBoardLost', 'action', 'critical', { ...run, reason: lib.holdReason ?? '' });
         break;
+      case 'simBusy':
+        add('liberoSimBusy', 'waiting', null);
+        break;
       case 'operatorLost':
         add('liberoOperatorLost', 'action', 'critical', run);
         break;
@@ -337,7 +352,8 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   else if (lib) {
     if (lib.view === 'unknown') {
       reason = s.liberoConnectionHealth?.sim === 'offline' ? 'simOffline' : 'stale';
-    } else if (
+    } else if (lib.view === 'simBusy') reason = 'simBusy';
+    else if (
       !lib.boardConnected && s.liberoConnectionHealth?.board_session_required !== false
     ) reason = 'boardOffline';
     else if (stoppedState) reason = 'stopped';

@@ -39,6 +39,20 @@ describe('TaskHistory LIBERO episode', () => {
     expect(screen.getByText('Step: 25 / 100')).toBeInTheDocument();
   });
 
+  // Step 7 finding: a reset showed "Simulator disconnected" on the card for its whole 3-15 s.
+  it('says the sim is building the scene while it resets, not that it is disconnected', () => {
+    const ended = { ...liberoStateFixture, status: 'ABORTED' as const, end_reason: 'OPERATOR_STOP' };
+    useStore.setState({
+      libero: ended,
+      liberoConnectionHealth: { ...liberoHealthFixture, sim_busy: true, last_state_age_ms: 6000 },
+    });
+    render(<TaskHistory />);
+    expect(screen.getByText('Building the scene')).toBeInTheDocument();
+    expect(screen.getByText(/Sim is building the scene/)).toBeInTheDocument();
+    expect(screen.queryByText(/disconnected/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Confirmed outcome/)).not.toBeInTheDocument();
+  });
+
   it('only reports a terminal outcome when the terminal state is fresh and connected', () => {
     const ended = {
       ...liberoStateFixture,

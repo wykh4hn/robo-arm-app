@@ -99,7 +99,8 @@ Kết quả: `SUCCESS` = thành công (`end_reason=TASK_SUCCESS`); `TIMEOUT` = t
 
 // BE → Web (giữ: libero_state, ack, nack, stop_ack, task, tasks, connection, ping)
 // libero_state: thêm seq, ts; connection_health { sim: online|offline, board: connected|disconnected,
-//               heartbeat: healthy|degraded|off, last_state_age_ms }
+//               heartbeat: healthy|degraded|off, last_state_age_ms,
+//               sim_busy (bước 7: sim đang dựng scene, không phải mất kết nối) }
 // task.state: 'preparing' | 'running' | 'done' | 'failed' | 'stopped'; kèm run_id, outcome, end_reason
 // bỏ: telemetry 6 khớp, pipeline T0–T3 (không có nguồn) — UI hiện "—"
 ```
@@ -201,4 +202,4 @@ Bước 1–6 làm được với thông tin hiện có. Bước 7 cần ngườ
 | 6 Tích hợp | 6, 8 (Q1) | Không sửa nếu không lỗi. Viết `docs/integration-runbook.md` (lệnh từng terminal) và `backend/tools/smoke_ws.py` (client WS chỉ đọc, in state/ack theo thời gian) | Trên laptop, không GPU: chạy `server.py --backend fake` (WSL, `C:\studies\Project A\RobotArm\libero_board`), BE `SO101_SIM_LINK=real`, mở trang 8001. Kiểm tra và ghi kết quả: state lên web; Stop/Ready khi READY; Gửi với `SO101_REQUIRE_BOARD_SESSION=false` → reset → chạy `runner.py --policy wiggle --no-reset` → RUNNING → Stop → ABORTED; runner tự reset (không `--no-reset`) → FE hiện task nguồn `board`; kill runner khi chạy → `CONNECTION_LOST`/`HEARTBEAT_TIMEOUT`; tắt BE khi chạy → `OPERATOR_LOST` sau 5 s. Sửa lỗi tìm được, có test. Chỉ điều khiển sim **fake**; không đụng sim thật/Board |
 | 7 E2E thật | 6, 8 (Q6), `Docs/codex-runtime-audit.md` mục E | `docs/e2e-results-<ngày>.md` | **Từng thao tác điều khiển phải được người dùng duyệt trong chat trước khi chạy.** Sim LIBERO thật + Board qua `deploy_runner.py` (hoặc X-VLA CUDA trên laptop nếu không có Board). Ghi PASS/FAIL + bằng chứng cho 12 mục checklist E, đo Stop→`hold_latched` (ms) và state→màn hình (ms). Không tuyên bố PASS khi không có bằng chứng |
 
-**Trạng thái:** bước 1 ☑ · bước 2 ☑ · bước 3 ☑ · bước 4 ☑ · bước 5 ☑ · bước 6 ☑ · bước 7 ☐ · bước 8 ☐ (chờ IoT)
+**Trạng thái:** bước 1 ☑ · bước 2 ☑ · bước 3 ☑ · bước 4 ☑ · bước 5 ☑ · bước 6 ☑ · bước 7 ◐ (12 mục E có kết quả, `docs/e2e-results-2026-11-26.md`; còn episode X-VLA và rút cáp USB-C: chưa có Board, cần người làm tay) · bước 8 ☐ (chờ IoT)

@@ -247,6 +247,8 @@ class ConnectionHealthOut(_Out):
     last_state_age_ms: int | None
     # Mirrors SO101_REQUIRE_BOARD_SESSION (Q1). Absent from older BEs = True.
     board_session_required: bool = True
+    # Step 7: the sim is alive but building a scene (reset, 3-15 s). Absent = False.
+    sim_busy: bool = False
 
 
 class LiberoStateOut(_Out):

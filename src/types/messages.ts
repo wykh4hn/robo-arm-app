@@ -78,6 +78,11 @@ export interface LiberoConnectionHealth {
    * Absent = true.
    */
   board_session_required?: boolean;
+  /**
+   * The sim is alive but building a scene for a reset (3-15 s) and answers nothing meanwhile,
+   * so `last_state_age_ms` grows. Show "building the scene", not "sim lost". Absent = false.
+   */
+  sim_busy?: boolean;
 }
 
 export interface LiberoState {

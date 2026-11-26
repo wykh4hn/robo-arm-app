@@ -111,6 +111,7 @@ export type ProblemKind =
   | 'awaitingReady'
   | 'liberoSimOffline'
   | 'liberoStateOld'
+  | 'liberoSimBusy'
   | 'liberoBoardLost'
   | 'liberoOperatorLost'
   | 'liberoBoardOffline'

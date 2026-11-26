@@ -1,6 +1,6 @@
 import { TASK_STATUS } from '../config/levels';
 import { config } from '../config';
-import { liberoSimFresh } from '../state/deriveStatus';
+import { liberoSimBusy, liberoSimFresh } from '../state/deriveStatus';
 import { useStore } from '../state/store';
 import { sortTasks } from '../state/tasks';
 import { useT } from '../strings';
@@ -31,6 +31,7 @@ export function TaskHistory() {
     web === 'connected' && synced && lastMessageAt !== null && now - lastMessageAt <= config.staleAfterMs;
   const simulatorStateFresh = liberoSimFresh(liberoHealth);
   const healthUncertain = !webStateFresh || !simulatorStateFresh;
+  const simBusy = webStateFresh && liberoSimBusy(liberoHealth);
   const confirmedOutcome = terminal && !healthUncertain;
   const canReset =
     terminal &&
@@ -52,14 +53,18 @@ export function TaskHistory() {
             <div className="rb-task__row">
               <strong>{t.history.liberoEpisode}</strong>
               <span className="rb-task__status" data-state={healthUncertain ? 'stale' : libero.status}>
-                {healthUncertain ? t.history.stateStale : t.history.status[libero.status]}
+                {simBusy
+                  ? t.history.simBusyShort
+                  : healthUncertain ? t.history.stateStale : t.history.status[libero.status]}
               </span>
             </div>
             {healthUncertain && (
               <div className="rb-task__meta rb-libero-episode__health" role="alert">
-                {liberoHealth?.sim === 'offline'
-                  ? t.history.simulatorDisconnected
-                  : t.history.stateStale}
+                {simBusy
+                  ? t.history.simBusy
+                  : liberoHealth?.sim === 'offline'
+                    ? t.history.simulatorDisconnected
+                    : t.history.stateStale}
               </div>
             )}
             <div className="rb-task__meta">
@@ -83,7 +88,7 @@ export function TaskHistory() {
                 {t.history.outcome}: {t.history.status[libero.status]}
               </div>
             )}
-            {terminal && !confirmedOutcome && (
+            {terminal && !confirmedOutcome && !simBusy && (
               <div className="rb-task__reason">{t.history.outcomePending}</div>
             )}
             {libero.end_reason && confirmedOutcome && (

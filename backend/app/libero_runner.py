@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from .libero_state import LiberoState
-from .ports import SimConnectionError, SimError, SimOutcomeUnknown, SimRejected
+from .ports import SimBusy, SimConnectionError, SimError, SimOutcomeUnknown, SimRejected
 from .sim_client import SimClient
 from .validation import validate_libero_task
 from .settings import Settings
@@ -109,6 +109,8 @@ class LiberoRunner:
 
         # Start of the current run of failed polls / heartbeats (None after a success).
         self.poll_error_since_mono: float | None = None
+        # First of the polls the sim accepted but left unanswered (SimBusy, step 7).
+        self.poll_busy_since_mono: float | None = None
         self.heartbeat_error_since_mono: float | None = None
         # Called after every valid state (communication-plan §3.4: live feed).
         self.on_state: Callable[[LiberoState], None] | None = None
@@ -144,11 +146,20 @@ class LiberoRunner:
         self.last_poll_attempt_mono = time.monotonic()
         try:
             payload = await self.sim.get_state()
+        except SimBusy as exc:
+            # Reachable but holding its lock (a reset building the scene): not offline.
+            self.simulator_connection = "connected"
+            if self.poll_busy_since_mono is None:
+                self.poll_busy_since_mono = time.monotonic()
+            self._poll_failed(exc)
+            raise
         except SimConnectionError as exc:
             self.simulator_connection = "disconnected"
+            self.poll_busy_since_mono = None
             self._poll_failed(exc)
             raise
         except Exception as exc:
+            self.poll_busy_since_mono = None
             self._poll_failed(exc)
             raise
 
@@ -166,6 +177,7 @@ class LiberoRunner:
         self.last_poll_success_mono = time.monotonic()
         self.last_poll_error = None
         self.poll_error_since_mono = None
+        self.poll_busy_since_mono = None
 
         self._event(
             "libero_state",
@@ -206,6 +218,27 @@ class LiberoRunner:
         reset started by the Board shows too; `LiberoState` rejects it until then.
         """
         return self._resetting > 0
+
+    @property
+    def sim_busy(self) -> bool:
+        """The sim is alive but builds a scene, so it answers nothing for 3-15 s.
+
+        Step 7 finding (real LIBERO sim): during a reset `/api/state` and the
+        heartbeat time out, and the web showed "Simulator lost" for ~10 s on every
+        reset. True while a reset the BE sent is in flight, or while polls reach
+        the sim but get no answer (a reset the Board started, Q1), for at most the
+        reset timeout. A refused connection is never busy.
+        TODO(Q5): use the sim's `RESETTING` status once IoT adds it.
+        """
+        if self.state is None or self.simulator_connection == "disconnected":
+            return False
+        if self.reset_in_progress:
+            return True
+        since = self.poll_busy_since_mono
+        return (
+            since is not None
+            and time.monotonic() - since < self.settings.libero_reset_timeout_ms / 1000
+        )
 
     def _adopt_watch(self, state: LiberoState) -> None:
         """Take over a watchdog the sim still holds for an earlier BE (§3.3).
@@ -374,13 +407,20 @@ class LiberoRunner:
             and failing_s < OFFLINE_AFTER_S
             and age_s < stalled_after_s
         )
+        busy = self.sim_busy
         heartbeat = self.heartbeat_status
         if heartbeat == "degraded" and self.last_heartbeat_success_mono is not None:
             since = self.heartbeat_error_since_mono
             if since is not None and now - since < OFFLINE_AFTER_S:
                 heartbeat = "healthy"
+            # A busy sim answers no heartbeat either; its watchdog only acts on a
+            # RUNNING run, and no run runs while the scene is being built.
+            elif busy:
+                heartbeat = "healthy"
         return {
-            "sim": "online" if online else "offline",
+            "sim": "online" if online or busy else "offline",
+            # Step 7: the sim is building a scene; the web says so instead of "lost".
+            "sim_busy": busy,
             # TODO(Q4): `session_active` is the only Board signal the sim gives us.
             "board": (
                 "connected"
@@ -866,18 +906,27 @@ class LiberoRunner:
                 self.last_heartbeat_error = None
                 self.heartbeat_error_since_mono = None
                 if recovered:
+                    log.info("LIBERO heartbeat recovered")
                     self._event("libero_heartbeat_recovered", {})
                 elif not had_success:
                     self._event("libero_watchdog_enabled", {})
             except asyncio.CancelledError:
                 raise
             except Exception as exc:  # noqa: BLE001
+                first = self.heartbeat_error_since_mono is None
                 self.heartbeat_status = "degraded"
                 self.last_heartbeat_error = str(exc)
-                if self.heartbeat_error_since_mono is None:
+                # Failures while the sim builds a scene do not count toward "degraded":
+                # the 2 s window restarts, so no 1 s flash right after each reset (step 7).
+                if first or self.sim_busy:
                     self.heartbeat_error_since_mono = time.monotonic()
                 self._event("libero_heartbeat_failed", {"error": str(exc)})
-                log.exception("LIBERO heartbeat loop failed")
+                # Expected while the sim builds a scene: one line per outage, no
+                # traceback every second (step 7). Unexpected errors keep theirs.
+                if not isinstance(exc, SimError):
+                    log.exception("LIBERO heartbeat loop failed")
+                elif first:
+                    log.warning("LIBERO heartbeat failed (logged once until it recovers): %s", exc)
             await asyncio.sleep(self.heartbeat_interval_s)
 
     async def _poll_loop(self) -> None:
@@ -895,9 +944,14 @@ class LiberoRunner:
             except Exception as exc:  # noqa: BLE001
                 error = str(exc)
                 if error != logged_error:
+                    # One log line per outage (step 7: a busy sim alternates errors).
+                    first = logged_error is None
                     logged_error = error
                     self._event("libero_poll_failed", {"error": error})
-                    log.exception("LIBERO state polling failed")
+                    if not isinstance(exc, SimError):
+                        log.exception("LIBERO state polling failed")
+                    elif first:
+                        log.warning("LIBERO state polling failed: %s", error)
 
     async def shutdown(self) -> None:
         self._closed = True

@@ -338,6 +338,23 @@ describe('deriveStatus: LIBERO status table (communication-plan §4)', () => {
     expect(d.banner[0]).toMatchObject({ kind: 'liberoSimOffline', banner: 'warn' });
   });
 
+  // Step 7 finding: every reset on the real sim showed "Simulator lost" for ~10 s.
+  it('sim_busy (scene being built): Building the scene, no warning banner, Send locked', () => {
+    const d = lib({ status: 'TIMEOUT' }, { sim_busy: true, last_state_age_ms: 8000 });
+    expect(d.libero).toMatchObject({ view: 'simBusy', level: 'waiting', stale: true });
+    expect(d.sendBlockReason).toBe('simBusy');
+    expect(d.canSend).toBe(false);
+    expect(d.problems.map((p) => p.kind)).toContain('liberoSimBusy');
+    expect(d.banner.some((p) => p.kind === 'liberoSimOffline' || p.kind === 'liberoStateOld')).toBe(false);
+    expect(d.overall).not.toBe('action');
+  });
+
+  it('sim_busy never hides a sim the BE reports offline', () => {
+    const d = lib({ status: 'READY' }, { sim: 'offline', sim_busy: true, last_state_age_ms: null });
+    expect(d.libero?.view).toBe('unknown');
+    expect(d.sendBlockReason).toBe('simOffline');
+  });
+
   it('state older than 1.5 s: Unknown, numbers dimmed, Send locked', () => {
     const d = lib({ status: 'READY' }, { last_state_age_ms: 1501 });
     expect(d.libero).toMatchObject({ view: 'unknown', stale: true });

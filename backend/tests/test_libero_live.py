@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 from app.camera import CameraProxy
 from app.live import Client, Hub, LiberoFeed
 from app.models_web import outgoing_adapter
-from app.ports import SimConnectionError, SimError
+from app.ports import SimBusy, SimConnectionError, SimError, SimOutcomeUnknown
 from app.settings import Settings
 from app.sim_client import SimClient
 
@@ -422,3 +422,159 @@ def test_sim_client_get_frame_uses_libero_names_only() -> None:
 
     asyncio.run(run())
     assert seen == ["/api/camera/agentview", "/api/camera/wrist"]
+
+
+# --- step 7: sim busy while it builds a scene ------------------------------------
+
+
+def test_state_read_timeout_is_sim_busy_and_connect_error_is_not() -> None:
+    # Step 7 finding: the real sim holds its lock during a reset, so the TCP
+    # connection is accepted but `/api/state` gets no answer (ReadTimeout).
+    def busy_handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("no answer", request=request)
+
+    def refused_handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    def backlog_full_handler(request: httpx.Request) -> httpx.Response:
+        # The busy sim's accept backlog is full: the connect itself times out.
+        raise httpx.ConnectTimeout("no accept", request=request)
+
+    async def run() -> None:
+        settings = Settings(_env_file=None)
+        for handler in (busy_handler, backlog_full_handler):
+            busy = SimClient(settings, transport=httpx.MockTransport(handler))
+            try:
+                await busy.get_state()
+            except SimBusy:
+                pass
+            else:
+                raise AssertionError("expected SimBusy")
+            finally:
+                await busy.aclose()
+        refused = SimClient(settings, transport=httpx.MockTransport(refused_handler))
+        try:
+            await refused.get_state()
+        except SimBusy:
+            raise AssertionError("a refused connection is not a busy sim")
+        except SimConnectionError:
+            pass
+        finally:
+            await refused.aclose()
+
+    asyncio.run(run())
+
+
+def test_sim_building_a_scene_reads_busy_not_offline() -> None:
+    # Step 7: on the real sim every reset showed "Simulator lost" for ~10 s.
+    async def run() -> None:
+        sim = FakeSim()
+        runner = make_runner(sim)
+        await runner.refresh()
+        runner.heartbeat_status = "healthy"
+        runner.last_heartbeat_success_mono = time.monotonic()
+        assert runner.wire_connection_health()["sim_busy"] is False
+        sim.poll_results.append(SimBusy("no answer"))
+        try:
+            await runner.refresh()
+        except SimBusy:
+            pass
+        # 8 s into the reset: polls and heartbeats have failed all along.
+        runner.poll_error_since_mono -= 8.0
+        runner.poll_busy_since_mono -= 8.0
+        runner.last_poll_success_mono -= 8.0
+        runner.heartbeat_status = "degraded"
+        runner.heartbeat_error_since_mono = time.monotonic() - 8.0
+        health = runner.wire_connection_health()
+        assert health["sim"] == "online"
+        assert health["sim_busy"] is True
+        assert health["heartbeat"] == "healthy"
+        assert health["last_state_age_ms"] >= 8000  # the age still tells the truth
+        outgoing_adapter.validate_python(
+            {"type": "libero_state", "seq": 0, "ts": 0, "state": {}, "connection_health": health}
+        )
+        # No answer for longer than any reset may take: the sim is offline after all.
+        runner.poll_busy_since_mono -= runner.settings.libero_reset_timeout_ms / 1000
+        health = runner.wire_connection_health()
+        assert health["sim"] == "offline" and health["sim_busy"] is False
+        assert health["heartbeat"] == "degraded"
+        await runner.refresh()  # the reset is done
+        assert runner.poll_busy_since_mono is None
+        assert runner.wire_connection_health()["sim_busy"] is False
+
+    asyncio.run(run())
+
+
+def test_refused_connection_is_offline_even_during_a_backend_reset() -> None:
+    async def run() -> None:
+        sim = FakeSim()
+        runner = make_runner(sim)
+        await runner.refresh()
+        runner._resetting = 1  # a reset the BE sent is in flight
+        assert runner.wire_connection_health()["sim_busy"] is True
+        sim.poll_results.append(SimConnectionError("refused"))
+        try:
+            await runner.refresh()
+        except SimConnectionError:
+            pass
+        runner.poll_error_since_mono -= 2.0
+        runner.last_poll_success_mono -= 2.0
+        health = runner.wire_connection_health()
+        assert health["sim"] == "offline" and health["sim_busy"] is False
+
+    asyncio.run(run())
+
+
+def test_busy_sim_logs_one_line_not_a_traceback_per_poll(caplog) -> None:
+    async def run() -> None:
+        sim = FakeSim()
+        runner = make_runner(sim)
+        await runner.refresh()
+        for error in ("no answer", "no connection", "no answer"):
+            sim.poll_results.append(SimBusy(error))
+        task = asyncio.create_task(runner._poll_loop())
+        await asyncio.sleep(0.45)
+        runner._closed = True
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+    with caplog.at_level("WARNING", logger="so101.libero_runner"):
+        asyncio.run(run())
+    failures = [r for r in caplog.records if "polling failed" in r.getMessage()]
+    assert len(failures) == 1
+    assert failures[0].exc_info is None
+
+
+def test_heartbeat_is_not_degraded_right_after_the_scene_is_built() -> None:
+    # Step 7: heartbeats fail during the whole reset; once the sim answered again the
+    # web showed "heartbeat degraded" for ~1 s until the next heartbeat landed.
+    class BusyHeartbeatSim(FakeSim):
+        async def heartbeat(self, *, watch: bool = True) -> dict:
+            raise SimOutcomeUnknown("no answer")
+
+    async def run() -> None:
+        sim = BusyHeartbeatSim()
+        runner = make_runner(sim)
+        await runner.refresh()
+        runner.heartbeat_status = "healthy"
+        runner.last_heartbeat_success_mono = time.monotonic() - 9.0
+        runner._resetting = 1
+        runner.heartbeat_interval_s = 0.01
+        task = asyncio.create_task(runner._heartbeat_loop())
+        await asyncio.sleep(0.05)
+        runner._resetting = 0  # the scene is built; the next heartbeat will land
+        runner._closed = True
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        assert runner.heartbeat_status == "degraded"
+        assert runner.wire_connection_health()["heartbeat"] == "healthy"
+        runner.heartbeat_error_since_mono -= 2.0  # still failing 2 s after the reset
+        assert runner.wire_connection_health()["heartbeat"] == "degraded"
+
+    asyncio.run(run())

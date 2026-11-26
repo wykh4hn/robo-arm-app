@@ -63,6 +63,7 @@ describe('web <-> BE contract', () => {
       heartbeat: 'healthy',
       last_state_age_ms: 40,
       board_session_required: true,
+      sim_busy: false,
     });
     expect(run(['libero_state_offline']).liberoConnectionHealth?.last_state_age_ms).toBeNull();
   });

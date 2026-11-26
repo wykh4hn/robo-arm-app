@@ -17,6 +17,15 @@ class SimConnectionError(SimError):
     """The simulator HTTP endpoint could not be reached or timed out."""
 
 
+class SimBusy(SimConnectionError):
+    """The sim accepted the request but did not answer in time.
+
+    Step 7 finding: the real LIBERO sim holds its lock while a reset builds the
+    scene (3-15 s, Q5), so `/api/state` times out although the sim is alive. A
+    refused or failed connection stays a plain `SimConnectionError`.
+    """
+
+
 class SimOutcomeUnknown(SimConnectionError):
     """A mutating operator request may have completed but was not confirmed."""
 

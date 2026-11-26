@@ -14,7 +14,7 @@ from typing import Any
 
 import httpx
 
-from .ports import SimConnectionError, SimError, SimOutcomeUnknown, SimRejected
+from .ports import SimBusy, SimConnectionError, SimError, SimOutcomeUnknown, SimRejected
 from .settings import CAMERAS, Settings
 
 
@@ -69,6 +69,13 @@ class SimClient:
         try:
             response = await self._client.request(method, path, **request_options)
         except (httpx.ConnectTimeout, httpx.PoolTimeout) as exc:
+            if not mutating_operator:
+                # Step 7: while the real sim builds a scene its accept backlog (5) fills,
+                # so a read cannot even connect. On localhost a dead sim refuses at once
+                # (ConnectError), so a connect timeout means "alive but busy".
+                raise SimBusy(
+                    f"LIBERO busy, no connection within the timeout: {method} {path}"
+                ) from exc
             raise SimConnectionError(
                 f"LIBERO connection unavailable before request: {method} {path}"
             ) from exc
@@ -77,6 +84,8 @@ class SimClient:
                 raise SimOutcomeUnknown(
                     f"LIBERO command outcome unknown after timeout: {method} {path}"
                 ) from exc
+            if isinstance(exc, httpx.ReadTimeout):
+                raise SimBusy(f"LIBERO accepted but did not answer in time: {method} {path}") from exc
             raise SimConnectionError(f"LIBERO request timed out: {method} {path}") from exc
         except httpx.HTTPError as exc:
             if mutating_operator and not isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout)):

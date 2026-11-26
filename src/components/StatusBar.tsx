@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { config } from '../config';
 import { detailChipClass, LEVEL_META } from '../config/levels';
-import { liberoSimFresh, type DerivedStatus } from '../state/deriveStatus';
+import { liberoSimBusy, liberoSimFresh, type DerivedStatus } from '../state/deriveStatus';
 import { useStore } from '../state/store';
 import type { Level } from '../state/types';
 import { fmt, useT } from '../strings';
@@ -72,6 +72,8 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
     ? t.status.liberoUnknown
     : liberoSnapshotStale
       ? t.status.liberoStale
+      : liberoSimBusy(liberoHealth)
+        ? t.status.liberoBusy
       : liberoHealth.sim === 'offline'
         ? t.status.liberoDisconnected
         : !liberoFresh
@@ -82,6 +84,8 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
   const liberoLevel: Level =
     liberoSnapshotStale
       ? 'attention'
+      : liberoSimBusy(liberoHealth)
+        ? 'waiting'
       : liberoHealth?.sim === 'offline'
         ? 'action'
         : !liberoFresh
