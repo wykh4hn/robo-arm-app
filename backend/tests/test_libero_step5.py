@@ -161,7 +161,10 @@ def test_ws_stop_without_reset_sends_no_stop_pending() -> None:
         try:
             await runner.refresh()
             await hub.on_stop("s2")
-            assert [m["type"] for m in sent if m["type"] != "libero_state"] == ["stop_ack"]
+            # The RUNNING run seen at start is adopted as a board `task` (step 6).
+            assert [m["type"] for m in sent if m["type"] not in ("libero_state", "task")] == [
+                "stop_ack"
+            ]
         finally:
             await runner.shutdown()
 
@@ -240,6 +243,35 @@ def test_board_run_already_running_when_seen_starts_as_running() -> None:
             sim.state = state_payload(run_id="run-c", status="RUNNING", session_active=True)
             await runner.refresh()
             assert [(t["state"], t["command"]) for t in board_task(sent)] == [("running", "run-c")]
+        finally:
+            await runner.shutdown()
+
+    asyncio.run(run())
+
+
+def test_run_already_running_when_the_backend_starts_becomes_a_board_task() -> None:
+    # Step 6 finding: a BE restarted mid-run showed "busy" with no task to follow.
+    async def run() -> None:
+        sim = FakeOperator()
+        sim.state = state_payload(run_id="run-d", status="RUNNING", session_active=True)
+        runner, sent = make_web_runner(sim)
+        try:
+            await runner.refresh()
+            assert [(t["state"], t["command"]) for t in board_task(sent)] == [("running", "run-d")]
+        finally:
+            await runner.shutdown()
+
+    asyncio.run(run())
+
+
+def test_idle_run_at_backend_start_is_not_a_task() -> None:
+    async def run() -> None:
+        sim = FakeOperator()
+        sim.state = state_payload(run_id="run-e", status="READY", session_active=True)
+        runner, sent = make_web_runner(sim)
+        try:
+            await runner.refresh()
+            assert board_task(sent) == []
         finally:
             await runner.shutdown()
 

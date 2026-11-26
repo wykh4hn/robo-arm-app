@@ -319,6 +319,19 @@ def test_sim_is_offline_before_any_state_and_when_the_poller_stalls() -> None:
     asyncio.run(run())
 
 
+def test_health_tells_the_web_whether_a_board_session_is_required() -> None:
+    # Step 6 finding: with SO101_REQUIRE_BOARD_SESSION=false the web still locked Send
+    # on "Board not connected", so the Q1 dev flag could not be tried from the page.
+    runner = make_runner(FakeSim())
+    health = runner.wire_connection_health()
+    assert health["board_session_required"] is True
+    outgoing_adapter.validate_python(
+        {"type": "libero_state", "seq": 0, "ts": 0, "state": {}, "connection_health": health}
+    )
+    runner.settings = runner.settings.model_copy(update={"require_board_session": False})
+    assert runner.wire_connection_health()["board_session_required"] is False
+
+
 def test_heartbeat_degraded_only_after_2_s_of_failures() -> None:
     runner = make_runner(FakeSim())
     assert runner.wire_connection_health()["heartbeat"] == "off"

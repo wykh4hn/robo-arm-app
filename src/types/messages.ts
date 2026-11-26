@@ -72,6 +72,12 @@ export interface LiberoConnectionHealth {
   heartbeat: 'healthy' | 'degraded' | 'off';
   /** Age of the last good `/api/state` read; null when there has been none. */
   last_state_age_ms: number | null;
+  /**
+   * Mirrors the BE's SO101_REQUIRE_BOARD_SESSION (Q1). false (dev only) = the BE accepts a
+   * command without a Board session, so Send is not locked on "Board not connected".
+   * Absent = true.
+   */
+  board_session_required?: boolean;
 }
 
 export interface LiberoState {

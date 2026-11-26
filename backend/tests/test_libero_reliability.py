@@ -266,3 +266,46 @@ def test_backend_starts_degraded_and_recovers_after_initial_poll_failure() -> No
             await runner.shutdown()
 
     asyncio.run(run())
+
+
+def test_restarted_backend_adopts_a_watchdog_the_sim_still_holds() -> None:
+    # Step 6 finding: after a BE crash the sim keeps `operator.watch=true`. The new BE
+    # sent no heartbeat until its own first reset, so a Board-started run was aborted
+    # OPERATOR_LOST at step 0. It must heartbeat as soon as it sees the sim watching.
+    watching = {**state_payload(), "operator": {"watch": True, "timeout_s": 5.0,
+                                                "last_heartbeat_age_s": 42.0}}
+    sim = FakeSim()
+    sim.poll_results = [watching]
+    runner = make_runner(sim)
+
+    async def run() -> None:
+        try:
+            await runner.refresh()
+            deadline = time.monotonic() + 1
+            while not sim.heartbeat_calls and time.monotonic() < deadline:
+                await asyncio.sleep(0.01)
+            assert sim.heartbeat_calls and all(sim.heartbeat_calls)
+            assert runner.wire_connection_health()["heartbeat"] == "healthy"
+            calls = len(sim.heartbeat_calls)
+            await runner.refresh()  # no second loop
+            assert runner._heartbeat_task is not None and not runner._heartbeat_task.done()
+            assert len(sim.heartbeat_calls) >= calls
+        finally:
+            await runner.shutdown()
+        assert sim.heartbeat_calls[-1] is False  # intentional shutdown still says watch: false
+
+    asyncio.run(run())
+
+
+def test_backend_does_not_start_the_watchdog_when_the_sim_is_not_watching() -> None:
+    sim = FakeSim()
+    sim.poll_results = [{**state_payload(), "operator": {"watch": False}}]
+    runner = make_runner(sim)
+
+    async def run() -> None:
+        await runner.refresh()
+        await asyncio.sleep(0.05)
+        assert sim.heartbeat_calls == []
+        assert runner.wire_connection_health()["heartbeat"] == "off"
+
+    asyncio.run(run())

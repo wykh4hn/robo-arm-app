@@ -225,6 +225,37 @@ describe('deriveStatus: LIBERO status table (communication-plan §4)', () => {
     expect(d.overall).toBe('action');
   });
 
+  it('board_session_required=false (Q1 dev flag): Board offline still shown, Send allowed', () => {
+    const d = lib(
+      { status: 'READY', session_active: false },
+      { board: 'disconnected', heartbeat: 'off', board_session_required: false },
+    );
+    expect(d.libero?.view).toBe('boardOffline');
+    expect(d.banner[0]).toMatchObject({ kind: 'liberoBoardOffline' });
+    expect(d.canSend).toBe(true);
+    expect(d.sendBlockReason).toBeNull();
+  });
+
+  it('board_session_required=false: a run that ended with the Board lost can be replaced', () => {
+    const d = lib(
+      {
+        status: 'ABORTED',
+        session_active: false,
+        hold_latched: true,
+        hold_reason: 'CONNECTION_LOST',
+        end_reason: 'CONNECTION_LOST',
+      },
+      { board: 'disconnected', board_session_required: false },
+    );
+    expect(d.libero?.view).toBe('boardLost');
+    expect(d.canSend).toBe(true);
+    const required = lib(
+      { status: 'ABORTED', session_active: false, hold_latched: true, hold_reason: 'CONNECTION_LOST' },
+      { board: 'disconnected' },
+    );
+    expect(required.sendBlockReason).toBe('boardOffline');
+  });
+
   it('status=READY without HOLD: Ready, Send allowed', () => {
     const d = lib({ status: 'READY', step: 0 });
     expect(d.libero).toMatchObject({ view: 'ready', level: 'ok' });

@@ -188,6 +188,7 @@ class LiberoRunner:
             )
 
         self._observe_board_run(previous, state)
+        self._adopt_watch(state)
 
         if self.on_state is not None:
             try:
@@ -206,15 +207,45 @@ class LiberoRunner:
         """
         return self._resetting > 0
 
+    def _adopt_watch(self, state: LiberoState) -> None:
+        """Take over a watchdog the sim still holds for an earlier BE (§3.3).
+
+        Step 6 finding: a BE that died without `watch: false` leaves the sim watching.
+        A restarted BE only started heartbeats before its own first reset, so the next
+        run the Board started (Q1) was aborted OPERATOR_LOST at step 0. The sim is
+        waiting for an operator, so this BE becomes it and heartbeats at once.
+        """
+        operator = state.raw.get("operator")
+        if (
+            self._closed
+            or self._watch_enabled
+            or not isinstance(operator, dict)
+            or operator.get("watch") is not True
+        ):
+            return
+        self._watch_enabled = True  # already on at the sim; the loop keeps it alive
+        self._event(
+            "libero_watchdog_adopted",
+            {"last_heartbeat_age_s": operator.get("last_heartbeat_age_s")},
+        )
+        self._ensure_heartbeat()
+
     def _observe_board_run(self, previous: LiberoState | None, state: LiberoState) -> None:
         """Q1: a new `run_id` the BE did not reset is a run the Board runner started.
 
         The Board runner has no "wait for command" mode yet: each launch resets the
         sim and runs one episode. Show it as a task with `source="board"` so the web
         follows it like its own; Stop works on it as on any run.
+        A run already RUNNING at the BE's first read (the BE restarted mid-run, step 6
+        finding) is adopted the same way, so the web has a task to follow and stop.
         TODO(Q1): with the waiting mode only a web `command` starts a run.
         """
-        if previous is None or state.run_id == previous.run_id or self._closed:
+        if self._closed:
+            return
+        if previous is None:
+            if state.status != "RUNNING":
+                return
+        elif state.run_id == previous.run_id:
             return
         if self._resetting or self._reset_inflight:
             return  # our own reset, or the read that reconciles it
@@ -239,7 +270,7 @@ class LiberoRunner:
             seed=None,
             profile_id=None,
             started_ts=_now_ms(),
-            before_run_id=previous.run_id,
+            before_run_id=previous.run_id if previous is not None else None,
             run_id=state.run_id,
             command=label,
             source="board",
@@ -358,6 +389,9 @@ class LiberoRunner:
             ),
             "heartbeat": heartbeat if heartbeat in ("healthy", "degraded") else "off",
             "last_state_age_ms": None if age_s is None else int(age_s * 1000),
+            # Q1 dev flag: false = the BE accepts a command without a Board session,
+            # so the web must not lock Send on `board == "disconnected"`.
+            "board_session_required": self.settings.require_board_session,
         }
 
     # ------------------------------------------------------------------

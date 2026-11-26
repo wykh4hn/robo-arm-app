@@ -245,6 +245,8 @@ class ConnectionHealthOut(_Out):
     board: Literal["connected", "disconnected"]
     heartbeat: Literal["healthy", "degraded", "off"]
     last_state_age_ms: int | None
+    # Mirrors SO101_REQUIRE_BOARD_SESSION (Q1). Absent from older BEs = True.
+    board_session_required: bool = True
 
 
 class LiberoStateOut(_Out):

@@ -2,7 +2,11 @@
 """Wiring: port 8001, the LIBERO sim poll, and the writer thread.
 
 Run with exactly one worker:
-    uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 1
+    uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 1 --timeout-graceful-shutdown 3
+
+Keep `--timeout-graceful-shutdown`: an open camera MJPEG stream never ends, so without
+it Ctrl+C waits forever, and a second Ctrl+C skips the lifespan shutdown that sends the
+sim `watch: false` (a running episode then ends OPERATOR_LOST).
 """
 
 from __future__ import annotations

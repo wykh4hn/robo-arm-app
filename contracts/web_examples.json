@@ -58,7 +58,8 @@
         "sim": "online",
         "board": "connected",
         "heartbeat": "healthy",
-        "last_state_age_ms": 40
+        "last_state_age_ms": 40,
+        "board_session_required": true
       }
     },
     "libero_state_offline": {
@@ -84,7 +85,8 @@
         "sim": "offline",
         "board": "disconnected",
         "heartbeat": "off",
-        "last_state_age_ms": null
+        "last_state_age_ms": null,
+        "board_session_required": false
       }
     },
     "task_preparing": {

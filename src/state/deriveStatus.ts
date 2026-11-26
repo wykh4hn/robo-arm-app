@@ -337,7 +337,9 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   else if (lib) {
     if (lib.view === 'unknown') {
       reason = s.liberoConnectionHealth?.sim === 'offline' ? 'simOffline' : 'stale';
-    } else if (!lib.boardConnected) reason = 'boardOffline';
+    } else if (
+      !lib.boardConnected && s.liberoConnectionHealth?.board_session_required !== false
+    ) reason = 'boardOffline';
     else if (stoppedState) reason = 'stopped';
     else if (lib.status === 'RUNNING' || openTask) reason = 'busy';
     else if (pending) reason = 'pending';
