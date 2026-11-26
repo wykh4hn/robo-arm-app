@@ -12,6 +12,7 @@ const LANGS: Lang[] = ['vi', 'en'];
 
 export function Header({ derived }: { derived: DerivedStatus }) {
   const t = useT();
+  const franka = useStore((s) => s.arm) === 'franka';
   const tab = useStore((s) => s.tab);
   const setTab = useStore((s) => s.setTab);
   const lang = useStore((s) => s.lang);
@@ -60,7 +61,7 @@ export function Header({ derived }: { derived: DerivedStatus }) {
       </nav>
       <div className="rb-header__project">
         <div className="rb-header__name">{config.projectName}</div>
-        <div className="rb-header__sub">{t.projectSub}</div>
+        <div className="rb-header__sub">{franka ? t.projectSubFranka : t.projectSub}</div>
       </div>
       <div className="rb-lang" role="group" aria-label={t.lang.label}>
         {LANGS.map((l) => (

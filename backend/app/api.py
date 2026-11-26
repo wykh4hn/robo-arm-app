@@ -151,6 +151,36 @@ def build_router(core: Core) -> APIRouter:
             headers={"Content-Disposition": f'attachment; filename="{name}"'},
         )
 
+    @r.get("/api/v1/scenes")
+    async def scenes() -> dict[str, Any]:
+        """LIBERO scenes from demo_bridge (empty with the SO-101 simulators)."""
+        catalog = getattr(core.runner.sim, "catalog", None)
+        if catalog is None:
+            return {"arm": core.state.arm, "scenes": []}
+        try:
+            items = await asyncio.wait_for(catalog(), core.settings.sim_timeout_ms / 1000)
+        except Exception:  # noqa: BLE001 - the bridge may not be up yet
+            raise HTTPException(503, "bridge not reachable") from None
+        return {"arm": core.state.arm, "scenes": items}
+
+    @r.get("/api/v1/runs/{run_id}/video")
+    async def run_video(run_id: int) -> Response:
+        """The MP4 demo_bridge recorded for this run (both cameras side by side)."""
+        link = getattr(core.runner.sim, "link", None)
+        await storage.flush()
+        row = await storage.get_run(run_id)
+        episode = row.get("sim_episode_id") if row else None
+        if link is None or not episode:
+            raise HTTPException(404, "no video for this run")
+        try:
+            resp = await link._http.get(f"/api/episodes/{episode}/video")
+        except Exception:  # noqa: BLE001
+            raise HTTPException(503, "bridge not reachable") from None
+        if resp.status_code != 200:
+            raise HTTPException(404, "no video for this run")
+        return Response(resp.content, media_type="video/mp4",
+                        headers={"Content-Disposition": f'attachment; filename="run-{run_id:06d}.mp4"'})  # fmt: skip
+
     @r.get("/api/v1/stats")
     async def stats(profile_id: str | None = None, protocol_id: str | None = None) -> dict:
         rows = await storage.timings_for(profile_id, protocol_id)

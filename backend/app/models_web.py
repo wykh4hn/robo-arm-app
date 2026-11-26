@@ -85,6 +85,29 @@ class TelemetryOut(_Out):
     joints: dict[JointName, JointSampleOut]
 
 
+class EeOut(_Out):
+    """demo_bridge (Franka Panda in LIBERO): the arm, measured. Replaces `telemetry` there."""
+
+    type: Literal["ee"] = "ee"
+    ts: int
+    step: int
+    maxSteps: int | None = None
+    simTimeS: float
+    pos: list[float] | None = None  # end-effector x, y, z in mm, measured
+    gripper: Literal["open", "closed"] | None = None
+    joints: list[float]  # the 7 Franka joints in degrees, measured (no per-joint command)
+
+
+class PlanOut(_Out):
+    """The 30 end-effector targets the board just planned (mm), from step `step` + 1 on."""
+
+    type: Literal["plan"] = "plan"
+    ts: int
+    chunk: int
+    step: int
+    points: list[list[float]]
+
+
 class LinkOut(_Out):
     web: Literal["connected"] = "connected"
     usb: UsbLink
@@ -116,6 +139,8 @@ class StatusTaskOut(_Out):
 class StatusOut(_Out):
     type: Literal["status"] = "status"
     ts: int
+    # Which arm the console shows: "so101" (6 joints) or "franka" (LIBERO via demo_bridge).
+    arm: Literal["so101", "franka"] | None = None
     link: LinkOut
     robot: RobotOut
     task: StatusTaskOut
@@ -214,10 +239,12 @@ Outgoing = Annotated[
         PipelineOut,
         CameraOut,
         PingOut,
+        EeOut,
+        PlanOut,
     ],
     Field(discriminator="type"),
 ]
 outgoing_adapter: TypeAdapter[Outgoing] = TypeAdapter(Outgoing)
 
 # Rule 4: these may be dropped for a slow client; everything else is kept.
-DROPPABLE = frozenset({"telemetry", "pipeline", "camera", "ping"})
+DROPPABLE = frozenset({"telemetry", "pipeline", "camera", "ping", "ee", "plan"})

@@ -7,6 +7,7 @@ success or failure itself: MuJoCo does (F2). Nothing here may delay a Stop.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 import logging
 import time
@@ -14,9 +15,9 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Any, Awaitable
 
-from . import adapter
+from . import adapter, pipeline
 from .live import Hub
-from .models_web import AckOut, NackOut, StopAckOut, TaskInfoOut, TaskOut, TasksOut
+from .models_web import AckOut, NackOut, PipelineOut, StopAckOut, TaskInfoOut, TaskOut, TasksOut
 from .ports import BoardError, BoardPort, SimBadPayload, SimError, SimPort, SimRejected, SimState
 from .settings import Settings
 from .state import ActiveRun, SystemState, reason_text, task_info
@@ -83,7 +84,11 @@ class Runner:
     ) -> None:
         self.settings = settings
         self.state = state
-        state.driver = {"real": "board"}.get(settings.board_link, settings.board_link)
+        bridge = settings.sim_link == "bridge"
+        # Who drives the arm, for the web: with the bridge it is X-VLA on the board itself.
+        state.driver = "board" if bridge else {"real": "board"}.get(settings.board_link, settings.board_link)
+        state.arm = "franka" if bridge else "so101"
+        self._last_chunk: tuple[str | None, int] = (None, 0)
         self._warned_bad_state = False
         self.storage = storage
         self.hub = hub
@@ -246,6 +251,9 @@ class Runner:
                     Rejection("logger_not_ready", "Chưa ghi được dữ liệu"),
                 )  # fmt: skip
 
+        if self.protocol.template_id == "libero_scene":
+            await self._refresh_scenes()
+
         # From here to `_starting = True` there is no await: two Starts cannot both pass.
         st = self.state
         ctx = Context(
@@ -341,7 +349,9 @@ class Runner:
                 async with asyncio.timeout(s.prepare_timeout_s):
                     try:
                         result = await asyncio.wait_for(
-                            self.sim.reset(run.seed, run.run_id, self.protocol.object),
+                            self.sim.reset(
+                                run.seed, run.run_id, run.params.get("object") or self.protocol.object
+                            ),
                             self._ms(s.sim_timeout_ms),
                         )
                     except _IO_ERRORS as exc:
@@ -372,6 +382,11 @@ class Runner:
                         self.storage.add_event(run.run_id, "prompt_failed", {"error": str(exc)})
                         self._finish("finished", "error", "prompt_failed")
                         return
+                    episode = getattr(self.board, "last_episode_id", None)
+                    if episode:  # demo_bridge: the episode exists only once the prompt is sent
+                        run.sim_run_id = episode
+                        self.storage.update_run(run.run_id, sim_episode_id=episode)
+                        self.storage.add_event(run.run_id, "bridge_episode", {"episode_id": episode})
             except TimeoutError:
                 self._finish("finished", "error", "prepare_timeout")
                 return
@@ -574,7 +589,7 @@ class Runner:
                 "sim_link": self.settings.sim_link,
                 "board_link": self.settings.board_link,
                 # Who drove the arm. "reference" = MuJoCo's ground-truth controller, not AI.
-                "driver": self.settings.board_link,
+                "driver": "bridge: X-VLA on the board NPU" if self.settings.sim_link == "bridge" else self.settings.board_link,
                 "laptop": self.versions.get("hostname"),
                 "board": None,
             },
@@ -715,7 +730,9 @@ class Runner:
             self._on_board_lost(run)
             changed = False  # _finish already sent status
 
-        if now - self._last_web_telemetry >= 1.0 / self.settings.telemetry_web_hz - 0.005:
+        if s.arm == "franka":
+            self._on_franka(s, run, received)
+        elif now - self._last_web_telemetry >= 1.0 / self.settings.telemetry_web_hz - 0.005:
             self._last_web_telemetry = now
             try:
                 msg = adapter.to_telemetry(s, received, self.settings.gripper_range)
@@ -725,6 +742,41 @@ class Runner:
                 self.hub.broadcast(msg.wire())
         if changed:
             self.hub.broadcast_status()
+
+    def _on_franka(self, s: SimState, run: ActiveRun | None, received: int) -> None:
+        """demo_bridge: end-effector telemetry, and one timing row + plan per board chunk."""
+        ee = s.ee or {}
+        self.hub.broadcast(adapter.to_ee(s, received).wire())
+        chunk = ee.get("chunk")
+        key = (s.sim_run_id, int(ee.get("chunks") or 0))
+        if not chunk or key == self._last_chunk:
+            return
+        self._last_chunk = key
+        row = adapter.chunk_timing(chunk)
+        steps = pipeline.pipeline_steps(row)
+        self.hub.pipeline_steps = steps
+        self.hub.broadcast(PipelineOut(ts=received, steps=steps).wire())
+        plan = adapter.to_plan(chunk, received)
+        if plan is not None:
+            self.hub.broadcast(plan.wire())
+        if run is not None:
+            self.storage.add_timing(run.run_id, row, received)
+            self.storage.add_event(run.run_id, "board_chunk", {k: chunk.get(k) for k in ("chunk", "step", "rtt_ms", "board")})
+
+    async def _refresh_scenes(self) -> None:
+        """LIBERO scene list from the bridge, for validation. Kept once loaded."""
+        if self.protocol.scenes:
+            return
+        catalog = getattr(self.sim, "catalog", None)
+        if catalog is None:
+            return
+        try:
+            scenes = await asyncio.wait_for(catalog(), self._ms(self.settings.sim_timeout_ms))
+        except _IO_ERRORS:
+            return
+        mapping = {f"{x['suite']}/{x['task_id']}": str(x.get("instruction", "")) for x in scenes}
+        if mapping:
+            self.protocol = dataclasses.replace(self.protocol, scenes=mapping)
 
     def _on_board_lost(self, run: ActiveRun) -> None:
         """Treated like a Stop (F8): interrupted + incomplete, and Ready is required."""

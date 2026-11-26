@@ -35,6 +35,7 @@ export interface Actions {
     templateId: string,
     params: Record<string, string>,
     profileId?: string,
+    fixedText?: string,
   ) => string | null;
   requestStop: () => void;
   sendReady: () => void;
@@ -65,6 +66,7 @@ export function initialMonitorState(now = Date.now()): MonitorState {
     latencyMs: null,
     usb: 'unknown',
     driver: null,
+    arm: 'so101',
     robot: 'unknown',
     robotError: null,
     estop: false,
@@ -74,6 +76,8 @@ export function initialMonitorState(now = Date.now()): MonitorState {
     stop: { phase: 'idle', id: null, requestedAt: null },
     awaitingReady: false,
     samples: [],
+    ee: [],
+    plan: {},
     cameras: {},
     pipeline: null,
     tracking: initialTracking,
@@ -191,6 +195,7 @@ export function applyMessage(
         synced: s.web === 'connected' ? true : s.synced,
         usb: msg.link.usb,
         driver: msg.link.driver ?? null,
+        arm: msg.arm ?? s.arm,
         latencyMs: msg.link.latencyMs ?? null,
         robot: msg.robot.state,
         robotError: msg.robot.error ?? null,
@@ -279,6 +284,31 @@ export function applyMessage(
         },
       };
     }
+    case 'ee': {
+      const last = s.ee[s.ee.length - 1];
+      const fresh = !last || msg.step < last.step; // a new episode starts at step 0
+      const sample = {
+        step: msg.step,
+        t: msg.simTimeS,
+        pos: msg.pos ?? null,
+        gripper: msg.gripper ?? null,
+        joints: msg.joints,
+        maxSteps: msg.maxSteps ?? null,
+      };
+      if (!fresh && last.step === msg.step) return { ...base, ee: [...s.ee.slice(0, -1), sample] };
+      return {
+        ...base,
+        ee: fresh ? [sample] : cap([...s.ee, sample], config.sampleBufferMax),
+        plan: fresh ? {} : s.plan,
+      };
+    }
+    case 'plan': {
+      const plan = { ...s.plan };
+      msg.points.forEach((p, i) => {
+        plan[msg.step + i + 1] = p;
+      });
+      return { ...base, plan };
+    }
     case 'pipeline':
       return { ...base, pipeline: msg };
   }
@@ -333,10 +363,11 @@ export const useStore = create<StoreState>()((set, get) => {
 
     tick: (now = Date.now()) => set({ now }),
 
-    sendCommand: (templateId, params, profileId) => {
+    sendCommand: (templateId, params, profileId, fixedText) => {
+      // A LIBERO scene (demo_bridge) carries its own fixed instruction; templates build theirs.
       const template = config.templates.find((tpl) => tpl.id === templateId);
-      if (!template) return null;
-      const text = template.build(params);
+      const text = fixedText ?? template?.build(params);
+      if (!text) return null;
       const id = newId('cmd');
       track('command', text, {
         type: 'command',

@@ -2,6 +2,7 @@
 # Start the SO-101 web console against the real MuJoCo on ONE machine.
 #
 #   scripts/demo.sh                     MuJoCo already running on :8000 (in WSL or Windows)
+#   LINK=bridge scripts/demo.sh         demo_bridge (LIBERO + X-VLA on the board) already on :8000
 #   SIM_DIR=~/Robo-Arm-COS40005 scripts/demo.sh
 #                                       also starts so101sim/board_server/app.py if :8000 is free
 #
@@ -12,6 +13,7 @@
 #   SIM_FLAGS    extra flags for MuJoCo, e.g. "--no-cameras"
 #   BE_PORT      web/BE port (default 8001)
 #   REBUILD=1    rebuild the web even if dist/ exists
+#   LINK         "mujoco" (default: so101sim/board_server) or "bridge" (demo_bridge)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -21,6 +23,7 @@ case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) WIN=1 ;; *) WIN=0 ;; esac
 if [ "$WIN" = 1 ]; then PY_DEFAULT=python; else PY_DEFAULT=python3; fi
 PY="${PYTHON:-$PY_DEFAULT}"
 
+LINK="${LINK:-mujoco}"
 say() { printf '\n== %s\n' "$*"; }
 die() { printf '\nLỖI: %s\n' "$*" >&2; exit 1; }
 
@@ -37,6 +40,31 @@ except Exception:
 PY
 }
 
+bridge_check() {
+  "$PY" - "$SIM_URL" <<'PY'
+import json, sys, urllib.request
+try:
+    with urllib.request.urlopen(sys.argv[1] + "/api/health", timeout=3) as r:
+        d = json.load(r)
+    if d.get("bridge") != "ok":
+        print("wrong")
+    else:
+        print("ok" if (d.get("board") or {}).get("reachable") else "noboard")
+except Exception:
+    print("down")
+PY
+}
+
+if [ "$LINK" = bridge ]; then
+  say "1/4 demo_bridge ($SIM_URL)"
+  case "$(bridge_check)" in
+    ok) echo "Bridge chạy, board trả lời." ;;
+    noboard) echo "CHÚ Ý: bridge chạy nhưng board chưa trả lời. Mở App Lab, chạy X-VLA LIBERO NPU. Web vẫn mở được, nút Gửi bị khoá tới khi board lên." ;;
+    wrong) die "cổng 8000 có server nhưng không phải demo_bridge (có thể là MuJoCo board_server). Tắt nó rồi chạy bridge." ;;
+    *) die "bridge chưa chạy. Trong WSL: MUJOCO_GL=egl GALLIUM_DRIVER=d3d12 ~/libero/bin/python -m demo_bridge.app --board-host <IP board>" ;;
+  esac
+  state=bridge
+else
 say "1/4 MuJoCo ($SIM_URL)"
 state="$(sim_check)"
 if [ "$state" = down ] && [ -n "${SIM_DIR:-}" ]; then
@@ -58,7 +86,9 @@ if [ "$state" = down ] && [ -n "${SIM_DIR:-}" ]; then
     kill -0 "$SIM_PID" 2>/dev/null || { tail -20 "$ROOT/backend/data/mujoco.log"; die "MuJoCo dừng khi khởi động"; }
   done
 fi
+fi
 case "$state" in
+  bridge) ;;
   ok) echo "MuJoCo board_server (schema v2) đang chạy." ;;
   wrong) die "cổng 8000 có server nhưng không phải so101sim/board_server/app.py (có thể là so101sim/app.py). Tắt nó rồi chạy board_server." ;;
   *) die "MuJoCo chưa chạy. Chạy so101sim/board_server/app.py --mode local --no-viewer, hoặc đặt SIM_DIR." ;;
@@ -84,5 +114,9 @@ IP="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
 echo "Mở trên máy này:  http://localhost:$BE_PORT"
 [ -n "$IP" ] && echo "Máy khác/iPad:    http://<IP LAN của máy>:$BE_PORT (WSL: xem docs/run-on-one-machine.md, mục iPad)"
 echo "Ctrl+C để dừng."
-export SO101_SIM_LINK=real SO101_BOARD_LINK=reference SO101_SIM_URL="$SIM_URL"
+if [ "$LINK" = bridge ]; then
+  export SO101_SIM_LINK=bridge SO101_BRIDGE_URL="$SIM_URL"
+else
+  export SO101_SIM_LINK=real SO101_BOARD_LINK=reference SO101_SIM_URL="$SIM_URL"
+fi
 "$VPY" -m uvicorn app.main:app --host 0.0.0.0 --port "$BE_PORT" --workers 1 --timeout-graceful-shutdown 3

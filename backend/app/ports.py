@@ -59,6 +59,10 @@ class SimState:
     sim_run_id: str | None = None  # MuJoCo's own episode id, new at every RESET
     episode_status: str | None = None  # READY | RUNNING | SUCCESS | FAILURE | ABORTED
     gripper_limits: tuple[float, float] | None = None  # rad (closed, open), from the model
+    # "so101": 6 joints as above. "franka": LIBERO's Franka Panda through demo_bridge; then
+    # joint_positions holds its 7 joints and `ee` the end-effector, gripper and board chunk.
+    arm: str = "so101"
+    ee: dict[str, Any] | None = field(default=None, compare=False)
     raw: dict[str, Any] = field(default_factory=dict, compare=False)
 
 

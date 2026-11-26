@@ -35,8 +35,10 @@ class Settings(BaseSettings):
 
     # SimPort: "mock" is the in-process FakeSim, "real" is app/sim_client.py, which talks to
     # so101sim/board_server/app.py (schema v2) of Robo-Arm-COS40005.
-    sim_link: Literal["mock", "real"] = "mock"
+    # "bridge" is demo_bridge: LIBERO (Franka) on the laptop, X-VLA on the board (app/bridge_link.py).
+    sim_link: Literal["mock", "real", "bridge"] = "mock"
     sim_url: str = "http://127.0.0.1:8000"
+    bridge_url: str = "http://127.0.0.1:8000"
     # RESET moves the balls by up to +-8 mm, seeded, so each seed is its own scene.
     sim_randomize: bool = True
     sim_poll_hz: float = 10.0
@@ -50,7 +52,8 @@ class Settings(BaseSettings):
     #   "reference" MuJoCo's own ground-truth reference controller, local mode only.
     #               It is NOT the AI: runs are marked driver=reference in the manifest.
     #   "real"      app/board_link.py, the VENTUNO Q board (Phase 3, blocked by Q1)
-    board_link: Literal["mock", "reference", "real"] = "mock"
+    #   "bridge"    set by itself with SO101_SIM_LINK=bridge: the bridge starts X-VLA on the board
+    board_link: Literal["mock", "reference", "real", "bridge"] = "mock"
     board_timeout_ms: int = 2000
 
     data_dir: Path = Path("./data")
@@ -104,6 +107,21 @@ class Settings(BaseSettings):
         closed = -0.17453 if self.gripper_closed_rad is None else self.gripper_closed_rad
         opened = 1.74533 if self.gripper_open_rad is None else self.gripper_open_rad
         return closed, opened
+
+    @property
+    def link_profiles_file(self) -> Path:
+        """With the bridge the only model is X-VLA on the board's NPU."""
+        default = BACKEND_DIR / "config" / "profiles.json"
+        if self.sim_link == "bridge" and self.profiles_file == default:
+            return BACKEND_DIR / "config" / "profiles.bridge.json"
+        return self.profiles_file
+
+    @property
+    def link_protocol_file(self) -> Path:
+        default = BACKEND_DIR / "config" / "protocol.dev.json"
+        if self.sim_link == "bridge" and self.protocol_file == default:
+            return BACKEND_DIR / "config" / "protocol.bridge.json"
+        return self.protocol_file
 
     @property
     def gripper_configured(self) -> bool:

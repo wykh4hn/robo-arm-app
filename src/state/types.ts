@@ -9,6 +9,7 @@ import type {
   TaskState,
   UsbLink,
   WebLink,
+  Arm,
   Driver,
 } from '../types/messages';
 
@@ -109,6 +110,15 @@ export interface Problem {
   params: Record<string, string | number>;
 }
 
+export interface EeSample {
+  step: number;
+  t: number;
+  pos: [number, number, number] | null;
+  gripper: 'open' | 'closed' | null;
+  joints: number[];
+  maxSteps: number | null;
+}
+
 export interface Layers {
   ghost: boolean;
   trail: boolean;
@@ -127,6 +137,8 @@ export interface MonitorState {
   latencyMs: number | null;
   usb: UsbLink;
   driver: Driver | null;
+  /** Which arm the console shows (from `status.arm`). */
+  arm: Arm;
   robot: RobotState;
   robotError: RobotError | null;
   estop: boolean;
@@ -139,6 +151,10 @@ export interface MonitorState {
   samples: Sample[];
   cameras: Partial<Record<CameraId, CameraRuntime>>;
   pipeline: PipelineMsg | null;
+  /** demo_bridge: the current episode's measured samples, oldest first. */
+  ee: EeSample[];
+  /** demo_bridge: planned end-effector position (mm) by step, from the board's chunks. */
+  plan: Record<number, [number, number, number]>;
   tracking: TrackingState;
   events: LogEvent[];
 }

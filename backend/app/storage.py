@@ -440,6 +440,16 @@ class Storage:
         )  # fmt: skip
         self.append_raw(run_id, {"received_at": received_at, "state": s.raw})
 
+    def add_timing(self, run_id: int, row: dict[str, Any], received_at: int) -> None:
+        """One board timing row (demo_bridge sends one per chunk while the run is live)."""
+        from .pipeline import TIMING_FIELDS
+
+        cols = ", ".join(TIMING_FIELDS)
+        self.enqueue(
+            f"INSERT INTO timings (run_id, {cols}, received_at) VALUES ({', '.join('?' * (len(TIMING_FIELDS) + 2))})",
+            (run_id, *(row.get(k) for k in TIMING_FIELDS), received_at),
+        )
+
     def quarantine(self, raw: Any, error: str) -> None:
         limit = self.settings.quarantine_max_rows
         try:

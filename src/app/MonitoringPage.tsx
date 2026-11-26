@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { config } from '../config';
 import { CameraTile } from '../components/CameraTile';
 import { CommandPanel } from '../components/CommandPanel';
+import { FrankaCharts, FrankaState } from '../components/FrankaPanel';
 import { JointTable } from '../components/JointTable';
 import { RobotViewer3D } from '../components/RobotViewer3D';
 import { TaskHistory } from '../components/TaskHistory';
@@ -30,7 +31,10 @@ function useTabletLayout() {
 export function MonitoringPage({ derived, noUrdf }: { derived: DerivedStatus; noUrdf: boolean }) {
   const large = useStore((s) => s.largeSlot);
   const lang = useStore((s) => s.lang);
-  const bigCamera = config.cameras.find((c) => c.id === large);
+  // The Franka of demo_bridge has no 3D model here: a camera always takes the large slot.
+  const franka = useStore((s) => s.arm) === 'franka';
+  const bigCamera =
+    config.cameras.find((c) => c.id === large) ?? (franka ? config.cameras[0] : undefined);
   const tablet = useTabletLayout();
   const [tabletTab, setTabletTab] = useState<TabletTab>('control');
 
@@ -47,9 +51,9 @@ export function MonitoringPage({ derived, noUrdf }: { derived: DerivedStatus; no
         )}
       </div>
       <div className="rb-cams rb-tablet-cams">
-        {bigCamera && <RobotViewer3D compact forcePlaceholder={noUrdf} />}
+        {bigCamera && !franka && <RobotViewer3D compact forcePlaceholder={noUrdf} />}
         {config.cameras
-          .filter((c) => c.id !== large)
+          .filter((c) => c.id !== bigCamera?.id)
           .map((c) => (
             <CameraTile key={c.id} camera={c} stale={derived.stale} />
           ))}
@@ -71,17 +75,17 @@ export function MonitoringPage({ derived, noUrdf }: { derived: DerivedStatus; no
             <RobotViewer3D forcePlaceholder={noUrdf} />
           )}
           <div className="rb-cams">
-            {bigCamera && <RobotViewer3D compact forcePlaceholder={noUrdf} />}
+            {bigCamera && !franka && <RobotViewer3D compact forcePlaceholder={noUrdf} />}
             {config.cameras
-              .filter((c) => c.id !== large)
+              .filter((c) => c.id !== bigCamera?.id)
               .map((c) => (
                 <CameraTile key={c.id} camera={c} stale={derived.stale} />
               ))}
           </div>
         </div>
         <div className="rb-col rb-col--right">
-          <JointTable derived={derived} />
-          <TrajectoryCharts />
+          {franka ? <FrankaState /> : <JointTable derived={derived} />}
+          {franka ? <FrankaCharts /> : <TrajectoryCharts />}
         </div>
       </div>
     );
@@ -139,8 +143,8 @@ export function MonitoringPage({ derived, noUrdf }: { derived: DerivedStatus; no
               <TaskHistory />
             </div>
           )}
-          {tabletTab === 'joints' && <JointTable derived={derived} />}
-          {tabletTab === 'charts' && <TrajectoryCharts />}
+          {tabletTab === 'joints' && (franka ? <FrankaState /> : <JointTable derived={derived} />)}
+          {tabletTab === 'charts' && (franka ? <FrankaCharts /> : <TrajectoryCharts />)}
         </div>
       </section>
     </div>

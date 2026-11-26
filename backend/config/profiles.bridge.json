@@ -1,0 +1,20 @@
+{
+  "_note": "With demo_bridge the only model is X-VLA on the VENTUNO Q NPU (vision, language and action generator on QNN). Verified on the board for libero_spatial tasks 0 and 1 (11/11 successes, demo_bridge README, 26/11).",
+  "profiles": [
+    {
+      "profile_id": "xvla-npu",
+      "ai_id": "xvla/npu-qnn",
+      "model": "X-VLA",
+      "precision": "NPU (QNN)",
+      "runtime": "ONNX Runtime + QNNExecutionProvider",
+      "runtime_version": null,
+      "checkpoint_id": null,
+      "artifact_hash": null,
+      "status": "not_attempted",
+      "blocked_reason": null,
+      "validation": "board-verified",
+      "board_verified": true,
+      "note": "Board timings per chunk are recorded in the run's timings (T0-T3)."
+    }
+  ]
+}

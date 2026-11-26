@@ -24,6 +24,11 @@ def samples_csv(rows: list[dict[str, Any]], gripper_range: tuple[float, float]) 
     w = csv.writer(out, lineterminator="\n")
     w.writerow(SAMPLES_HEADER)
     for row in rows:
+        values = json.loads(row["state"]) if row.get("state") else []
+        if len(values) == 7:  # Franka Panda (demo_bridge): deg, no per-joint command
+            for i, v in enumerate(values):
+                w.writerow([row["received_at"], f"panda_joint{i + 1}", "", round(adapter.rad_to_deg(v), 3), ""])
+            continue
         try:
             state = adapter.convert_joints(tuple(json.loads(row["state"])), gripper_range)
             action = (

@@ -1,0 +1,24 @@
+{
+  "_note": "Protocol for demo_bridge (LIBERO, Franka Panda, X-VLA on the VENTUNO Q NPU). Scenes and their fixed instructions come from the bridge at run time (GET /api/scenes). Seed 1000 is the one the bridge prepares in advance.",
+  "id": "bridge-dev-v1",
+  "rule_version": "dev",
+  "template_id": "libero_scene",
+  "object": "libero_spatial/0",
+  "ui_text": "pick up the black bowl between the plate and the ramekin and place it on the plate",
+  "policy_task_text": null,
+  "seeds": [1000],
+  "trials_per_seed": 1,
+  "warmup_chunks": 1,
+  "episode_limit_s": 40.0,
+  "retry_incomplete": false,
+  "dataset": {
+    "id": "LIBERO (libero_spatial, libero_object, libero_goal, libero_10)",
+    "revision": null,
+    "split_id": null
+  },
+  "contract": {
+    "stop_to_halt_ms": null,
+    "control_period_ms": 50,
+    "action_queue_capacity": 30
+  }
+}
