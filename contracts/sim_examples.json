@@ -1,0 +1,45 @@
+{
+  "_note": "MẪU TẠM do SoftDev viết theo [I1], [I4] và mock_sim. Thay bằng câu trả lời thật của MuJoCo (xin Chung). status HOLD, hold_reason, joint_targets, run_id của evaluation là đề xuất (Q5, Q6, Q8).",
+  "state": {
+    "status": "BOARD_CONNECTED",
+    "board_connected": true,
+    "cameras": {
+      "overhead": true,
+      "wrist": true
+    },
+    "camera_error": null,
+    "sim_time": 12.696,
+    "last_board_heartbeat_age_s": 0.37,
+    "accepted_sequence": 418,
+    "applied_sequence": 417,
+    "joint_positions": [0.12, -0.85, 1.02, 0.4, 0.05, 0.31]
+  },
+  "state_hold_stop": {
+    "status": "HOLD",
+    "hold_reason": "stop",
+    "board_connected": true,
+    "sim_time": 12.8,
+    "accepted_sequence": 419,
+    "applied_sequence": 418,
+    "joint_positions": [0.12, -0.85, 1.02, 0.4, 0.05, 0.31]
+  },
+  "state_hold_model": {
+    "status": "HOLD",
+    "hold_reason": "model",
+    "board_connected": true,
+    "sim_time": 12.8,
+    "accepted_sequence": 419,
+    "applied_sequence": 418,
+    "joint_positions": [0.12, -0.85, 1.02, 0.4, 0.05, 0.31]
+  },
+  "evaluation_running": {
+    "final": false,
+    "run_id": 13
+  },
+  "evaluation_final": {
+    "final": true,
+    "outcome": "failure",
+    "reason_code": "no_grasp",
+    "run_id": 13
+  }
+}
