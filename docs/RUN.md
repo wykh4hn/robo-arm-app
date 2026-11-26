@@ -74,11 +74,55 @@ SO101_SIM_LINK=real SO101_REQUIRE_BOARD_SESSION=false \
 ## 4. Mở web
 
 - Laptop: `http://127.0.0.1:8001`
-- iPad (cùng mạng LAN): `http://<IP LAN của laptop>:8001`. Xem IP bằng lệnh dưới, rồi cho phép cổng 8001 qua Windows Firewall nếu iPad không vào được.
+- iPad (cùng mạng Wi-Fi): `http://<IP LAN của laptop>:8001`, ví dụ `http://192.168.2.246:8001` (IP đo ngày 26/11, đổi theo mạng). Dùng iPad xoay **ngang**: khi dọc, camera nằm dưới phần lệnh và lịch sử, phải cuộn mới thấy.
+
+### iPad qua LAN (BE trong WSL)
+
+WSL đang ở chế độ mạng NAT: BE nghe trong WSL, Windows chỉ chuyển `127.0.0.1:8001` vào WSL. Từ máy khác (iPad) phải thêm portproxy và mở firewall. Wi-Fi đang là mạng **Public**, nên luật firewall dùng `-Profile Any` nhưng chỉ nhận máy cùng subnet (`LocalSubnet`).
+
+Xem IP LAN của laptop:
 
 ```powershell
-ipconfig
+Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4 | Select-Object IPAddress
 ```
+
+**Bật** (mở PowerShell bằng **Run as Administrator**, chạy sau khi BE đã chạy; chạy lại sau mỗi lần khởi động lại máy hoặc đổi mạng, vì IP của WSL và IP LAN có thể đổi):
+
+```powershell
+$lanIp = (Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress; $wslIp = (wsl hostname -I).Trim().Split(' ')[0]; netsh interface portproxy delete v4tov4 listenaddress=$lanIp listenport=8001 2>$null; netsh interface portproxy add v4tov4 listenaddress=$lanIp listenport=8001 connectaddress=$wslIp connectport=8001
+```
+
+```powershell
+New-NetFirewallRule -DisplayName "robo-arm-app 8001" -Direction Inbound -Protocol TCP -LocalPort 8001 -Action Allow -Profile Any -RemoteAddress LocalSubnet
+```
+
+Kiểm tra (PowerShell thường; phải ra `True` và `200`):
+
+```powershell
+netsh interface portproxy show v4tov4
+```
+
+```powershell
+$lanIp = (Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress; Test-NetConnection $lanIp -Port 8001 -InformationLevel Quiet; (Invoke-WebRequest -UseBasicParsing "http://${lanIp}:8001/api/health").StatusCode
+```
+
+**Gỡ** sau buổi demo (PowerShell Admin):
+
+```powershell
+netsh interface portproxy reset
+```
+
+```powershell
+Remove-NetFirewallRule -DisplayName "robo-arm-app 8001"
+```
+
+`netsh interface portproxy reset` xoá mọi portproxy trên máy; nếu máy có portproxy khác thì dùng `netsh interface portproxy delete v4tov4 listenaddress=<IP LAN> listenport=8001`.
+
+Portproxy cần dịch vụ IP Helper (`iphlpsvc`) đang chạy (đã chạy trên laptop này). Trang dùng lại host đã phục vụ nó cho WebSocket `/ws` và camera MJPEG, nên không cần cấu hình gì thêm trên iPad.
+
+**Đã kiểm tra trên laptop (26/11):** trước portproxy, `http://192.168.2.246:8001` không kết nối được, `http://<IP WSL>:8001` trả 200 (đúng như dự đoán với NAT). Giao diện ở khổ iPad trong browser pane (1024×768 ngang, 768×1024 dọc): STOP là nút đầu header và luôn thấy khi cuộn, hai luồng MJPEG `agentview`/`wrist` hiện, không có cuộn ngang.
+
+**Còn phải thử trên iPad thật:** mở trang qua IP LAN sau khi chạy hai lệnh "Bật"; WebSocket nối được (thẻ "Kết nối Web" xanh) và state cập nhật; camera MJPEG chạy trên Safari; bấm STOP bằng tay (cảm ứng) và thấy `stop_ack`; nút "Tải log" và "Tải zip lượt này" tải được file trên Safari; Safari khoá màn hình rồi mở lại thì web tự nối lại.
 
 ## 5. Chạy Board hoặc runner trên laptop
 

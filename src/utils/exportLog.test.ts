@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { ALL_JOINTS } from '../config';
 import type { JointName } from '../types/messages';
 import type { JointReading, Sample } from '../state/types';
-import { eventsToJson, logFileStem, samplesToCsv } from './exportLog';
+import { eventsToJson, logFileStem, samplesToCsv, tasksToCsv } from './exportLog';
+import { runExportUrl } from '../config';
+import { usingMock } from '../transport';
 
 function sample(ts: number): Sample {
   const joints = {} as Record<JointName, JointReading>;
@@ -45,5 +47,25 @@ describe('exportLog', () => {
 
   it('builds a filesystem-safe file stem', () => {
     expect(logFileStem(new Date('2026-01-01T10:20:30Z'))).toBe('robot-log-2026-01-01T10-20-30');
+  });
+
+  it('LIBERO: writes one CSV row per task, quoting commas and quotes', () => {
+    const csv = tasksToCsv([
+      { id: 7, command: 'pick the "bowl", then place', state: 'done', startedTs: 1, endedTs: 9,
+        source: 'board', run_id: 'r-1', outcome: 'SUCCESS' },
+      { id: 8, command: 'x', state: 'failed', startedTs: 10, reasonCode: 'OUTCOME_UNKNOWN' },
+    ]);
+    const lines = csv.trim().split('\n');
+    expect(lines[0]).toBe(
+      'id,source,command,state,startedTs,endedTs,run_id,outcome,end_reason,reasonCode,reason',
+    );
+    expect(lines[1]).toBe('7,board,"pick the ""bowl"", then place",done,1,9,r-1,SUCCESS,,,');
+    expect(lines[2]).toBe('8,,x,failed,10,,,,,OUTCOME_UNKNOWN,');
+  });
+
+  it('points each stored run to the BE zip export, or nowhere under the mock', () => {
+    const url = runExportUrl(12);
+    expect(url === '' || url.endsWith('/api/v1/runs/12/export')).toBe(true);
+    expect(usingMock('?scenario=normal')).toBe(true);
   });
 });

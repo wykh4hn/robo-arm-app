@@ -1,5 +1,7 @@
 import { TASK_STATUS } from '../config/levels';
-import { config } from '../config';
+import { config, runExportUrl } from '../config';
+import { usingMock } from '../transport';
+import { downloadLog } from '../utils/exportLog';
 import { liberoSimBusy, liberoSimFresh } from '../state/deriveStatus';
 import { useStore } from '../state/store';
 import { sortTasks } from '../state/tasks';
@@ -21,6 +23,8 @@ export function TaskHistory() {
   const synced = useStore((s) => s.synced);
   const lastMessageAt = useStore((s) => s.lastMessageAt);
   const sorted = sortTasks(tasks);
+  // Stored runs exist only behind a real BE (not the mock, `?scenario=`).
+  const zipEnabled = config.liberoMode && !usingMock() && runExportUrl(0) !== '';
   const maxSteps = libero?.max_steps;
   const hasProgress = Number.isFinite(maxSteps) && (maxSteps ?? 0) > 0 && Number.isFinite(libero?.step);
   const progress = hasProgress
@@ -46,6 +50,14 @@ export function TaskHistory() {
           {t.history.title}
         </h2>
         <span className="rb-muted app-caption">{t.history.sub}</span>
+        <button
+          type="button"
+          className="rb-btn rb-btn--quiet"
+          onClick={() => downloadLog(useStore.getState(), config.liberoMode)}
+        >
+          <Icon name="download" />
+          {t.charts.download}
+        </button>
       </div>
       <div className="rb-card__body">
         {libero && (
@@ -163,6 +175,12 @@ export function TaskHistory() {
                   </div>
                   {task.state === 'failed' && task.reason && (
                     <div className="rb-task__reason">{task.reason}</div>
+                  )}
+                  {zipEnabled && !running && task.state !== 'preparing' && (
+                    <a className="rb-btn rb-btn--quiet" href={runExportUrl(task.id)} download>
+                      <Icon name="download" />
+                      {t.history.exportZip}
+                    </a>
                   )}
                 </li>
               );

@@ -276,6 +276,7 @@ export const en: Strings = {
     resetPending: 'Resetting episode…',
     resetOutcomeUnknown: 'RESET outcome unknown. Check the episode state before retrying.',
     fromBoard: 'Started on the Board · the runner reset the sim, not a web command',
+    exportZip: 'Download this run (zip)',
   },
 
   run: {

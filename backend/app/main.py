@@ -168,6 +168,9 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         storage.start()
+        # History survives a BE restart; new task ids continue after the stored ones.
+        for info in await libero_runner.load_history(feed.history_max):
+            feed.record_task({"task": info})
 
         # Start in degraded mode if the simulator is unavailable at boot;
         # the background poller will keep retrying and publish recovery.

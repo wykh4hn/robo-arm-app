@@ -15,6 +15,24 @@ export function samplesToCsv(samples: Sample[]): string {
 
 const round = (v: number) => Math.round(v * 1000) / 1000;
 
+const TASK_COLUMNS = [
+  'id', 'source', 'command', 'state', 'startedTs', 'endedTs', 'run_id', 'outcome', 'end_reason',
+  'reasonCode', 'reason',
+] as const;
+
+function csvCell(v: unknown): string {
+  if (v === undefined || v === null) return '';
+  const s = String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** LIBERO: one CSV row per task (there are no joint samples in this mode). */
+export function tasksToCsv(tasks: MonitorState['tasks']): string {
+  const rows = [TASK_COLUMNS.join(',')];
+  for (const task of tasks) rows.push(TASK_COLUMNS.map((c) => csvCell(task[c])).join(','));
+  return rows.join('\n') + '\n';
+}
+
 export interface EventsExport {
   exportedAt: string;
   tasks: MonitorState['tasks'];
@@ -51,12 +69,14 @@ function download(name: string, content: string, type: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Downloads the two log files (CSV samples + JSON events). */
+/** Downloads the two log files: CSV (joint samples, or tasks in LIBERO mode) + JSON events. */
 export function downloadLog(
   state: Pick<MonitorState, 'samples' | 'tasks' | 'commands' | 'events'>,
+  libero = false,
 ) {
   const now = new Date();
   const stem = logFileStem(now);
-  download(`${stem}-joints.csv`, samplesToCsv(state.samples), 'text/csv');
+  if (libero) download(`${stem}-tasks.csv`, tasksToCsv(state.tasks), 'text/csv');
+  else download(`${stem}-joints.csv`, samplesToCsv(state.samples), 'text/csv');
   download(`${stem}-events.json`, eventsToJson(state, now), 'application/json');
 }

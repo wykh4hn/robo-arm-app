@@ -14,7 +14,7 @@ from . import pipeline
 from .camera import BOUNDARY, CameraProxy
 from .export import export_run
 from .live import Hub
-from .libero_runner import nack_code_for
+from .libero_runner import nack_code_for, task_from_row
 from .ports import SimConnectionError, SimError, SimOutcomeUnknown, SimRejected
 from .settings import CAMERAS, Settings
 from .state import SystemState, task_info
@@ -44,8 +44,13 @@ def _run_view(row: dict[str, Any]) -> dict[str, Any]:
     except ValueError:
         out["quality_flags"] = []
 
-    info = task_info(row)
-    out["task"] = info.wire() if info is not None else None
+    libero = task_from_row(row)
+    if libero is not None:
+        out["task"] = libero
+    else:
+        info = task_info(row)
+        out["task"] = info.wire() if info is not None else None
+    out.pop("task_json", None)
 
     return out
 

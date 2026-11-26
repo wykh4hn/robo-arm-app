@@ -273,6 +273,7 @@ export const vi = {
     resetPending: 'Đang RESET episode…',
     resetOutcomeUnknown: 'Chưa rõ kết quả RESET. Kiểm tra state episode trước khi thử lại.',
     fromBoard: 'Chạy từ Board · runner tự RESET, không phải lệnh từ web',
+    exportZip: 'Tải zip lượt này',
   },
 
   run: {

@@ -100,6 +100,10 @@ const cameraUrlsEnabled = Boolean(backendWsUrl) || import.meta.env.PROD;
 const cameraUrl = (path: string): string =>
   cameraUrlsEnabled ? `${cameraOrigin}${path}` : '';
 
+/** Zip of one stored run (manifest, libero_states.json, events), or '' without a BE. */
+export const runExportUrl = (id: number): string =>
+  cameraUrl(`/api/v1/runs/${id}/export`);
+
 export const config = {
   projectName: 'SuperUltimatePowerfulPromaxVIPAura5000',
   backendUrl: backendWsUrl,

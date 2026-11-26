@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS runs (
   incomplete INTEGER DEFAULT 0, quality_flags TEXT,
   post_stop_accepted INTEGER, post_stop_applied INTEGER, stop_latency_ms INTEGER,
   created_at INTEGER, started_at INTEGER, ended_at INTEGER,
-  sim_time_end REAL, sim_episode_id INTEGER
+  sim_time_end REAL, sim_episode_id INTEGER,
+  sim_run_id TEXT, task_json TEXT
 );
 CREATE TABLE IF NOT EXISTS commands (
   command_id TEXT PRIMARY KEY, kind TEXT, payload TEXT, received_at INTEGER,
@@ -88,6 +89,7 @@ RUN_FIELDS = frozenset(
         "phase", "outcome", "reason_code", "reason", "incomplete", "quality_flags",
         "post_stop_accepted", "post_stop_applied", "stop_latency_ms",
         "started_at", "ended_at", "sim_time_end", "sim_episode_id",
+        "sim_run_id", "task_json", "ui_text",
     }
 )  # fmt: skip
 
@@ -133,6 +135,11 @@ class Storage:
         self.settings.runs_dir.mkdir(parents=True, exist_ok=True)
         conn = self._connect()
         conn.executescript(SCHEMA)
+        # DBs made before LIBERO runs were stored lack these columns.
+        have = {row[1] for row in conn.execute("PRAGMA table_info(runs)")}
+        for col in ("sim_run_id", "task_json"):
+            if col not in have:
+                conn.execute(f"ALTER TABLE runs ADD COLUMN {col} TEXT")
         conn.commit()
         conn.close()
         self._read_conn = self._connect()
@@ -390,6 +397,18 @@ class Storage:
             return run_id
 
         return await self.write(fn)
+
+    def insert_run(self, run_id: int, fields: dict[str, Any]) -> None:
+        """Batched insert with a run_id chosen by the caller (LIBERO: the web task id)."""
+        cols = ["run_id", *fields]
+        self.enqueue(
+            f"INSERT OR IGNORE INTO runs ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})",
+            (run_id, *fields.values()),
+        )
+
+    async def max_run_id(self) -> int:
+        rows = await self.read(lambda c: c.execute("SELECT MAX(run_id) FROM runs").fetchall())
+        return int(rows[0][0] or 0)
 
     def update_run(self, run_id: int, **fields: Any) -> None:
         unknown = set(fields) - RUN_FIELDS

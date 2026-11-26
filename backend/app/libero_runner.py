@@ -6,6 +6,7 @@ Board connects to the simulator itself; this coordinator only uses Operator HTTP
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 import uuid
@@ -24,6 +25,37 @@ log = logging.getLogger("so101.libero_runner")
 
 # communication-plan §3.3/§3.4: failures must last this long before the web is told.
 OFFLINE_AFTER_S = 2.0
+
+# Web `task.state` -> `runs.phase`, `runs.outcome` (history, export).
+_RUN_PHASE: dict[str, tuple[str, str | None]] = {
+    "preparing": ("preparing", None),
+    "running": ("running", None),
+    "done": ("finished", "success"),
+    "stopped": ("finished", "aborted"),
+    "failed": ("finished", "failure"),
+}
+
+
+def task_from_row(row: dict[str, Any]) -> dict[str, Any] | None:
+    """A stored LIBERO `runs` row -> the web `task` it last showed, or None for rows
+    without one (old SO-101 runs). A run the BE never saw end (it restarted, see
+    `recover_dangling`) comes back failed, never as running."""
+    raw = row.get("task_json")
+    if not raw:
+        return None
+    try:
+        info = json.loads(raw)
+    except ValueError:
+        return None
+    if not isinstance(info, dict) or "id" not in info:
+        return None
+    if row.get("phase") == "interrupted" and info.get("state") in ("preparing", "running"):
+        info["state"] = "failed"
+        info["reasonCode"] = row.get("reason_code")
+        info["reason"] = row.get("reason")
+        if row.get("ended_at"):
+            info["endedTs"] = int(row["ended_at"])
+    return info
 
 
 def _now_ms() -> int:
@@ -64,6 +96,7 @@ class _Episode:
     command: str = ""
     source: str = "web"
     extra: dict[str, Any] = field(default_factory=dict)
+    recorded: bool = False  # its `runs` row exists (run_id = task_id)
 
     def wire(self) -> dict[str, Any]:
         info: dict[str, Any] = {
@@ -138,9 +171,107 @@ class LiberoRunner:
         self._stop_count = 0
         self._watch_enabled = False
 
-    def _event(self, event: str, payload: dict[str, Any]) -> None:
+    def _event(self, event: str, payload: dict[str, Any], run_id: int | None = None) -> None:
         if self.storage is not None:
-            self.storage.add_event(None, event, payload)
+            self.storage.add_event(run_id, event, payload)
+
+    def _evidence_id(self, state: LiberoState) -> int | None:
+        """The stored run a sim state belongs to: the open episode once its sim run is
+        known (states read while a reset builds the scene still belong to the old run)."""
+        ep = self._episode
+        if (
+            ep is not None
+            and ep.recorded
+            and ep.state in ("preparing", "running")
+            and ep.run_id is not None
+            and ep.run_id == state.run_id
+        ):
+            return ep.task_id
+        return self.evidence_run_id
+
+    async def load_history(self, limit: int = 50) -> list[dict[str, Any]]:
+        """At start: close runs a previous BE left open, continue task ids after the
+        stored ones (the web keeps tasks by id), and return the last `limit` tasks,
+        oldest first, for the history a new connection receives."""
+        if self.storage is None:
+            return []
+        await self.storage.recover_dangling()
+        self._next_task_id = max(self._next_task_id, await self.storage.max_run_id() + 1)
+        rows = await self.storage.list_runs(limit)
+        return [info for row in reversed(rows) if (info := task_from_row(row)) is not None]
+
+    def _record(self, episode: _Episode, info: dict[str, Any]) -> None:
+        """Store the episode as a `runs` row (run_id = task id) with its manifest, and
+        close its `sim_raw.jsonl` at the end. Never stores the operator token."""
+        if self.storage is None:
+            return
+        phase, outcome = _RUN_PHASE.get(episode.state, ("finished", "failure"))
+        terminal = phase == "finished"
+        extra = episode.extra
+        fields: dict[str, Any] = {
+            "phase": phase,
+            "outcome": outcome,
+            "reason_code": extra.get("reasonCode") or extra.get("end_reason"),
+            "reason": extra.get("reason"),
+            # Failed without a sim outcome: the BE did not see how the run ended.
+            "incomplete": int(episode.state == "failed" and extra.get("outcome") is None),
+            "ui_text": episode.command,
+            "sim_run_id": episode.run_id,
+            "task_json": json.dumps(info, ensure_ascii=False),
+            "ended_at": extra.get("endedTs") if terminal else None,
+        }
+        run_id = episode.task_id
+        first = not episode.recorded
+        try:
+            if first:
+                self.storage.insert_run(run_id, {
+                    "command_id": episode.command_id,
+                    "profile_id": episode.profile_id,
+                    "protocol_id": f"{episode.suite}:{episode.libero_task_id}",
+                    "seed": episode.seed,
+                    "mode": f"libero_{episode.source}",
+                    "evidence_class": "libero_sim",
+                    "quality_flags": "[]",
+                    "created_at": episode.started_ts,
+                    "started_at": episode.started_ts,
+                    **fields,
+                })  # fmt: skip
+                episode.recorded = True
+            else:
+                self.storage.update_run(run_id, **fields)
+            if first or terminal or episode.state == "running":
+                self.storage.write_manifest(run_id, self._manifest(episode))
+            if terminal:
+                self.storage.close_raw(run_id)
+        except Exception:  # noqa: BLE001 - history must never break the live feed
+            log.exception("storing LIBERO run %s failed", run_id)
+
+    def _manifest(self, episode: _Episode) -> dict[str, Any]:
+        extra = episode.extra
+        return {
+            "run_id": episode.task_id,
+            "contract": "franka_ee_v1",
+            "source": episode.source,
+            "command_id": episode.command_id,
+            "profile": {"id": episode.profile_id},
+            "task": {
+                "suite": episode.suite,
+                "task_id": episode.libero_task_id,
+                "init_state": episode.init_state,
+                "seed": episode.seed,
+                "description": episode.command,
+            },
+            "sim_run_id": episode.run_id,
+            "started_at": episode.started_ts,
+            "ended_at": extra.get("endedTs"),
+            "result": {
+                "state": episode.state,
+                "sim_status": extra.get("outcome"),
+                "end_reason": extra.get("end_reason"),
+                "reason_code": extra.get("reasonCode"),
+                "reason": extra.get("reason"),
+            },
+        }
 
     async def refresh(self) -> LiberoState:
         self.last_poll_attempt_mono = time.monotonic()
@@ -179,6 +310,7 @@ class LiberoRunner:
         self.poll_error_since_mono = None
         self.poll_busy_since_mono = None
 
+        evidence_id = self._evidence_id(state)
         self._event(
             "libero_state",
             {
@@ -191,11 +323,12 @@ class LiberoRunner:
                 "hold_latched": state.hold_latched,
                 "end_reason": state.end_reason,
             },
+            evidence_id,
         )
 
-        if self.storage is not None and self.evidence_run_id is not None:
+        if self.storage is not None and evidence_id is not None:
             self.storage.append_libero_state(
-                self.evidence_run_id,
+                evidence_id,
                 state.raw,
             )
 
@@ -315,6 +448,7 @@ class LiberoRunner:
         self._event(
             "libero_board_run",
             {"task_id": episode.task_id, "run_id": state.run_id, "status": state.status},
+            episode.task_id,
         )
         if state.status == "RUNNING":
             episode.state = "running"
@@ -519,13 +653,19 @@ class LiberoRunner:
         )
 
     def _emit(self, episode: _Episode) -> None:
+        msg = episode.wire()
+        self._record(episode, msg["task"])
         if self.on_task is not None:
-            self.on_task(episode.wire())
+            self.on_task(msg)
 
     def _finish(self, episode: _Episode, state: str, **extra: Any) -> None:
         episode.state = state
         episode.extra.update(endedTs=_now_ms(), **extra)
-        self._event("libero_task_end", {"task_id": episode.task_id, "state": state, **extra})
+        self._event(
+            "libero_task_end",
+            {"task_id": episode.task_id, "state": state, **extra},
+            episode.task_id,
+        )
         self._emit(episode)
 
     def _finish_replaced(self, episode: _Episode) -> None:
