@@ -91,10 +91,12 @@ export function liberoView(
   else if (!liberoSimFresh(h, staleAfterMs)) view = 'unknown';
   else if (hold && BOARD_LOST_REASONS.has(hold)) view = 'boardLost';
   else if (hold === 'OPERATOR_LOST') view = 'operatorLost';
-  else if (!boardConnected) view = 'boardOffline';
+  // A stopped or finished run keeps its own outcome even after the Board's session
+  // closes (it always does at the end of a run): the Board chip still says offline.
   else if (st.hold_latched && (hold === 'OPERATOR_STOP' || !terminal)) view = 'stopped';
-  else if (st.status === 'RUNNING') view = 'running';
   else if (terminal) view = 'ended';
+  else if (!boardConnected) view = 'boardOffline';
+  else if (st.status === 'RUNNING') view = 'running';
   else view = 'ready';
 
   const level: Level =

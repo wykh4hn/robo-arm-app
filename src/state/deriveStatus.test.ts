@@ -194,6 +194,33 @@ describe('deriveStatus: LIBERO status table (communication-plan §4)', () => {
     expect(d.overall).toBe('action');
   });
 
+  it('a run that timed out keeps its outcome after the Board session closes', () => {
+    const d = lib(
+      { status: 'TIMEOUT', end_reason: '800 steps', step: 800, session_active: false },
+      { board: 'disconnected', heartbeat: 'off' },
+    );
+    expect(d.libero?.view).toBe('ended');
+    expect(d.libero?.boardConnected).toBe(false);
+    expect(d.libero?.level).toBe('attention');
+    expect(d.overall).toBe('attention');
+    expect(d.banner.some((b) => b.kind === 'liberoBoardOffline')).toBe(false);
+  });
+
+  it('a run stopped by the operator stays "stopped" after the Board session closes', () => {
+    const d = lib(
+      {
+        status: 'ABORTED',
+        end_reason: 'OPERATOR_STOP',
+        hold_latched: true,
+        hold_reason: 'OPERATOR_STOP',
+        session_active: false,
+      },
+      { board: 'disconnected', heartbeat: 'off' },
+    );
+    expect(d.libero?.view).toBe('stopped');
+    expect(d.banner.some((b) => b.kind === 'liberoBoardOffline')).toBe(false);
+  });
+
   it('board_session_required=false (Q1 dev flag): Board offline still shown, Send allowed', () => {
     const d = lib(
       { status: 'READY', session_active: false },

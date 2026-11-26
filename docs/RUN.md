@@ -148,8 +148,10 @@ Cách thử nút Gửi lệnh khi chưa có Board: bấm Gửi lệnh trên web 
 BE gửi `watch:false` cho sim rồi thoát trong khoảng 3,5 s:
 
 ```powershell
-wsl -e bash -lc 'kill -TERM $(ss -ltnp | grep ":8001 " | grep -o "pid=[0-9]*" | cut -d= -f2)'
+wsl -e pkill -TERM -f 'uvicorn app.main:app'
 ```
+
+Đừng lồng dấu `"` trong `'...'` khi gọi `wsl`/`bash` từ PowerShell 5.1: PowerShell bỏ mất dấu `"` đó và bash báo lỗi cú pháp.
 
 Không tắt sim (cổng 8000/5050) khi còn lượt đang chạy.
 
