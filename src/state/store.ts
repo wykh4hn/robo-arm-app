@@ -10,6 +10,7 @@ import type {
   TaskInfo,
   TelemetryMsg,
 } from '../types/messages';
+import { eePose } from '../utils/liberoPose';
 import { storage } from '../utils/storage';
 import { initialTracking, trackingQuality } from './trackingQuality';
 import type {
@@ -61,12 +62,6 @@ export function initialMonitorState(now = Date.now()): MonitorState {
     reconnectAttempt: 0,
     synced: false,
     lastMessageAt: null,
-    latencyMs: null,
-    usb: 'unknown',
-    robot: 'unknown',
-    robotError: null,
-    estop: false,
-    task: { id: null, state: 'idle' as const },
     tasks: [],
     commands: [],
     stop: { phase: 'idle', id: null, requestedAt: null },
@@ -74,10 +69,10 @@ export function initialMonitorState(now = Date.now()): MonitorState {
     awaitingReady: false,
     samples: [],
     cameras: {},
-    pipeline: null,
     libero: null,
     liberoSeq: null,
     liberoConnectionHealth: null,
+    eeTrail: [],
     tracking: initialTracking,
     events: [],
   };
@@ -99,6 +94,20 @@ export function initialUi(): UiState {
     robotLimits: {},
     robotSource: 'loading',
   };
+}
+
+/** Append the new `eef_pos` and drop what is older than the window; a new run starts empty. */
+function nextEeTrail(
+  trail: MonitorState['eeTrail'],
+  previous: MonitorState['libero'],
+  next: NonNullable<MonitorState['libero']>,
+  at: number,
+): MonitorState['eeTrail'] {
+  const kept = previous && previous.run_id !== next.run_id ? [] : trail;
+  const mm = eePose(next).posMm;
+  const from = at - config.eeTrailWindowMs;
+  const fresh = kept.filter((p) => p.at >= from);
+  return mm ? [...fresh, { at, mm }] : fresh;
 }
 
 const cap = <T>(arr: T[], max: number) => (arr.length > max ? arr.slice(arr.length - max) : arr);
@@ -183,28 +192,6 @@ export function applyMessage(
       const samples = cap([...s.samples, sample], config.sampleBufferMax);
       return { ...base, samples, tracking: trackingQuality(s.tracking, samples, at) };
     }
-    case 'status': {
-      let events = s.events;
-      if (msg.robot.state !== s.robot || msg.link.usb !== s.usb || !!msg.estop !== s.estop) {
-        events = logEvent(
-          s,
-          msg.robot.error ? 'error' : 'status',
-          { robot: msg.robot, link: msg.link, estop: !!msg.estop },
-          at,
-        );
-      }
-      return {
-        ...base,
-        synced: s.web === 'connected' ? true : s.synced,
-        usb: msg.link.usb,
-        latencyMs: msg.link.latencyMs ?? null,
-        robot: msg.robot.state,
-        robotError: msg.robot.error ?? null,
-        estop: !!msg.estop,
-        task: msg.task,
-        events,
-      };
-    }
     case 'libero_state': {
       // Drop a late or repeated state (§3.4: `seq` rises by one per message).
       if (s.liberoSeq !== null && msg.seq <= s.liberoSeq) return {};
@@ -228,6 +215,7 @@ export function applyMessage(
             ? { awaitingReady: false }
             : {}),
         libero: next,
+        eeTrail: nextEeTrail(s.eeTrail, previous, next, at),
         liberoSeq: msg.seq,
         liberoConnectionHealth: msg.connection_health ?? s.liberoConnectionHealth,
         liberoReset:
@@ -363,8 +351,6 @@ export function applyMessage(
         },
       };
     }
-    case 'pipeline':
-      return { ...base, pipeline: msg };
   }
 }
 

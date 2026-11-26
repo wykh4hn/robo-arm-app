@@ -534,7 +534,11 @@ def test_websocket_handlers_ack_command_and_nack_unconfirmed_stop() -> None:
 
     sim = FakeOperator()
     board_ready(sim)
-    settings = Settings(_env_file=None, sim_link="real", camera_preview=False, sim_poll_hz=50)
+    # Q7: the web sends no profile; the BE records the one from its config.
+    settings = Settings(
+        _env_file=None, sim_link="real", camera_preview=False, sim_poll_hz=50,
+        libero_profile_id="xvla-w8a16",
+    )  # fmt: skip
     app = create_app(settings=settings, sim=sim)
     hub = app.state.core.hub
     runner = app.state.core.libero_runner
@@ -552,6 +556,8 @@ def test_websocket_handlers_ack_command_and_nack_unconfirmed_stop() -> None:
             bad = await hub.on_message({"type": "command", "id": "ws-2", "task": {"suite": "nope"}})
             assert bad["type"] == "nack" and bad["code"] == "bad_schema"
             await wait_for(lambda: any(m.get("type") == "task" for m in sent))
+            task_msg = next(m for m in sent if m.get("type") == "task")
+            assert task_msg["task"]["profileId"] == "xvla-w8a16"
 
             sim.stop_mode = "wrong_reason"
             await hub.on_stop("ws-stop")

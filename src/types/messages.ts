@@ -15,7 +15,6 @@ export type StatusTaskState = 'idle' | TaskState;
 export type TaskPhase = 'reach' | 'grasp' | 'carry' | 'release' | 'home';
 /** LIBERO camera names (communication-plan §5). */
 export type CameraId = 'agentview' | 'wrist';
-export type PipelineStepId = 'camera' | 'ai' | 'gateway' | 'robot' | 'result';
 
 export interface JointSample {
   /** Commanded value (deg, gripper % open). Absent when the source has no target (spec R3). */
@@ -39,16 +38,6 @@ export interface RobotError {
   /** Joint involved, if any (technical name). */
   joint?: JointName;
   message?: string;
-}
-
-export interface StatusMsg {
-  type: 'status';
-  ts: number;
-  link: { web: WebLink; usb: UsbLink; latencyMs?: number };
-  robot: { state: RobotState; error?: RobotError };
-  task: { id: number | null; state: StatusTaskState };
-  /** Present only when the hardware reports the physical emergency stop. */
-  estop?: boolean;
 }
 
 export type LiberoStatus = 'READY' | 'RUNNING' | 'SUCCESS' | 'TIMEOUT' | 'ABORTED';
@@ -219,13 +208,6 @@ export interface CameraMetaMsg {
   frameTs: number;
 }
 
-export interface PipelineMsg {
-  type: 'pipeline';
-  ts: number;
-  steps: Partial<Record<PipelineStepId, number>>;
-  failed?: { step: PipelineStepId; reason?: string };
-}
-
 /** Emitted by the transport itself (browser side), not by the backend. */
 export interface ConnectionMsg {
   type: 'connection';
@@ -235,7 +217,6 @@ export interface ConnectionMsg {
 
 export type IncomingMessage =
   | TelemetryMsg
-  | StatusMsg
   | LiberoStateMsg
   | TaskEventMsg
   | TaskListMsg
@@ -244,7 +225,6 @@ export type IncomingMessage =
   | StopAckMsg
   | StopPendingMsg
   | CameraMetaMsg
-  | PipelineMsg
   | ConnectionMsg;
 
 export type OutgoingMessage =

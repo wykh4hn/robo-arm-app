@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { ErrorBanner } from '../components/ErrorBanner';
-import { PipelineStrip } from '../components/PipelineStrip';
 import { StatusBar } from '../components/StatusBar';
 import { TutorialPage } from '../components/TutorialPage';
 import { useStore } from '../state/store';
@@ -48,7 +47,6 @@ export function App({ createTransport, scenario, showDevPanel = false }: AppProp
       <div className="rb-top">
         <Header derived={derived} />
         <StatusBar derived={derived} />
-        {tab === 'monitoring' && <PipelineStrip stale={derived.stale} />}
       </div>
       <ErrorBanner derived={derived} />
       <main id="main" role="tabpanel" aria-labelledby={`tab-${tab}`} tabIndex={-1}>

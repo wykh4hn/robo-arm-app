@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { deriveStatus, worst } from './deriveStatus';
 import { initialMonitorState } from './store';
 import type { MonitorState } from './types';
+import type { TaskInfo } from '../types/messages';
 import { liberoHealthFixture, liberoStateFixture } from '../test/fixtures/libero';
 
 const NOW = 1_000_000;
@@ -12,10 +13,12 @@ function healthy(patch: Partial<MonitorState> = {}): MonitorState {
     web: 'connected',
     synced: true,
     lastMessageAt: NOW - 100,
-    usb: 'plugged',
-    robot: 'ready',
     ...patch,
   };
+}
+
+function task(id: number, state: TaskInfo['state']): TaskInfo {
+  return { id, command: 'libero_spatial:0', state, startedTs: NOW - 1000 };
 }
 
 describe('deriveStatus', () => {
@@ -24,13 +27,12 @@ describe('deriveStatus', () => {
     expect(d.overall).toBe('ok');
     expect(d.canSend).toBe(true);
     expect(d.banner).toEqual([]);
-    expect(d.robot).toEqual({ level: 'ok', value: 'ready' });
+    expect(d.task).toMatchObject({ id: null, state: 'idle' });
   });
 
-  it('marks data stale after staleAfterMs: Robot unknown, warn banner, Send blocked', () => {
+  it('marks data stale after staleAfterMs: task unknown, warn banner, Send blocked', () => {
     const d = deriveStatus(healthy({ lastMessageAt: NOW - 3400 }));
     expect(d.stale).toBe(true);
-    expect(d.robot.value).toBe('unknown');
     expect(d.task.state).toBeNull();
     expect(d.sendBlockReason).toBe('stale');
     expect(d.banner[0]).toMatchObject({ kind: 'stale', banner: 'warn', params: { seconds: 3.4 } });
@@ -55,51 +57,25 @@ describe('deriveStatus', () => {
     expect(d.overall).toBe('attention');
   });
 
-  it('emergency stop outranks everything and shows on the Robot chip', () => {
-    const d = deriveStatus(healthy({ estop: true, robot: 'stopped' }));
-    expect(d.overall).toBe('estop');
-    expect(d.robot).toEqual({ level: 'action', value: 'estop' });
-    expect(d.sendBlockReason).toBe('estop');
-    expect(d.needsReady).toBe(false);
-  });
-
-  it('robot error: critical banner with joint, needs Ready, task failed is critical', () => {
-    const d = deriveStatus(
-      healthy({
-        robot: 'error',
-        robotError: { code: 'OVERLOAD', joint: 'elbow_flex' },
-        task: { id: 13, state: 'failed' },
-      }),
-    );
-    expect(d.overall).toBe('action');
-    expect(d.banner[0]).toMatchObject({
-      kind: 'robotError',
-      banner: 'critical',
-      params: { code: 'OVERLOAD', joint: 'elbow_flex', task: 13 },
-    });
-    expect(d.task.level).toBe('action');
-    expect(d.canReady).toBe(true);
+  it('the task chip follows the latest task event (no legacy status message)', () => {
+    const d = deriveStatus(healthy({ tasks: [task(12, 'done'), task(13, 'failed')] }));
+    expect(d.task).toMatchObject({ id: 13, state: 'failed', level: 'action' });
   });
 
   it('after a confirmed stop the robot waits for the user (no banner)', () => {
     const d = deriveStatus(
       healthy({
-        robot: 'stopped',
         awaitingReady: true,
-        task: { id: 13, state: 'stopped' },
+        tasks: [task(13, 'stopped')],
         stop: { phase: 'stopped', id: 's', requestedAt: NOW },
       }),
     );
     expect(d.overall).toBe('waiting');
-    expect(d.robot).toEqual({ level: 'waiting', value: 'stopped' });
     expect(d.task.level).toBe('attention');
     expect(d.banner).toEqual([]);
     expect(d.sendBlockReason).toBe('stopped');
-  });
-
-  it('still requires Ready if the robot reports ready but the stop was never cleared', () => {
-    const d = deriveStatus(healthy({ robot: 'ready', awaitingReady: true }));
-    expect(d.sendBlockReason).toBe('stopped');
+    expect(d.needsReady).toBe(true);
+    expect(d.canReady).toBe(true);
   });
 
   it('an unconfirmed stop is critical', () => {
@@ -109,16 +85,14 @@ describe('deriveStatus', () => {
   });
 
   it('blocks Send while a task runs or a command waits for ACK', () => {
-    expect(deriveStatus(healthy({ task: { id: 1, state: 'running' } })).sendBlockReason).toBe(
-      'busy',
-    );
+    expect(deriveStatus(healthy({ tasks: [task(1, 'running')] })).sendBlockReason).toBe('busy');
     const pending = healthy({
       commands: [{ id: 'c', kind: 'command', text: 'x', sentAt: NOW, phase: 'sent' }],
     });
     expect(deriveStatus(pending).sendBlockReason).toBe('pending');
   });
 
-  it('tracking chip only reports while moving; stuck needs action', () => {
+  it('tracking stuck needs action', () => {
     const tracking = {
       level: 'stuck' as const,
       error: 25,
@@ -127,8 +101,7 @@ describe('deriveStatus', () => {
       belowWarnSince: null,
       belowStuckSince: null,
     };
-    expect(deriveStatus(healthy({ tracking })).tracking.value).toBeNull();
-    const d = deriveStatus(healthy({ tracking, robot: 'moving' }));
+    const d = deriveStatus(healthy({ tracking }));
     expect(d.tracking).toEqual({ level: 'action', value: 'stuck', error: 25 });
     expect(d.banner[0]?.kind).toBe('trackingStuck');
   });
@@ -164,8 +137,6 @@ describe('deriveStatus', () => {
 
   it('allows native RESUME from confirmed HOLD without depending on legacy USB', () => {
     const state = healthy({
-      usb: 'unknown',
-      robot: 'unknown',
       libero: { ...liberoStateFixture, status: 'READY', hold_latched: true },
       liberoConnectionHealth: liberoHealthFixture,
     });
@@ -206,8 +177,6 @@ describe('deriveStatus: LIBERO status table (communication-plan §4)', () => {
   ) {
     return deriveStatus(
       healthy({
-        usb: 'unknown',
-        robot: 'unknown',
         libero: { ...liberoStateFixture, ...state },
         liberoConnectionHealth: { ...liberoHealthFixture, ...health },
         ...patch,

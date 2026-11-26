@@ -195,20 +195,6 @@ export const en: Strings = {
     close: 'Dismiss hint',
   },
 
-  pipeline: {
-    title: 'Pipeline',
-    steps: { camera: 'Camera', ai: 'AI', gateway: 'Gateway', robot: 'Robot', result: 'Result' },
-    tips: {
-      camera: 'Camera: time to capture and send one frame.',
-      ai: 'AI: detects the object in the camera image and computes joint commands.',
-      gateway: 'Gateway: intermediate controller forwarding commands to the arm.',
-      robot: 'Robot: time for the arm to receive and execute the command.',
-      result: 'Result: the robot reports the task as done or failed.',
-    },
-    ms: '{n} ms',
-    none: '—',
-  },
-
   command: {
     title: 'Command',
     task: 'LIBERO task',
@@ -225,9 +211,6 @@ export const en: Strings = {
       cube: 'cube',
       pink_box: 'pink small box',
     },
-    profile: 'AI profile',
-    profilePick: '— Choose a profile —',
-    needProfile: 'Choose an AI profile before sending.',
     preview: 'Command to send',
     send: 'Send command',
     blocked: {
@@ -323,6 +306,9 @@ export const en: Strings = {
     mm: '{n} mm',
     seconds: '{n} s',
     foot: 'End-effector x, y, z in mm, in the sim base frame.',
+    trailTitle: 'End-effector trail · last {n} s',
+    trailAria: 'Chart of end-effector x, y, z in mm over the last {n} seconds',
+    trailEmpty: 'No end-effector position yet.',
   },
 
   liberoHidden: {
@@ -446,97 +432,115 @@ export const en: Strings = {
   },
 
   tutorial: {
-    title: 'How to use this screen',
+    title: 'User guide',
     tocLabel: 'Contents',
     toc: {
       purpose: 'What this screen is for',
       status: 'Reading the status bar',
-      model: 'Reading the 3D model',
-      joints: 'Joint table and charts',
-      command: 'Sending a command',
-      stop: 'STOP and the emergency stop',
+      task: 'Choosing a task and following a run',
+      stop: 'STOP and Ready',
+      board: 'Runs started by the Board',
+      endReasons: 'End reasons',
       incidents: 'When something goes wrong',
       glossary: 'Glossary',
     },
     purpose:
-      'The Monitoring screen shows what the SO-101 arm is doing in real time and lets you command "pick an object and put it in the box". The four key parts: the 3D model, each joint’s position and velocity, the trajectory, and the STOP button.',
+      'The Monitoring screen shows the Franka arm in the LIBERO sim in real time: the run state, the end-effector position, two cameras and the STOP button. The AI model runs on the Board, not in the web app or the backend. The web app only picks a task, stops, and allows the next run.',
     statusIntro:
-      'The first chip is the overall lamp: it always shows the most severe active level. The other chips are grey when normal and only take a colour when something is off. Every level has an icon and a word.',
+      'The first chip is the overall lamp: it always shows the most severe level right now. The other chips stay grey when all is well and change colour only when something happens. Every level has an icon and a word.',
     statusCols: { level: 'Level', meaning: 'Meaning', todo: 'What to do' },
     statusChips:
-      'After the lamp come Connection (Web and USB), Robot, Task and Tracking. On the right, "Updated … ago" is the time since the browser received the last data. After {stale} s without data, values switch to "Stale data".',
-    model: {
-      measured: 'Where the real arm is, built from each joint’s measured position.',
-      commanded:
-        'The blue "ghost": where the robot is being told to go. The ghost leading the real arm slightly is normal.',
-      trail: 'The path the gripper tip just took; older is fainter.',
-      plan: 'Where the robot plans to go next: to the pick point, then the drop point.',
-      controls:
-        'Drag to orbit, scroll to zoom, or pick Perspective / Top / Front / Side. "Reset view" restores the camera.',
+      'After the lamp come Connection (web to backend), LIBERO (backend to sim), Board (whether the Board holds a session with the sim) and Run (state and step/max_steps). On the right, "Updated … ago" is the time since the browser received the last data. After {stale} s without data the numbers switch to "Stale data".',
+    task: {
+      pick:
+        'Choose a LIBERO task in the command box: the suite and the task_id. The description below it comes from the sim. Check it, then press Send. The web app does not pick an AI profile; the backend records it from its config. A run goes through these steps:',
+      steps: {
+        preparing: 'Preparing',
+        running: 'Running',
+        ended: 'Done or failed',
+      },
+      lifecycle: [
+        'Preparing: the backend accepted the command and asked the sim to rebuild the scene (3–15 s). Running: the Board drives the arm and the Run chip shows step/max_steps. Done: the sim reports SUCCESS. Failed: timeout, aborted or a lost connection; the reason is on the chip and in History.',
+        'Send is locked when the connection is lost, data is stale, the Board is not connected, the sim is building a scene, the robot is stopped or a run is in progress. The reason is always written under the button. A command is never re-sent on its own.',
+      ],
     },
-    joints: [
-      'Each joint has a fixed colour used identically in the table, charts and 3D model. Error is the gap between command and measured position; it turns amber above {warn}°. The Limit bar turns amber with a warning icon past {near}% of the joint’s range.',
-      'In the charts, solid lines are measured positions and dashed lines are commands. Hover to pause and read values; press "Back to live" to resume. Click a table row to highlight that joint.',
+    stop: {
+      stopTitle: 'STOP',
+      stopBody:
+        'The first red button in the top bar, on every page. One press makes the sim hold the arm still (HOLD), with no confirmation; it works from the keyboard (Tab, then Enter). "Stopped" shows only once the sim confirms. A running run ends with OPERATOR_STOP.',
+      readyTitle: 'Ready',
+      readyBody:
+        'After a stop the arm never restarts by itself, even after reconnecting. Press Ready to release the HOLD. Ready does not start a new run: to run again, send a new command or start the runner on the Board.',
+      simBusyTag: 'Sim is building the scene',
+      simBusy:
+        'The sim is resetting the scene for a new run and does not answer yet. The numbers on screen are from the previous run. If you press STOP now, the button shows "Stopping · sim is building the scene"; the stop takes effect when the scene is ready (30 s at most). Wait; no need to press again.',
+    },
+    board: [
+      'The runner on the Board can start a run by itself (its own RESET) without the Send button. Such a run is marked "Started on the Board" in History. You can still follow it and press STOP as usual.',
+      'The runner runs one episode each time it starts, then exits. To run again, start the runner on the Board again.',
     ],
-    command: [
-      'Choose a template and an object, check "Command to send", then press Send command. Follow the steps:',
-      'Send is disabled when disconnected, when data is stale, when the robot has an error or is stopped, or while a task runs — the reason is always written right below. Commands are never resent automatically.',
+    endIntro:
+      'When a run ends, the Run chip and History show the state (Done, Timeout, Aborted) with the end_reason code from the sim:',
+    endCols: { code: 'end_reason', meaning: 'Meaning' },
+    endReasons: [
+      { code: 'TASK_SUCCESS', def: 'The arm finished the task. State: Done.' },
+      { code: 'MAX_STEPS', def: 'The step budget ran out before the task was done. State: Timeout.' },
+      { code: 'OPERATOR_STOP', def: 'The operator pressed STOP. State: Aborted.' },
+      { code: 'CONNECTION_LOST', def: 'The Board disconnected from the sim during the run. State: Aborted.' },
+      { code: 'HEARTBEAT_TIMEOUT', def: 'The Board stopped sending heartbeats to the sim. State: Aborted.' },
+      {
+        code: 'OPERATOR_LOST',
+        def: 'The backend stopped sending heartbeats to the sim (backend closed or hung). State: Aborted.',
+      },
     ],
-    stopSoft: {
-      title: 'On-screen STOP',
-      body: 'The first red button in the top bar, on every page. One press sends a software stop, no confirmation; works by keyboard (Tab then Enter). Shows "Stopped" only once the robot confirms. With no confirmation after 4 s, use the physical button.',
-    },
-    stopHard: {
-      title: 'Physical emergency stop',
-      body: 'The button on the robot or power supply; it cuts motor power. Always works, even with no network or a frozen app. Use it for real danger.',
-    },
-    stopAfter:
-      'After a stop the robot never restarts by itself, not even after reconnecting: press Ready, then send a new command.',
     incidentCols: { see: 'You see', todo: 'What to do' },
     incidents: {
-      usbLost: {
-        see: 'Lost USB connection to the robot arm',
-        todo: 'Check the USB cable, press "Reconnect USB", then press Ready. The arm may still hold its pose; use the physical button if needed.',
+      boardLost: {
+        see: 'Board lost · run aborted',
+        todo: 'The sim is holding. Check the Board power and cable, wait for the Board to reconnect, then send a new command.',
       },
-      robotError: {
-        see: 'Robot error',
-        todo: 'The robot stopped by itself. Read the joint name in the message, remove obstacles, check servo cables, then press Ready.',
+      boardOffline: {
+        see: 'Board not connected',
+        todo: 'Power the Board and start the runner. Send unlocks once the Board holds a session with the sim.',
       },
-      frozen: {
-        see: 'Frozen image',
-        todo: 'The camera sends no new frames. Check the camera cable; the 3D model is still right because it uses joint data.',
+      simOffline: {
+        see: 'LIBERO sim disconnected',
+        todo: 'The backend cannot read the sim. Check that the sim is still running on the laptop. Numbers on screen are dimmed.',
+      },
+      operatorLost: {
+        see: 'Backend lost the sim · run aborted',
+        todo: 'Check the backend and the sim, press Ready, then send a new command.',
+      },
+      webLost: {
+        see: 'Web connection lost',
+        todo: 'The browser reconnects by itself. If it lasts, check that the backend is running and the LAN. While the web link is down the arm keeps running: use STOP on another device if needed.',
       },
       rejected: {
         see: 'Rejected',
-        todo: 'Read the NACK reason under Send command (e.g. object not found), fix it and send again.',
+        todo: 'Read the NACK reason under Send (for example: Board not connected), fix it and send again.',
+      },
+      frozen: {
+        see: 'Frozen image',
+        todo: 'The agentview or wrist camera sends no new frames. The state and end-effector position are still right: they come from the sim.',
       },
       stale: {
         see: 'Stale data',
-        todo: 'No new message for over {stale} s. Values on screen may be wrong; check the network.',
+        todo: 'No new message for more than {stale} s. Numbers on screen may be wrong; check the network.',
       },
     },
     glossary: [
+      { term: 'LIBERO', def: 'A set of pick-and-place tasks in the MuJoCo sim, used to evaluate the model.' },
+      { term: 'suite, task_id', def: 'The task set (for example libero_spatial) and the task number in it.' },
       {
-        term: 'URDF',
-        def: 'File describing the robot’s shape and joints; used to build the 3D model.',
+        term: 'Franka',
+        def: 'The 7-joint arm in the sim. The screen shows the end-effector position, not joint angles.',
       },
-      {
-        term: 'shoulder_pan … gripper',
-        def: 'Technical names of the 6 joints: base rotation, shoulder lift, elbow, wrist flex, wrist roll, gripper.',
-      },
-      {
-        term: 'action / state',
-        def: 'Command the AI sends / position the robot actually measured.',
-      },
-      { term: 'rad, rad/s', def: 'Radian: unit of angle (1 rad ≈ 57.3°) and of turning speed.' },
-      { term: 'ACK / NACK', def: 'The robot accepted the command / rejected it with a reason.' },
-      { term: 'Gateway', def: 'Intermediate controller between the AI server and the arm.' },
-      {
-        term: 'Tracking',
-        def: 'How closely the robot follows commands: Good, Slow or Possibly stuck.',
-      },
-      { term: 'End-effector', def: 'The gripper tip; x, y, z position in mm.' },
-      { term: 'E-stop', def: 'Physical emergency stop: cuts motor power, bypasses software.' },
+      { term: 'eef_pos', def: 'End-effector position x, y, z, in mm.' },
+      { term: 'Board', def: 'The device that runs the AI model and the runner, linked to the sim over TCP.' },
+      { term: 'session_active', def: 'The Board holds a connection with the sim. Without it, Send is locked.' },
+      { term: 'HOLD', def: 'The sim holds the arm still after STOP or a fault, waiting for Ready.' },
+      { term: 'step / max_steps', def: 'Current step / maximum steps of the run.' },
+      { term: 'ACK / NACK', def: 'The backend confirms it received a command / rejects it with a reason.' },
     ],
   },
 

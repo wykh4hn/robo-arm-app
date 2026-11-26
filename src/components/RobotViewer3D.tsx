@@ -43,7 +43,7 @@ function So101Viewer({ compact = false, forcePlaceholder = false }: ViewerProps)
   const source = useStore((s) => s.robotSource);
   const swapLarge = useStore((s) => s.swapLarge);
   const largeSlot = useStore((s) => s.largeSlot);
-  const objectId = useStore((s) => s.tasks.find((x) => x.id === s.task.id)?.params?.object);
+  const objectId = useStore((s) => s.tasks.findLast((x) => x.state === 'running')?.params?.object);
   const [ee, setEe] = useState<[number, number, number] | null>(null);
   const [webgl] = useState(hasWebGL);
 

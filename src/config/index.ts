@@ -1,5 +1,5 @@
 // Single place for tunables. Values are placeholders to calibrate on the real robot.
-import type { CameraId, JointName, LiberoTaskRef, PipelineStepId } from '../types/messages';
+import type { CameraId, JointName, LiberoTaskRef } from '../types/messages';
 
 export type ObjectId = 'red_duck' | 'yellow_duck' | 'cube' | 'pink_box';
 export type TemplateId = 'pick_into_box';
@@ -105,6 +105,8 @@ export const config = {
   backendUrl: backendWsUrl,
 
   staleAfterMs: 1500,
+  /** End-effector trail in the pose card: the last N ms of `eef_pos`. */
+  eeTrailWindowMs: 10_000,
   ackTimeoutMs: 5_000,
   stopAckTimeoutMs: 4_000,
   /** Q5: after `stop_pending` the BE waits up to its reset timeout (30 s) for the sim. */
@@ -190,7 +192,6 @@ export const config = {
     },
   ] as CommandTemplate[],
 
-  pipelineSteps: ['camera', 'ai', 'gateway', 'robot', 'result'] as PipelineStepId[],
 
   charts: [
     { id: 'arm', joints: ['shoulder_pan', 'shoulder_lift', 'elbow_flex'] },

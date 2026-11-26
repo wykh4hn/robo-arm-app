@@ -7,6 +7,8 @@ export interface SeriesDef {
   key: string;
   color: string;
   dashed?: boolean;
+  /** Custom dash pattern; wins over `dashed`. */
+  dash?: number[];
   width: number;
   show: boolean;
 }
@@ -65,7 +67,7 @@ export function UPlotChart(props: UPlotChartProps) {
           width: s.width,
           show: s.show,
           points: { show: false },
-          ...(s.dashed ? { dash: [5, 4] } : {}),
+          ...(s.dash ? { dash: s.dash } : s.dashed ? { dash: [5, 4] } : {}),
         })),
       ],
       hooks: {

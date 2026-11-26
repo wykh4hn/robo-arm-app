@@ -4,12 +4,7 @@ import type {
   LiberoConnectionHealth,
   JointName,
   LiberoState,
-  PipelineMsg,
-  RobotError,
-  RobotState,
   TaskInfo,
-  StatusTaskState,
-  UsbLink,
   WebLink,
 } from '../types/messages';
 
@@ -134,19 +129,19 @@ export interface Layers {
   labels: boolean;
 }
 
+/** One `eef_pos` sample for the pose card trail (browser receive time, mm). */
+export interface EeTrailPoint {
+  at: number;
+  mm: [number, number, number];
+}
+
 export interface MonitorState {
   now: number;
   web: WebLink;
   reconnectAttempt: number;
-  /** True once a status message arrived after the latest (re)connect. */
+  /** True once a `libero_state` arrived after the latest (re)connect. */
   synced: boolean;
   lastMessageAt: number | null;
-  latencyMs: number | null;
-  usb: UsbLink;
-  robot: RobotState;
-  robotError: RobotError | null;
-  estop: boolean;
-  task: { id: number | null; state: StatusTaskState };
   tasks: TaskInfo[];
   commands: CommandRecord[];
   stop: { phase: StopPhase; id: string | null; requestedAt: number | null; reason?: string };
@@ -155,13 +150,14 @@ export interface MonitorState {
   awaitingReady: boolean;
   samples: Sample[];
   cameras: Partial<Record<CameraId, CameraRuntime>>;
-  pipeline: PipelineMsg | null;
   /** Native Franka/LIBERO state, separate from SO-101 telemetry. */
   libero: LiberoState | null;
   /** `seq` of the last applied `libero_state`; reset on every (re)connect. */
   liberoSeq: number | null;
   /** Backend poll, simulator availability, session, and watchdog health. */
   liberoConnectionHealth: LiberoConnectionHealth | null;
+  /** Last `config.eeTrailWindowMs` of `eef_pos`; cleared when `run_id` changes. */
+  eeTrail: EeTrailPoint[];
   tracking: TrackingState;
   events: LogEvent[];
 }

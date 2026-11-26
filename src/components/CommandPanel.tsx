@@ -20,7 +20,6 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
   // reading it from there is not wired yet.
   const tasks = config.liberoTasks;
   const [key, setKey] = useState(taskKey(tasks[0]!));
-  const [profileId, setProfileId] = useState('');
 
   const task = tasks.find((x) => taskKey(x) === key) ?? tasks[0]!;
   const simTask = libero?.task;
@@ -30,16 +29,15 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
       : null;
   const reason = derived.sendBlockReason
     ? fmt(t.command.blocked[derived.sendBlockReason], { task: derived.task.id ?? '' })
-    : !profileId
-      ? t.command.needProfile
-      : null;
-  const canSend = derived.canSend && !!profileId;
+    : null;
+  // Q7: the web picks no AI profile; the BE records `profile_id` from its config.
+  const canSend = derived.canSend;
   const last = commands.findLast((c) => c.kind === 'command');
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!canSend) return;
-    sendCommand(task, profileId, description ?? undefined);
+    sendCommand(task, undefined, description ?? undefined);
   };
 
   return (
@@ -68,21 +66,6 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
             {description ?? t.command.descriptionNone}
           </output>
         </div>
-        <label className="rb-field">
-          <span className="rb-field__label">{t.command.profile}</span>
-          <select
-            className="rb-select"
-            value={profileId}
-            onChange={(e) => setProfileId(e.target.value)}
-          >
-            <option value="">{t.command.profilePick}</option>
-            {config.profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.model} · {p.precision}
-              </option>
-            ))}
-          </select>
-        </label>
         <div className="rb-field">
           <span className="rb-field__label" id="cmd-preview-label">
             {t.command.preview}

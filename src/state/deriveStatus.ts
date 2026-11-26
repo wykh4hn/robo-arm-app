@@ -3,10 +3,8 @@ import type {
   LiberoConnectionHealth,
   LiberoState,
   LiberoStatus,
-  RobotState,
   StatusTaskState,
   TaskPhase,
-  UsbLink,
   WebLink,
 } from '../types/messages';
 import {
@@ -134,11 +132,8 @@ export interface DerivedStatus {
   connection: {
     level: Level;
     web: WebLink;
-    usb: UsbLink;
-    latencyMs: number | null;
     attempt: number;
   };
-  robot: { level: Level; value: RobotState | 'estop' };
   task: {
     level: Level;
     id: number | null;
@@ -194,10 +189,9 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   const usable = live && !tooOld;
   const nativeMode = s.libero !== null;
   const openTask = s.tasks.findLast((t) => t.state === 'preparing' || t.state === 'running');
-  const taskId = s.task.id ?? openTask?.id ?? null;
-
-  // Emergency stop is reported only when the data contains it.
-  if (s.estop) add('estop', 'estop', 'critical', { task: taskId ?? '' });
+  // The task chip follows the open run, else the most recent one (`task` events).
+  const currentTask = openTask ?? s.tasks[s.tasks.length - 1];
+  const taskId = currentTask?.id ?? null;
 
   if (s.web === 'disconnected' || s.web === 'failed') {
     add('webDown', 'action', 'critical', { attempt: s.reconnectAttempt, task: taskId ?? '' });
@@ -207,22 +201,6 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
 
   if (tooOld) {
     add('stale', 'attention', 'warn', { seconds: (ageMs ?? 0) / 1000 });
-  }
-
-  if (!nativeMode && usable && s.usb === 'lost') {
-    add('usbLost', 'action', 'critical', { task: taskId ?? '' });
-  }
-  if (!nativeMode && usable && s.usb === 'unknown') add('usbUnknown', 'attention', null);
-
-  if (!nativeMode && usable && s.robot === 'error') {
-    const e = s.robotError;
-    add(
-      'robotError',
-      'action',
-      'critical',
-      { code: e?.code ?? '?', joint: e?.joint ?? '', task: taskId ?? '' },
-      ':' + (e?.code ?? '?'),
-    );
   }
 
   // Q5: `resetting` is still a stop on its way (the sim finishes its reset first).
@@ -237,11 +215,8 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   const nativeRecoverableStatus = s.libero?.status === 'READY' || s.libero?.status === 'RUNNING';
   const stoppedState = nativeMode
     ? !nativeTerminal && (!!s.libero?.hold_latched || s.awaitingReady)
-    : s.robot === 'stopped' || s.awaitingReady;
-  if (
-    !nativeMode && usable && !s.estop && s.robot !== 'error' && stoppedState &&
-    !stopInFlight
-  ) {
+    : s.awaitingReady;
+  if (!nativeMode && usable && stoppedState && !stopInFlight) {
     add('awaitingReady', 'waiting', null);
   }
 
@@ -281,8 +256,7 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
     }
   }
 
-  const trackingActive =
-    !nativeMode && usable && s.usb === 'plugged' && s.tracking.error !== null && s.robot === 'moving';
+  const trackingActive = !nativeMode && usable && s.tracking.error !== null;
   if (trackingActive && s.tracking.level === 'stuck') {
     add('trackingStuck', 'action', 'critical', { error: s.tracking.error ?? 0 });
   } else if (trackingActive && s.tracking.level === 'slow') {
@@ -306,30 +280,15 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   const lastAny = s.commands[s.commands.length - 1];
   if (lastAny?.phase === 'noAck') add('cmdNoAck', 'attention', null, {}, ':' + lastAny.id);
 
-  if (!nativeMode && s.task.state === 'failed' && s.robot !== 'error' && s.usb !== 'lost') {
-    add('taskFailed', 'attention', null);
-  }
-
   // --- chips -------------------------------------------------------------
   const connLevel = worst(
     problems
-      .filter((p) => ['webDown', 'syncing', 'usbLost', 'usbUnknown'].includes(p.kind))
+      .filter((p) => p.kind === 'webDown' || p.kind === 'syncing')
       .map((p) => p.level),
   );
 
-  let robotValue: RobotState | 'estop' = usable ? s.robot : 'unknown';
-  let robotLevel: Level = 'ok';
-  if (s.estop) {
-    robotValue = 'estop';
-    robotLevel = 'action';
-  } else if (robotValue === 'error') robotLevel = 'action';
-  else if (robotValue === 'stopped' || (usable && s.awaitingReady)) {
-    robotValue = 'stopped';
-    robotLevel = 'waiting';
-  } else if (robotValue === 'unknown' && live) robotLevel = 'attention';
-
-  const taskState = usable ? s.task.state : null;
-  const taskInfo = s.tasks.find((t) => t.id === s.task.id);
+  const taskState: StatusTaskState | null = usable ? (currentTask?.state ?? 'idle') : null;
+  const taskInfo = currentTask;
   const taskLevel: Level =
     taskState === 'failed' ? 'action' : taskState === 'stopped' ? 'attention' : 'ok';
 
@@ -340,12 +299,9 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
     (c) => c.phase === 'sent' || (c.kind === 'command' && c.phase === 'accepted'),
   );
   let reason: SendBlockReason | null = null;
-  if (s.estop) reason = 'estop';
-  else if (!webUp) reason = 'disconnected';
+  if (!webUp) reason = 'disconnected';
   else if (!s.synced) reason = 'syncing';
   else if (tooOld) reason = 'stale';
-  else if (!nativeMode && s.usb !== 'plugged') reason = 'usbLost';
-  else if (!nativeMode && s.robot === 'error') reason = 'robotError';
   else if (
     stopInFlight || s.stop.phase === 'unconfirmed' || s.stop.phase === 'rejected'
   ) reason = 'stopping';
@@ -360,12 +316,12 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
     else if (lib.status === 'RUNNING' || openTask) reason = 'busy';
     else if (pending) reason = 'pending';
   } else if (stoppedState) reason = 'stopped';
-  else if (s.task.state === 'running' || s.robot === 'moving') reason = 'busy';
+  else if (openTask) reason = 'busy';
   else if (pending) reason = 'pending';
 
   const needsReady = nativeMode
-    ? !s.estop && stoppedState && nativeRecoverableStatus
-    : !s.estop && (s.robot === 'error' || stoppedState);
+    ? stoppedState && nativeRecoverableStatus
+    : stoppedState;
   const readyPending = s.commands.some((c) => c.kind === 'ready' && c.phase === 'sent');
   const readyAckAwaitingState =
     nativeMode && s.libero?.hold_latched === true &&
@@ -375,7 +331,7 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
     ? needsReady && nativeHealthFresh && s.web === 'connected' && s.synced &&
       !stopInFlight && s.stop.phase !== 'unconfirmed' &&
       s.stop.phase !== 'rejected' && !readyPending && !readyAckAwaitingState
-    : needsReady && usable && s.usb === 'plugged' && !stopInFlight && !readyPending;
+    : needsReady && usable && !stopInFlight && !readyPending;
 
   const banner = problems
     .filter((p) => p.banner !== null)
@@ -388,11 +344,8 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
     connection: {
       level: connLevel,
       web: s.web,
-      usb: webUp ? s.usb : 'unknown',
-      latencyMs: live ? s.latencyMs : null,
       attempt: s.reconnectAttempt,
     },
-    robot: { level: robotLevel, value: robotValue },
     task: {
       level: taskLevel,
       id: taskId,

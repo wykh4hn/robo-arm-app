@@ -1,11 +1,9 @@
 import type { ReactNode } from 'react';
-import { config } from '../config';
 import { detailChipClass, LEVEL_META } from '../config/levels';
 import { liberoSimBusy, liberoSimFresh, type DerivedStatus } from '../state/deriveStatus';
 import { useStore } from '../state/store';
 import type { Level } from '../state/types';
 import { fmt, useT } from '../strings';
-import { taskText } from '../utils/commandText';
 import { formatNumber } from '../utils/units';
 import { Icon, type IconName } from './Icon';
 import { Tooltip } from './Tooltip';
@@ -44,24 +42,16 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
   const liberoHealth = useStore((s) => s.liberoConnectionHealth);
   const webLink = useStore((s) => s.web);
   const synced = useStore((s) => s.synced);
-  const { connection: c, robot, task, tracking, stale, ageMs } = derived;
+  const { connection: c, stale, ageMs } = derived;
   const lamp = LEVEL_META[derived.overall];
 
   let web: ReactNode;
   if (c.web === 'disconnected' || c.web === 'failed') web = fmt(t.status.webLost, { n: c.attempt });
   else if (c.web === 'connecting') web = t.status.webConnecting;
   else if (!synced) web = t.status.webSyncing;
-  // LIBERO sends no `status` message, so there is no latency to show.
-  else if (c.latencyMs === null) web = t.status.web;
-  else
-    web = (
-      <>
-        {t.status.web}{' '}
-        <span className="rb-chip__num">{fmt(t.pipeline.ms, { n: c.latencyMs })}</span>
-      </>
-    );
+  else web = t.status.web;
   const webDown = c.web !== 'connected';
-  const connIcon: IconName = webDown ? 'wifiOff' : c.usb === 'lost' ? 'unplug' : 'wifi';
+  const connIcon: IconName = webDown ? 'wifiOff' : 'wifi';
 
   // A health snapshot is only current while the browser is receiving fresh
   // backend state. Keep transport health separate, but do not present a cached
@@ -94,11 +84,6 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
             ? 'waiting'
             : 'ok';
   const liberoIsStale = liberoSnapshotStale || !liberoFresh;
-
-  const robotText =
-    robot.value === 'stopped' && robot.level === 'waiting'
-      ? t.status.stoppedReady
-      : t.values.robot[robot.value];
 
   // LIBERO (communication-plan §4): Board and the current run replace Robot / Task / Tracking.
   const lib = derived.libero;
@@ -138,12 +123,6 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
         tip={t.status.tips.connection}
       >
         {web}
-        {!webDown && !config.liberoMode && (
-          <>
-            {' · '}
-            {t.status.usb} {t.values.usb[c.usb]}
-          </>
-        )}
       </Chip>
       <Chip
         icon={liberoIsStale ? 'wifiOff' : 'robot'}
@@ -154,8 +133,7 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
       >
         {liberoLabel}
       </Chip>
-      {config.liberoMode ? (
-        <>
+      <>
           <Chip
             icon={boardKnown && !lib.boardConnected ? 'unplug' : 'wifi'}
             label={t.status.board}
@@ -188,47 +166,7 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
               </>
             )}
           </Chip>
-        </>
-      ) : (
-        <>
-        <Chip
-          icon="robot"
-          label={t.status.robot}
-          level={robot.level}
-          tip={t.status.tips.robot}
-          stale={stale}
-        >
-          {robotText}
-        </Chip>
-        <Chip
-          icon="task"
-          label={t.status.task}
-          level={task.level}
-          tip={t.status.tips.task}
-          stale={stale}
-        >
-          {task.id !== null && <span className="rb-chip__num">#{task.id}</span>}{' '}
-          {task.id === null && task.state === 'idle' ? t.values.task.idle : taskText(t, task)}
-          {task.elapsedMs !== null && (
-            <>
-              {' '}
-              <span className="rb-chip__num">
-                {fmt(t.status.seconds, { n: Math.floor(task.elapsedMs / 1000) })}
-              </span>
-            </>
-          )}
-        </Chip>
-        <Chip
-          icon="tracking"
-          label={t.status.tracking}
-          level={tracking.level}
-          tip={t.status.tips.tracking}
-          stale={stale}
-        >
-          {tracking.value ? t.values.tracking[tracking.value] : '—'}
-        </Chip>
-        </>
-      )}
+      </>
       <Tooltip content={t.status.tips.updated} align="end">
         {(id) => (
           <span

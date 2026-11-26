@@ -2,6 +2,7 @@ import type { DerivedStatus } from '../state/deriveStatus';
 import { useStore } from '../state/store';
 import { fmt, useT } from '../strings';
 import { eePose } from '../utils/liberoPose';
+import { EeTrailChart } from './EeTrailChart';
 import { formatNumber } from '../utils/units';
 
 /**
@@ -64,6 +65,9 @@ export function EePosePanel({ derived }: { derived: DerivedStatus }) {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="rb-card__body">
+        <EeTrailChart stale={stale} />
       </div>
       <div className="rb-card__foot">{t.pose.foot}</div>
     </section>

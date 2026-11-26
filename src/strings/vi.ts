@@ -192,20 +192,6 @@ export const vi = {
     close: 'Đóng gợi ý',
   },
 
-  pipeline: {
-    title: 'Chuỗi xử lý',
-    steps: { camera: 'Camera', ai: 'AI', gateway: 'Gateway', robot: 'Robot', result: 'Kết quả' },
-    tips: {
-      camera: 'Camera: thời gian lấy và gửi một khung hình.',
-      ai: 'AI: nhận diện vật trong hình camera và tính lệnh khớp.',
-      gateway: 'Gateway: bộ điều khiển trung gian chuyển lệnh xuống tay robot.',
-      robot: 'Robot: thời gian tay robot nhận và thực hiện lệnh.',
-      result: 'Kết quả: robot báo task xong hay thất bại.',
-    },
-    ms: '{n} ms',
-    none: '—',
-  },
-
   command: {
     title: 'Ra lệnh',
     task: 'Task LIBERO',
@@ -222,9 +208,6 @@ export const vi = {
       cube: 'khối lập phương',
       pink_box: 'hộp nhỏ màu hồng',
     },
-    profile: 'Profile AI',
-    profilePick: '— Chọn profile —',
-    needProfile: 'Chọn profile AI trước khi gửi.',
     preview: 'Lệnh sẽ gửi',
     send: 'Gửi lệnh',
     blocked: {
@@ -320,6 +303,9 @@ export const vi = {
     mm: '{n} mm',
     seconds: '{n} s',
     foot: 'Toạ độ x, y, z của đầu tay theo mm, trong khung gốc của sim.',
+    trailTitle: 'Vệt đầu tay · {n} s gần nhất',
+    trailAria: 'Biểu đồ x, y, z của đầu tay theo mm trong {n} giây gần nhất',
+    trailEmpty: 'Chưa có vị trí đầu tay.',
   },
 
   liberoHidden: {
@@ -448,64 +434,91 @@ export const vi = {
     toc: {
       purpose: 'Màn hình này để làm gì',
       status: 'Đọc thanh trạng thái',
-      model: 'Đọc mô hình 3D',
-      joints: 'Bảng khớp và biểu đồ',
-      command: 'Gửi một lệnh',
-      stop: 'STOP và nút dừng khẩn cấp',
+      task: 'Chọn task và theo dõi lượt chạy',
+      stop: 'STOP và Sẵn sàng',
+      board: 'Lượt chạy từ Board',
+      endReasons: 'Lý do kết thúc',
       incidents: 'Khi có sự cố',
       glossary: 'Thuật ngữ',
     },
     purpose:
-      'Màn hình Monitoring cho bạn xem tay robot SO-101 đang làm gì theo thời gian thực và ra lệnh "gắp một vật bỏ vào hộp". Bốn thứ quan trọng nhất: mô hình 3D, vị trí và vận tốc từng khớp, quỹ đạo, và nút STOP.',
+      'Màn hình Monitoring cho bạn theo dõi tay Franka trong sim LIBERO theo thời gian thực: trạng thái lượt chạy, vị trí đầu tay, hai camera và nút STOP. Model AI chạy trên Board, không chạy trên web hay backend. Web chỉ chọn task, dừng và cho phép chạy lại.',
     statusIntro:
       'Ô đầu tiên là đèn tổng: luôn hiện mức nặng nhất đang xảy ra. Các ô còn lại màu xám khi bình thường và chỉ đổi màu khi có chuyện. Mỗi mức luôn có biểu tượng và chữ.',
     statusCols: { level: 'Mức', meaning: 'Ý nghĩa', todo: 'Bạn cần làm gì' },
     statusChips:
-      'Sau đèn tổng là Kết nối (Web và USB), Robot, Task và Độ bám lệnh. Bên phải là "Cập nhật … trước": thời gian từ lúc trình duyệt nhận dữ liệu cuối cùng. Quá {stale} s không có dữ liệu thì số liệu chuyển sang "Dữ liệu cũ".',
-    model: {
-      measured: 'Tay robot thật đang ở đâu, dựng từ vị trí đo của từng khớp.',
-      commanded:
-        '"Bóng" màu xanh: nơi robot đang được bảo đi tới. Bóng đi trước tay thật một chút là bình thường.',
-      trail: 'Đường đầu kẹp vừa đi qua; càng cũ càng mờ.',
-      plan: 'Đường robot định đi tiếp: tới điểm gắp rồi sang điểm thả.',
-      controls:
-        'Kéo chuột để xoay, cuộn để phóng to, hoặc chọn Phối cảnh / Trên / Trước / Bên. "Đặt lại góc nhìn" đưa camera về ban đầu.',
+      'Sau đèn tổng là Kết nối (web tới backend), LIBERO (backend tới sim), Board (Board có giữ session với sim không) và Lượt chạy (trạng thái và bước step/max_steps). Bên phải là "Cập nhật … trước": thời gian từ lúc trình duyệt nhận dữ liệu cuối cùng. Quá {stale} s không có dữ liệu thì số liệu chuyển sang "Dữ liệu cũ".',
+    task: {
+      pick:
+        'Chọn một task LIBERO trong ô lệnh: bộ task (suite) và số task (task_id). Dòng mô tả bên dưới lấy từ sim. Kiểm tra rồi bấm Gửi lệnh. Web không chọn profile AI; backend tự ghi profile theo cấu hình. Một lượt đi qua các bước:',
+      steps: {
+        preparing: 'Đang chuẩn bị',
+        running: 'Đang chạy',
+        ended: 'Xong hoặc Thất bại',
+      },
+      lifecycle: [
+        'Đang chuẩn bị: backend đã nhận lệnh và bảo sim dựng lại scene (3–15 s). Đang chạy: Board đang điều khiển tay, chip Lượt chạy hiện bước step/max_steps. Xong: sim báo SUCCESS. Thất bại: hết giờ, bị huỷ hoặc mất kết nối; lý do ghi ở chip và trong Lịch sử.',
+        'Nút Gửi lệnh bị khoá khi mất kết nối, dữ liệu cũ, Board chưa kết nối, sim đang dựng scene, robot đã dừng hay đang có lượt chạy. Lý do luôn ghi ngay bên dưới nút. Lệnh không bao giờ tự gửi lại.',
+      ],
     },
-    joints: [
-      'Mỗi khớp có một màu cố định, dùng giống nhau ở bảng, biểu đồ và mô hình 3D. Sai số là khoảng cách giữa lệnh và vị trí đo; chuyển vàng khi vượt {warn}°. Thanh Giới hạn chuyển vàng và có dấu cảnh báo khi khớp vượt {near}% hành trình.',
-      'Trên biểu đồ, nét liền là vị trí đo, nét đứt là lệnh. Rê chuột để tạm dừng và đọc giá trị; bấm "Trở lại trực tiếp" để chạy tiếp. Bấm một dòng trong bảng để làm nổi khớp đó.',
+    stop: {
+      stopTitle: 'STOP',
+      stopBody:
+        'Nút đỏ đầu tiên trên thanh trên cùng, có ở mọi trang. Bấm một lần là sim giữ tay đứng yên (HOLD), không hỏi lại; dùng được bằng bàn phím (Tab rồi Enter). Chỉ hiện "Đã dừng" khi sim xác nhận. Lượt đang chạy kết thúc với OPERATOR_STOP.',
+      readyTitle: 'Sẵn sàng',
+      readyBody:
+        'Sau khi dừng, tay không bao giờ tự chạy lại, kể cả sau khi kết nối lại. Bấm Sẵn sàng để sim nhả HOLD. Sẵn sàng không bắt đầu lượt mới: muốn chạy tiếp thì gửi lệnh mới hoặc khởi động runner trên Board.',
+      simBusyTag: 'Sim đang dựng scene',
+      simBusy:
+        'Sim đang đặt lại scene cho lượt mới và chưa trả lời. Số trên màn hình là của lượt trước. Nếu bấm STOP lúc này, nút hiện "Đang dừng · sim đang dựng scene"; lệnh dừng có hiệu lực khi sim dựng xong (tối đa 30 s). Đợi, không cần bấm lại.',
+    },
+    board: [
+      'Runner trên Board có thể tự bắt đầu một lượt (tự RESET) mà không qua nút Gửi lệnh. Khi đó lượt được ghi là "Chạy từ Board" trong Lịch sử. Bạn vẫn theo dõi và bấm STOP như bình thường.',
+      'Runner chạy một lượt mỗi lần khởi động rồi dừng. Muốn chạy lượt nữa thì khởi động lại runner trên Board.',
     ],
-    command: [
-      'Chọn mẫu lệnh và vật thể, kiểm tra dòng "Lệnh sẽ gửi", rồi bấm Gửi lệnh. Theo dõi các bước:',
-      'Nút Gửi lệnh bị khoá khi mất kết nối, dữ liệu cũ, robot lỗi hoặc đã dừng, hay đang có task chạy — lý do luôn ghi ngay bên dưới nút. Lệnh không bao giờ tự gửi lại.',
+    endIntro:
+      'Khi lượt kết thúc, chip Lượt chạy và Lịch sử ghi trạng thái (Xong, Hết giờ, Bị huỷ) kèm mã end_reason của sim:',
+    endCols: { code: 'end_reason', meaning: 'Ý nghĩa' },
+    endReasons: [
+      { code: 'TASK_SUCCESS', def: 'Tay hoàn thành task. Trạng thái Xong.' },
+      { code: 'MAX_STEPS', def: 'Hết số bước cho phép mà chưa xong. Trạng thái Hết giờ.' },
+      { code: 'OPERATOR_STOP', def: 'Người vận hành bấm STOP. Trạng thái Bị huỷ.' },
+      { code: 'CONNECTION_LOST', def: 'Board ngắt kết nối với sim giữa lượt. Trạng thái Bị huỷ.' },
+      { code: 'HEARTBEAT_TIMEOUT', def: 'Board ngừng gửi nhịp tim tới sim. Trạng thái Bị huỷ.' },
+      {
+        code: 'OPERATOR_LOST',
+        def: 'Backend ngừng gửi nhịp tim tới sim (backend tắt hoặc treo). Trạng thái Bị huỷ.',
+      },
     ],
-    stopSoft: {
-      title: 'STOP trên màn hình',
-      body: 'Nút đỏ đầu tiên trên thanh trên cùng, có ở mọi trang. Bấm một lần là gửi lệnh dừng qua phần mềm, không hỏi lại; dùng được bằng bàn phím (Tab rồi Enter). Chỉ hiện "Đã dừng" khi robot xác nhận. Không có xác nhận sau 4 s thì dùng nút vật lý.',
-    },
-    stopHard: {
-      title: 'Nút dừng khẩn cấp vật lý',
-      body: 'Nút trên robot hoặc bộ nguồn, cắt điện motor. Luôn hoạt động kể cả khi mất mạng hay phần mềm treo. Dùng khi có nguy hiểm thật.',
-    },
-    stopAfter:
-      'Sau khi dừng, robot không bao giờ tự chạy lại, kể cả sau khi kết nối lại: bấm Sẵn sàng, rồi gửi lệnh mới.',
     incidentCols: { see: 'Bạn thấy', todo: 'Việc cần làm' },
     incidents: {
-      usbLost: {
-        see: 'Mất kết nối USB với tay robot',
-        todo: 'Kiểm tra cáp USB, bấm "Kết nối lại USB", rồi bấm Sẵn sàng. Robot có thể còn giữ tư thế; dùng nút vật lý nếu cần.',
+      boardLost: {
+        see: 'Board mất kết nối · lượt bị huỷ',
+        todo: 'Sim đã giữ HOLD. Kiểm tra nguồn và cáp của Board, đợi Board kết nối lại, rồi gửi lệnh mới.',
       },
-      robotError: {
-        see: 'Robot báo lỗi',
-        todo: 'Robot đã tự dừng. Đọc tên khớp trong thông báo, gỡ vật cản, kiểm tra dây servo, rồi bấm Sẵn sàng.',
+      boardOffline: {
+        see: 'Board chưa kết nối',
+        todo: 'Bật Board và khởi động runner. Nút Gửi lệnh mở khi Board giữ session với sim.',
       },
-      frozen: {
-        see: 'Hình bị đứng',
-        todo: 'Camera không gửi hình mới. Kiểm tra cáp camera; mô hình 3D vẫn đúng vì dựa trên số liệu khớp.',
+      simOffline: {
+        see: 'Sim LIBERO mất kết nối',
+        todo: 'Backend không đọc được sim. Kiểm tra sim còn chạy trên laptop. Số trên màn hình bị làm mờ.',
+      },
+      operatorLost: {
+        see: 'Backend mất liên lạc với sim · lượt bị huỷ',
+        todo: 'Kiểm tra backend và sim, bấm Sẵn sàng, rồi gửi lệnh mới.',
+      },
+      webLost: {
+        see: 'Mất kết nối web',
+        todo: 'Trình duyệt tự kết nối lại. Nếu kéo dài, kiểm tra backend còn chạy và mạng LAN. Khi mất kết nối web, tay vẫn chạy: dùng STOP trên máy khác nếu cần.',
       },
       rejected: {
         see: 'Bị từ chối',
-        todo: 'Đọc lý do NACK dưới nút Gửi lệnh (ví dụ: không thấy vật), sửa rồi gửi lại.',
+        todo: 'Đọc lý do NACK dưới nút Gửi lệnh (ví dụ: Board chưa kết nối), sửa rồi gửi lại.',
+      },
+      frozen: {
+        see: 'Hình bị đứng',
+        todo: 'Camera agentview hoặc wrist không có hình mới. Trạng thái và vị trí đầu tay vẫn đúng vì đọc từ sim.',
       },
       stale: {
         see: 'Dữ liệu cũ',
@@ -513,18 +526,18 @@ export const vi = {
       },
     },
     glossary: [
-      { term: 'URDF', def: 'Tệp mô tả hình dạng và các khớp của robot; dùng để dựng mô hình 3D.' },
+      { term: 'LIBERO', def: 'Bộ task gắp đặt vật trong sim MuJoCo, dùng để đánh giá model.' },
+      { term: 'suite, task_id', def: 'Bộ task (ví dụ libero_spatial) và số thứ tự task trong bộ.' },
       {
-        term: 'shoulder_pan … gripper',
-        def: 'Tên kỹ thuật của 6 khớp: xoay đế, nâng vai, gập khuỷu, gập cổ tay, xoay cổ tay, kẹp.',
+        term: 'Franka',
+        def: 'Tay robot 7 khớp trong sim. Màn hình hiện vị trí đầu tay, không hiện góc khớp.',
       },
-      { term: 'action / state', def: 'Lệnh AI gửi cho robot / vị trí robot đo được thực tế.' },
-      { term: 'rad, rad/s', def: 'Radian: đơn vị góc (1 rad ≈ 57,3°) và tốc độ quay.' },
-      { term: 'ACK / NACK', def: 'Robot xác nhận đã nhận lệnh / từ chối lệnh kèm lý do.' },
-      { term: 'Gateway', def: 'Bộ điều khiển trung gian giữa máy chủ AI và tay robot.' },
-      { term: 'Độ bám lệnh', def: 'Robot đi theo lệnh sát tới đâu: Tốt, Chậm hoặc Có thể bị kẹt.' },
-      { term: 'Đầu kẹp (end-effector)', def: 'Đầu ngón kẹp; vị trí x, y, z tính bằng mm.' },
-      { term: 'E-stop', def: 'Nút dừng khẩn cấp vật lý: cắt điện motor, không qua phần mềm.' },
+      { term: 'eef_pos', def: 'Vị trí đầu tay (end-effector) x, y, z, tính bằng mm.' },
+      { term: 'Board', def: 'Máy chạy model AI và runner, nối với sim qua TCP.' },
+      { term: 'session_active', def: 'Board đang giữ kết nối với sim. Chưa có thì không gửi được lệnh.' },
+      { term: 'HOLD', def: 'Sim giữ tay đứng yên sau STOP hoặc sự cố, chờ Sẵn sàng.' },
+      { term: 'step / max_steps', def: 'Bước hiện tại / số bước tối đa của lượt.' },
+      { term: 'ACK / NACK', def: 'Backend xác nhận đã nhận lệnh / từ chối lệnh kèm lý do.' },
     ],
   },
 

@@ -14,6 +14,10 @@ Hiện đây là **frontend chạy bằng dữ liệu giả lập trong trình d
 
 ## Cài đặt và chạy
 
+Chạy với sim LIBERO thật hoặc fake, BE ở cổng 8001, Board hoặc runner trên laptop, và cách tự kiểm tra: xem [docs/RUN.md](docs/RUN.md).
+
+Chỉ dev giao diện với dữ liệu giả lập trong trình duyệt:
+
 Cần Node.js 20 trở lên.
 
 ```bash

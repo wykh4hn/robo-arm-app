@@ -54,8 +54,9 @@ describe('App', () => {
     expect(screen.getByTestId('run-chip')).toHaveTextContent('Đã dừng · chờ Sẵn sàng hoặc lệnh mới');
     // The stopped run is over (ABORTED + HOLD): no Ready, a new command starts a new episode.
     expect(screen.queryByRole('button', { name: 'Sẵn sàng' })).not.toBeInTheDocument();
-    expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Chọn profile AI trước khi gửi.');
-    await user.selectOptions(screen.getByLabelText('Profile AI'), 'smolvla-int8');
+    // Q7: no profile to pick; Send is open right away.
+    expect(screen.queryByLabelText('Profile AI')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('cmd-reason')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Gửi lệnh' }));
     await advance(1000);
     expect(screen.getByTestId('lamp')).toHaveTextContent('Hệ thống ổn');
@@ -78,8 +79,9 @@ describe('App', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderScenario('cmd-nack');
     await advance(1500);
-    expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Chọn profile AI trước khi gửi.');
-    await user.selectOptions(screen.getByLabelText('Profile AI'), 'smolvla-int8');
+    // Q7: no profile to pick; Send is open right away.
+    expect(screen.queryByLabelText('Profile AI')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('cmd-reason')).not.toBeInTheDocument();
     expect(screen.getByTestId('cmd-preview')).toHaveTextContent('libero_spatial #0');
     await user.click(screen.getByRole('button', { name: 'Gửi lệnh' }));
     expect(screen.getByTestId('cmd-lifecycle')).toHaveAttribute('data-phase', 'sent');

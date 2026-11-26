@@ -229,9 +229,7 @@ export function RobotScene(props: SceneProps) {
   }, [measured]);
 
   // --- plan --------------------------------------------------------------------
-  const task = useStore((s) =>
-    s.task.state === 'running' ? s.tasks.find((t) => t.id === s.task.id) : undefined,
-  );
+  const task = useStore((s) => s.tasks.findLast((t) => t.state === 'running'));
   const plan = usePlan(task, fk);
 
   useEffect(() => invalidate(), [layers, plan, invalidate]);

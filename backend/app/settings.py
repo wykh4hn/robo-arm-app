@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     libero_suite: str = "libero_spatial"
     libero_task_id: int = 0
     libero_init_state: int = 0
+    # Q7: the web picks no AI profile. This id is recorded with every web command that
+    # names none (e.g. "xvla-w8a16"); empty = not recorded.
+    libero_profile_id: str | None = None
     sim_poll_hz: float = 10.0
     sim_timeout_ms: int = 2000
     # Board RESET can take 3–15 s; its operator contract requires >= 30 s. Also the HTTP

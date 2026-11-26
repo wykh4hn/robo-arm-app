@@ -146,7 +146,7 @@ def create_app(
                 task_id=command.task.task_id,
                 init_state=command.init_state,
                 seed=command.seed,
-                profile_id=command.profile_id,
+                profile_id=command.profile_id or settings.libero_profile_id or None,
             )
 
         return None

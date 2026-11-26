@@ -35,7 +35,7 @@ describe('web <-> BE contract', () => {
   });
 
   it('telemetry without action is kept as null, never copied from state (R3)', () => {
-    const s = run(['status', 'telemetry_no_action']);
+    const s = run(['telemetry_no_action']);
     const last = s.samples[s.samples.length - 1]!;
     expect(last.joints.elbow_flex.action).toBeNull();
     expect(last.joints.elbow_flex.state).toBe(60.2);
@@ -43,7 +43,7 @@ describe('web <-> BE contract', () => {
   });
 
   it('telemetry with action keeps it', () => {
-    const s = run(['status', 'telemetry_with_action']);
+    const s = run(['telemetry_with_action']);
     expect(s.samples[s.samples.length - 1]!.joints.elbow_flex.action).toBe(60);
   });
 
