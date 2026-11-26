@@ -1,0 +1,116 @@
+{
+ "schema_version": 2,
+ "run_id": "57b11f26e9ea4a6a9521ae4244d029a1",
+ "session_id": "b9a77470b64e46f9af789e7447c18562",
+ "status": "HOLD",
+ "mode": "local",
+ "board_link": null,
+ "fault": "USER_ABORT",
+ "hold_latched": true,
+ "joint_names": [
+  "shoulder_pan",
+  "shoulder_lift",
+  "elbow_flex",
+  "wrist_flex",
+  "wrist_roll",
+  "gripper"
+ ],
+ "units": "radians",
+ "joint_positions": [
+  -0.721774193972939,
+  -0.19954408206060764,
+  0.20045320483106424,
+  1.3999998384815324,
+  -8.679280845716766e-07,
+  0.8000000140192939
+ ],
+ "joint_velocities": [
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0
+ ],
+ "joint_limits": [
+  [
+   -1.91986,
+   1.91986
+  ],
+  [
+   -1.7453292519943224,
+   1.7453292519943366
+  ],
+  [
+   -1.69,
+   1.69
+  ],
+  [
+   -1.65806,
+   1.65806
+  ],
+  [
+   -2.7438472969992493,
+   2.841206309382605
+  ],
+  [
+   -0.17453,
+   1.7453291995659765
+  ]
+ ],
+ "target_positions": [
+  -0.721774193972939,
+  -0.19954408206060764,
+  0.20045320483106424,
+  1.3999998384815324,
+  -8.679280845716766e-07,
+  0.8000000140192939
+ ],
+ "final_target_positions": null,
+ "sim_time": 0.71,
+ "server_monotonic_ns": 151745549282,
+ "accepted_sequence": 0,
+ "applied_sequence": 0,
+ "completed_sequence": -1,
+ "completion_reason": null,
+ "queue_depth": 0,
+ "queue_capacity": 8,
+ "phase": null,
+ "reference_active": false,
+ "episode": {
+  "status": "ABORTED",
+  "reason": "USER_ABORT",
+  "target": "red_ball",
+  "seed": 7,
+  "elapsed_sim_s": 0.704,
+  "grasped": false,
+  "lifted": false,
+  "max_object_height_m": 0.0161076,
+  "in_box": false
+ },
+ "board_connected": false,
+ "last_board_heartbeat_age_s": null,
+ "mcu_execution_verified": false,
+ "cameras": {
+  "overhead": false,
+  "wrist": false
+ },
+ "camera_error": null,
+ "frame_id": null,
+ "frame_sim_time": null,
+ "frame_age_s": null,
+ "frame_stale": true,
+ "render": {},
+ "metrics": {
+  "real_time_factor": 0.0,
+  "discarded_wall_time_s": 0.0,
+  "physics_steps": 6938
+ },
+ "geometry": "SO101 finger collision approximation v1; simulated contact, not hardware calibration",
+ "model_sha256": "c7762355e9281ec9baedf507632f256283e53dbe14986b83a6810a9b194018d2",
+ "logging": {
+  "enabled": false,
+  "dropped_records": 0,
+  "error": null
+ }
+}

@@ -136,12 +136,12 @@ describe('deriveStatus', () => {
     const d = deriveStatus(
       healthy({
         cameras: {
-          object: { fps: 30, frameTs: 1, lastFrameChangeAt: NOW - 4000 },
-          overview: { fps: 4, frameTs: 2, lastFrameChangeAt: NOW },
+          overhead: { fps: 30, frameTs: 1, lastFrameChangeAt: NOW - 4000 },
+          wrist: { fps: 4, frameTs: 2, lastFrameChangeAt: NOW },
         },
       }),
     );
-    expect(d.problems.map((p) => p.key)).toEqual(['cameraFrozen:object', 'cameraFrozen:overview']);
+    expect(d.problems.map((p) => p.key)).toEqual(['cameraFrozen:overhead', 'cameraFrozen:wrist']);
     expect(d.overall).toBe('attention');
     expect(d.banner).toEqual([]);
   });

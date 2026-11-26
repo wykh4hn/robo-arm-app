@@ -12,13 +12,27 @@ const ViewerCanvas = lazy(() => import('../three/ViewerCanvas'));
 const PRESETS: ViewPreset[] = ['perspective', 'top', 'front', 'side'];
 const LAYERS: (keyof Layers)[] = ['ghost', 'trail', 'plan', 'axes', 'labels'];
 
-function hasWebGL(): boolean {
-  if (typeof window === 'undefined' || typeof WebGL2RenderingContext === 'undefined') return false;
+type GlKind = 'none' | 'software' | 'hardware';
+
+/**
+ * WebGL drawn by the CPU (SwiftShader, llvmpipe: no GPU, or the GPU is blocked) costs the
+ * page close to a second per frame. That would delay every click, STOP included, so the
+ * 3D view starts off there and the user may turn it on.
+ */
+function probeGl(): GlKind {
+  if (typeof window === 'undefined' || typeof WebGL2RenderingContext === 'undefined') return 'none';
   try {
     const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') ?? c.getContext('webgl'));
+    const gl = (c.getContext('webgl2') ?? c.getContext('webgl')) as WebGLRenderingContext | null;
+    if (!gl) return 'none';
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    const name = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : '');
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(name)
+      ? 'software'
+      : 'hardware';
   } catch {
-    return false;
+    return 'none';
   }
 }
 
@@ -44,7 +58,9 @@ export function RobotViewer3D({ compact = false, forcePlaceholder = false }: Vie
   const largeSlot = useStore((s) => s.largeSlot);
   const objectId = useStore((s) => s.tasks.find((x) => x.id === s.task.id)?.params?.object);
   const [ee, setEe] = useState<[number, number, number] | null>(null);
-  const [webgl] = useState(hasWebGL);
+  const [gl] = useState(probeGl);
+  const [softwareOk, setSoftwareOk] = useState(false);
+  const webgl = gl === 'hardware' || (gl === 'software' && softwareOk);
 
   const object = objectId ? ((t.command.objects as Record<string, string>)[objectId] ?? '') : '';
   const n = (v: number) => formatNumber(v, 0, lang);
@@ -75,6 +91,14 @@ export function RobotViewer3D({ compact = false, forcePlaceholder = false }: Vie
             onEe={setEe}
           />
         </Suspense>
+      ) : gl === 'software' ? (
+        <div className="app-viewport-msg" data-testid="viewer-software-gl">
+          <Icon name="info" />
+          <span>{t.viewer.softwareGl}</span>
+          <button type="button" className="rb-btn" onClick={() => setSoftwareOk(true)}>
+            {t.viewer.softwareGlOn}
+          </button>
+        </div>
       ) : (
         <div className="app-viewport-msg">
           <Icon name="info" />

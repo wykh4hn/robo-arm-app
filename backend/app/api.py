@@ -105,9 +105,12 @@ def build_router(core: Core) -> APIRouter:
         await storage.flush()
         # Blocked profiles stay visible, with the reason (F5, N6).
         rows = await storage.list_profiles()
-        dev_only = {p.profile_id for p in runner.profiles.values() if p.dev_only}
         for row in rows:
-            row["dev_only"] = row["profile_id"] in dev_only
+            p = runner.profiles.get(row["profile_id"])
+            row["dev_only"] = bool(p and p.dev_only)
+            for key in ("ai_id", "validation", "board_verified", "package_mb",
+                        "server_policy_p50_s", "server_policy_p95_s", "note"):  # fmt: skip
+                row[key] = getattr(p, key, None) if p else None
         return {"profiles": rows}
 
     @r.get("/api/v1/runs")

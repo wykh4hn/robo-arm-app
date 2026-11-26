@@ -60,13 +60,15 @@ describe('App', () => {
     expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Chọn profile AI trước khi gửi.');
   });
 
-  it('without a stop ACK it says to use the physical emergency stop', async () => {
+  it('without a stop ACK it says to check MuJoCo, never "stopped"', async () => {
     renderScenario('stop-no-ack');
     await advance(1500);
     await act(async () => stopButton().click());
     await advance(2100);
     expect(stopButton()).toHaveTextContent('Chưa xác nhận dừng');
-    expect(screen.getByText('Dùng nút dừng khẩn cấp vật lý trên robot.')).toBeInTheDocument();
+    expect(
+      screen.getByText('STOP dừng mô phỏng MuJoCo, không phải dừng khẩn cấp vật lý.'),
+    ).toBeInTheDocument();
     const banner = screen.getByRole('alert');
     expect(within(banner).getByText(/Chưa xác nhận lệnh dừng sau 2 s/)).toBeInTheDocument();
   });
@@ -76,9 +78,9 @@ describe('App', () => {
     renderScenario('cmd-nack');
     await advance(1500);
     expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Chọn profile AI trước khi gửi.');
-    await user.selectOptions(screen.getByLabelText('Profile AI'), 'smolvla-int8');
+    await user.selectOptions(screen.getByLabelText('Profile AI'), 'smolvla-fp16');
     expect(screen.getByTestId('cmd-preview')).toHaveTextContent(
-      'pick the cube and put it in the box',
+      'pick the red ball and put it in the box',
     );
     await user.click(screen.getByRole('button', { name: 'Gửi lệnh' }));
     expect(screen.getByTestId('cmd-lifecycle')).toHaveAttribute('data-phase', 'sent');
@@ -104,14 +106,14 @@ describe('App', () => {
     expect(screen.getByTestId('first-visit-hint')).toBeInTheDocument();
   });
 
-  it('USB lost: critical banner with Reconnect; it clears only when the condition clears', async () => {
+  it('board lost: critical banner with Check again; it clears only when the condition clears', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderScenario('usb-lost');
     await advance(4000);
-    expect(screen.getByText('Mất kết nối USB với tay robot')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Kết nối lại USB/ }));
+    expect(screen.getByText('Board mất kết nối với MuJoCo')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Kiểm tra lại board/ }));
     await advance(1500);
-    expect(screen.queryByText('Mất kết nối USB với tay robot')).not.toBeInTheDocument();
+    expect(screen.queryByText('Board mất kết nối với MuJoCo')).not.toBeInTheDocument();
     expect(screen.getByTestId('lamp')).toHaveTextContent('Chờ người dùng');
   });
 

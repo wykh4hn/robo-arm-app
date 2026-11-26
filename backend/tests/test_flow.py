@@ -79,19 +79,19 @@ def test_t1_normal_run(be):
     # D3: the run was on disk before the ACK.
     assert be.db("SELECT phase FROM runs WHERE run_id=1")
     running = ws.task("running")
-    assert running["task"]["profileId"] == "smolvla-int8" and running["task"]["seed"] == 7
+    assert running["task"]["profileId"] == "smolvla-fp16" and running["task"]["seed"] == 7
     ws.status(lambda m: m["robot"]["state"] == "moving" and m["task"]["state"] == "running")
     done = ws.task("done", timeout=6)
     assert done["task"]["outcome"] == "success" and done["task"]["incomplete"] is False
     assert done["task"]["endedTs"] >= done["task"]["startedTs"]
     ws.status(lambda m: m["robot"]["state"] == "ready")
     assert be.sim.resets == [(7, 1)]
-    assert be.board.prompts[0]["task_text"] == "pick the cube and put it in the box"
+    assert be.board.prompts[0]["task_text"] == "pick the red ball and put it in the box"
     row = be.db("SELECT phase, outcome, incomplete, started_at IS NOT NULL FROM runs")[0]
     assert row == ("finished", "success", 0, 1)
     assert be.db("SELECT COUNT(*) FROM samples WHERE run_id=1")[0][0] > 5
     manifest = json.loads((be.settings.runs_dir / "000001" / "manifest.json").read_text())
-    assert manifest["result"]["outcome"] == "success" and manifest["profile"]["id"] == "smolvla-int8"
+    assert manifest["result"]["outcome"] == "success" and manifest["profile"]["id"] == "smolvla-fp16"
     ws.close()
 
 
@@ -169,7 +169,7 @@ def test_t2_board_offline_and_sim_offline(make_be):
 def test_t2_blocked_profile(make_be, tmp_path):
     profiles = tmp_path / "profiles.json"
     profiles.write_text(json.dumps({"profiles": [
-        {"profile_id": "smolvla-int8"},
+        {"profile_id": "smolvla-fp16"},
         {"profile_id": "pi0-int4", "status": "blocked", "blocked_reason": "OOM khi nạp"},
     ]}))  # fmt: skip
     be = make_be(profiles_file=profiles)
@@ -321,7 +321,7 @@ def test_t7_no_hold_means_no_stop_ack(make_be):
     ws.status(lambda m: m["robot"]["state"] == "error"
               and m["robot"]["error"]["code"] == "STOP_UNCONFIRMED")  # fmt: skip
     # A late HOLD is still accepted, and the newest Stop id is answered (R9).
-    be.sim.hold_stop = True
+    be.sim._latch("USER_ABORT")  # the ABORT finally lands
     acks = []
     while len(acks) < 2:
         acks.append(ws.until(lambda m: m["type"] == "stop_ack", timeout=3)["id"])
@@ -502,7 +502,7 @@ def test_t14_export_success_and_failure(make_be):
 def test_t15_no_secrets_in_db_or_export(be):
     secret = "tok_SUPERSECRET_123"
     ws = be.ws()
-    ws.send({**cmd("c1"), "token": secret, "params": {"object": "cube"}})
+    ws.send({**cmd("c1"), "token": secret, "params": {"object": "red_ball"}})
     ws.task("done", timeout=6)
     ws.send({**cmd("c2", profileId="nope"), "password": secret})
     ws.reply("c2")
@@ -538,7 +538,7 @@ def test_t16_import_board_file_and_stats(be, tmp_path):
     assert counts == {"timing": 105, "resource": 1, "event": 1, "rejected": 1, "duplicate": 0}
     again = import_board_log(be.settings.db_path, be.settings.runs_dir, 1, f)
     assert again["duplicate"] == 1  # the event is not counted twice
-    st = be.http.get("/api/v1/stats", params={"profile_id": "smolvla-int8"}).json()
+    st = be.http.get("/api/v1/stats", params={"profile_id": "smolvla-fp16"}).json()
     assert st["warmup"] == 10 and st["measured"] == 200
     assert st["inference_ms"]["max"] == pytest.approx(100.0)
     assert st["inference_ms"]["p50"] == pytest.approx(50.0)
@@ -554,14 +554,14 @@ def test_t17_trial_matrix_counts_every_planned_trial(be):
 def test_scored_mode_uses_the_trial_plan(make_be, tmp_path):
     proto = tmp_path / "protocol.json"
     proto.write_text(json.dumps({
-        "id": "scored-test", "ui_text": "pick the cube and put it in the box",
+        "id": "scored-test", "ui_text": "pick the red ball and put it in the box",
         "policy_task_text": "Pick up the cube and place it in the box", "rule_version": "v1",
         "episode_limit_s": 60, "seeds": [21], "trials_per_seed": 1,
         "contract": {"stop_to_halt_ms": 200, "control_period_ms": 100,
                      "action_queue_capacity": 8},
     }))  # fmt: skip
     profiles = tmp_path / "profiles.json"
-    profiles.write_text(json.dumps({"profiles": [{"profile_id": "smolvla-int8",
+    profiles.write_text(json.dumps({"profiles": [{"profile_id": "smolvla-fp16",
                                                   "artifact_hash": "sha256:abc"}]}))
     be = make_be(mode="scored", protocol_file=proto, profiles_file=profiles)
     ws = be.ws()
@@ -603,9 +603,9 @@ def test_reset_failure_ends_the_run(make_be):
 
 
 def test_rest_wrappers_share_the_same_logic(be):
-    r = be.http.post("/api/v1/runs", json={"id": "rest-1", "profileId": "smolvla-int8"})
+    r = be.http.post("/api/v1/runs", json={"id": "rest-1", "profileId": "smolvla-fp16"})
     assert r.status_code == 200 and r.json()["taskId"] == 1
-    r2 = be.http.post("/api/v1/runs", json={"id": "rest-2", "profileId": "smolvla-int8"})
+    r2 = be.http.post("/api/v1/runs", json={"id": "rest-2", "profileId": "smolvla-fp16"})
     assert r2.status_code == 409 and r2.json()["code"] == "busy"
     stop = be.http.post("/api/v1/stop", json={"id": "rs"}).json()
     assert stop["confirmed"] is True and stop["run_id"] == 1
@@ -645,7 +645,7 @@ def test_camera_stream_and_meta(make_be):
         assert b"Content-Type: image/jpeg" in chunk and b"\xff\xd8" in chunk
         ws = be.ws()
         cam = ws.until(lambda m: m["type"] == "camera", timeout=3)
-        assert cam["camera"] == "object" and cam["fps"] > 0
+        assert cam["camera"] == "overhead" and cam["fps"] > 0
         ws.close()
     assert be.http.get("/api/camera/nope/stream").status_code == 404
 
@@ -662,3 +662,41 @@ def test_serves_the_built_frontend(make_be, tmp_path):
     r = be.http.get("/")
     assert r.status_code == 200 and "SO-101" in r.text
     assert be.http.get("/api/health").status_code == 200  # API routes win over static files
+
+
+def test_failure_holds_mujoco_but_next_run_resets_without_ready(make_be):
+    """Real MuJoCo holds after FAILURE (sample 16). The next run's RESET clears it."""
+    be = make_be("failure:object_fell_off_table")
+    ws = be.ws()
+    ws.send(cmd("c1"))
+    t = ws.task("failed", timeout=6)["task"]
+    assert t["reasonCode"] == "object_fell_off_table" and not t["incomplete"]
+    assert be.sim.hold_stop and be.sim.fault == "OBJECT_FELL_OFF_TABLE"
+    st = ws.status(lambda m: m["task"]["state"] == "failed")
+    assert st["robot"]["state"] == "ready"  # a failure is not a stop: no Ready needed
+    be.sim.scenario = "normal"
+    ws.send(cmd("c2"))
+    assert ws.reply("c2")["type"] == "ack"
+    assert ws.task("done", timeout=6)["task"]["outcome"] == "success"
+    assert be.sim.resets[-1][1] == 2
+    ws.close()
+
+
+def test_mujoco_ending_the_episode_itself_needs_ready(make_be):
+    """Board lost on MuJoCo's side: episode ABORTED/CONNECTION_LOST while the BE did not stop."""
+    be = make_be("no_result")
+    ws = be.ws()
+    ws.send(cmd("c1"))
+    ws.task("running")
+    be.sim._latch("CONNECTION_LOST")
+    t = ws.task("failed", timeout=3)["task"]
+    assert t["outcome"] == "error" and t["reasonCode"] == "connection_lost" and t["incomplete"]
+    ws.status(lambda m: m["robot"]["state"] == "stopped")  # Ready is required
+    ws.close()
+
+
+def test_status_says_who_drives_the_arm(be):
+    ws = be.ws()
+    st = ws.status(lambda m: True)
+    assert st["link"]["driver"] == "mock"
+    ws.close()

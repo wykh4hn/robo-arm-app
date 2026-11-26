@@ -89,6 +89,9 @@ class LinkOut(_Out):
     web: Literal["connected"] = "connected"
     usb: UsbLink
     latencyMs: int  # R2: always a number
+    # Who drives the arm: "board" (VENTUNO Q), "reference" (MuJoCo's ground-truth
+    # controller in local mode, not AI) or "mock" (fake board). Left out until known.
+    driver: Literal["board", "reference", "mock"] | None = None
 
 
 class RobotErrorOut(_Out):

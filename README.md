@@ -56,4 +56,4 @@ http://localhost:5173/?scenario=robot-error
 - [`design-system/`](./design-system/) — token, kiểu chữ và các thành phần giao diện.
 - [`docs/tutorial/`](./docs/tutorial/00-bat-dau.md) — hướng dẫn tự xây lại dự án từ đầu, từng bước (10 chương).
 - [`docs/backend-spec.md`](./docs/backend-spec.md) — đặc tả backend (Spec v2).
-- [`backend/`](./backend/README.md) — backend FastAPI: cách chạy với MuJoCo và board giả, test, các quyết định khi code.
+- [`backend/`](./backend/README.md) — backend FastAPI: cách chạy với MuJoCo giả, hoặc với MuJoCo thật của repo Robo-Arm-COS40005 (local mode), test, các quyết định khi code.

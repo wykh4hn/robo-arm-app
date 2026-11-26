@@ -5,12 +5,12 @@
     "command": {
       "type": "command",
       "id": "cmd-m1a2-1",
-      "text": "pick the cube and put it in the box",
+      "text": "pick the red ball and put it in the box",
       "templateId": "pick_into_box",
       "params": {
-        "object": "cube"
+        "object": "red_ball"
       },
-      "profileId": "smolvla-int8"
+      "profileId": "smolvla-fp16"
     },
     "stop": {
       "type": "stop",
@@ -90,7 +90,8 @@
       "link": {
         "web": "connected",
         "usb": "plugged",
-        "latencyMs": 3
+        "latencyMs": 3,
+        "driver": "reference"
       },
       "robot": {
         "state": "moving"
@@ -141,16 +142,16 @@
       "ts": 1730450000300,
       "task": {
         "id": 13,
-        "command": "pick the cube and put it in the box",
+        "command": "pick the red ball and put it in the box",
         "templateId": "pick_into_box",
         "params": {
-          "object": "cube"
+          "object": "red_ball"
         },
         "state": "done",
         "startedTs": 1730449990000,
         "endedTs": 1730450000300,
         "commandId": "cmd-m1a2-1",
-        "profileId": "smolvla-int8",
+        "profileId": "smolvla-fp16",
         "seed": 7,
         "outcome": "success",
         "incomplete": false
@@ -161,16 +162,16 @@
       "ts": 1730450000300,
       "task": {
         "id": 13,
-        "command": "pick the cube and put it in the box",
+        "command": "pick the red ball and put it in the box",
         "templateId": "pick_into_box",
         "params": {
-          "object": "cube"
+          "object": "red_ball"
         },
         "state": "failed",
         "startedTs": 1730449990000,
         "endedTs": 1730450000300,
         "commandId": "cmd-m1a2-1",
-        "profileId": "smolvla-int8",
+        "profileId": "smolvla-fp16",
         "seed": 7,
         "outcome": "failure",
         "incomplete": false,
@@ -184,16 +185,16 @@
       "tasks": [
         {
           "id": 13,
-          "command": "pick the cube and put it in the box",
+          "command": "pick the red ball and put it in the box",
           "templateId": "pick_into_box",
           "params": {
-            "object": "cube"
+            "object": "red_ball"
           },
           "state": "failed",
           "startedTs": 1730449990000,
           "endedTs": 1730450000300,
           "commandId": "cmd-m1a2-1",
-          "profileId": "smolvla-int8",
+          "profileId": "smolvla-fp16",
           "seed": 7,
           "outcome": "failure",
           "incomplete": false,
@@ -202,16 +203,16 @@
         },
         {
           "id": 13,
-          "command": "pick the cube and put it in the box",
+          "command": "pick the red ball and put it in the box",
           "templateId": "pick_into_box",
           "params": {
-            "object": "cube"
+            "object": "red_ball"
           },
           "state": "done",
           "startedTs": 1730449990000,
           "endedTs": 1730450000300,
           "commandId": "cmd-m1a2-1",
-          "profileId": "smolvla-int8",
+          "profileId": "smolvla-fp16",
           "seed": 7,
           "outcome": "success",
           "incomplete": false
@@ -254,7 +255,7 @@
     "camera": {
       "type": "camera",
       "ts": 1730450000500,
-      "camera": "object",
+      "camera": "overhead",
       "fps": 10,
       "frameTs": 1730450000450
     },

@@ -1,0 +1,4 @@
+{
+ "type": "REJECTED",
+ "reason": "Execution is on HOLD; send RESUME or RESET explicitly"
+}

@@ -30,10 +30,10 @@ ROOT = Path(__file__).resolve().parents[2]
 ORIGIN = "http://localhost:5173"
 CMD = {
     "type": "command",
-    "text": "pick the cube and put it in the box",
+    "text": "pick the red ball and put it in the box",
     "templateId": "pick_into_box",
-    "params": {"object": "cube"},
-    "profileId": "smolvla-int8",
+    "params": {"object": "red_ball"},
+    "profileId": "smolvla-fp16",
 }
 
 FAST = dict(
@@ -218,3 +218,11 @@ def be(make_be) -> BE:
 
 def load_contract(name: str) -> dict[str, Any]:
     return json.loads((ROOT / "contracts" / name).read_text(encoding="utf-8"))
+
+
+REAL_SIM = ROOT / "contracts" / "sim_examples_real"
+
+
+def real_sample(name: str) -> dict[str, Any]:
+    """One reply recorded from the real MuJoCo server (board_server, local mode, 26/11)."""
+    return json.loads((REAL_SIM / f"{name}.json").read_text(encoding="utf-8"))

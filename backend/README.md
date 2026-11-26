@@ -2,7 +2,10 @@
 
 Backend FastAPI đứng giữa web, MuJoCo và board. Đặc tả đầy đủ: [`docs/backend-spec.md`](../docs/backend-spec.md) (Spec v2).
 
-**Trạng thái: Phase 1 xong.** Lõi BE chạy với MuJoCo giả và board giả nằm ngay trong BE. Phần nối thật (`app/sim_client.py`, `app/board_link.py`) mới là khung, chờ IoT và AI trả lời (spec mục 15).
+**Trạng thái:**
+- **Phase 1 xong.** Lõi BE chạy với MuJoCo giả và board giả nằm ngay trong BE.
+- **Phase 2 xong ở local mode.** `app/sim_client.py` nối MuJoCo thật (`so101sim/board_server/app.py` của repo Robo-Arm-COS40005, schema v2). Đã chạy thật: Gửi → RESET → gắp bóng đỏ → `success`; STOP → HOLD → Sẵn sàng.
+- **Board mode và Phase 3 còn chờ IoT/AI.** Ở board mode, MuJoCo trả 403 cho mọi lệnh của BE (Chung, câu 1). `app/board_link.py` vẫn là khung (Q1).
 
 ## Chạy nhanh (cách A: toàn đồ giả)
 
@@ -31,25 +34,66 @@ npm run dev        # http://localhost:5173
 
 Thêm `?scenario=robot-error` vào URL để quay lại robot giả trong trình duyệt của FE.
 
+## Chạy với MuJoCo thật (cách B, local mode)
+
+Cần repo **Robo-Arm-COS40005** (MuJoCo của IoT) và Python có `mujoco`, `numpy`, `Pillow` (`so101sim/requirements.txt`).
+
+Terminal 1, MuJoCo thật (cảnh 4 bóng + hộp, cổng 8000):
+
+```bash
+cd Robo-Arm-COS40005/so101sim/board_server
+python app.py --mode local --no-viewer          # thêm --no-cameras nếu máy không vẽ được
+```
+
+Terminal 2, BE:
+
+```bash
+cd backend
+SO101_SIM_LINK=real SO101_BOARD_LINK=reference \
+  uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 1 --timeout-graceful-shutdown 3
+```
+
+Hoặc đặt hai biến đó trong `.env`. Mở `http://localhost:8001`, chọn một profile FP16, bấm **Gửi lệnh**.
+
+Điều xảy ra:
+1. BE gửi `RESET` (seed của protocol, bóng đỏ, lệch ±8 mm theo seed).
+2. `SO101_BOARD_LINK=reference` bảo MuJoCo chạy **controller tham chiếu** (`POST /api/reference`). Controller này biết vị trí thật của bóng. **Nó không phải AI**: profile chỉ được ghi vào log, manifest ghi `driver: reference`, và web hiện "Board local · tham chiếu, không phải AI".
+3. Góc khớp (đo và lệnh), hai camera `overhead` và `wrist`, kết quả `SUCCESS/FAILURE/ABORTED` đều là của MuJoCo thật.
+
+Đã đo trong container (1 lần, CPU, không GPU; **không phải số Q11**): lượt gắp ~13 s mô phỏng; STOP → HOLD 10–18 ms; 0 action sau STOP.
+
+Test với MuJoCo thật: `SO101_TEST_SIM_URL=http://127.0.0.1:8000 pytest tests/test_sim_client.py`.
+
+### Khác giữa MuJoCo thật và bản tạm trong spec v2
+
+| Spec v2 (tạm) | MuJoCo thật (`board_server`, schema v2) | BE làm gì |
+|---|---|---|
+| `POST /api/stop`, `/api/release` | `POST /api/abort`, `/api/resume`, kèm `{schema_version, run_id, session_id}` | `sim_client.py` đọc `/api/state` lấy ngữ cảnh rồi gửi; ngữ cảnh cũ thì thử lại đúng 1 lần |
+| `status: HOLD` + `hold_reason` | `hold_latched` + `fault` (`USER_ABORT`, `EPISODE_TIMEOUT`, `CONNECTION_LOST`…) | STOP chỉ được xác nhận khi nguyên nhân HOLD là `USER_ABORT`. Xét `hold_origin`, rồi `fault`, rồi `episode.reason`, vì `fault` có thể bị ghi đè (lỗi L1) |
+| `/api/evaluation {final, outcome}` | `episode.status`: `READY/RUNNING/SUCCESS/FAILURE/ABORTED` | Quyết định theo `status`, không so `reason` (khi SUCCESS `reason` là một câu) |
+| `run_id` số | `run_id` chuỗi, đổi ở mỗi RESET | Lưu vào run (`sim_episode_id`), bỏ qua kết quả của episode cũ |
+| Không có vị trí lệnh | `target_positions` | Gửi lên web làm `action`: robot bóng, cột lệnh, sai số, độ bám lệnh có số thật |
+| Camera MJPEG | Mỗi GET một ảnh JPEG; 503 khi chưa có | `camera.py` hỏi lặp rồi ghép MJPEG, chỉ khi có người xem |
+| — | FAILURE cũng làm MuJoCo HOLD | Không coi là STOP; lượt sau RESET là hết HOLD, không cần Sẵn sàng |
+| — | MuJoCo tự kết thúc lượt (mất board, heartbeat…) | Run `error` + `incomplete`, cần Sẵn sàng |
+
 ### Thử sự cố
 
 Đặt `MOCK_SIM_SCENARIO` trước khi chạy BE. Ví dụ `failure:no_grasp`, `board_lost`, `sim_down`, `no_hold`, `late_hold`, `model_hold`, `release_rejected`, `bad_state`, `reset_fail`. Danh sách đầy đủ ở đầu `tools/mock_sim.py`. Board không nhận prompt: `MOCK_BOARD_SCENARIO=offline`.
 
 ### MuJoCo giả chạy riêng qua HTTP
 
-Để viết `sim_client.py` (Phase 2) mà chưa có MuJoCo thật:
+Cùng đường dẫn và câu trả lời với `board_server` ở local mode, cho máy không cài được MuJoCo:
 
 ```bash
 MOCK_SIM_SCENARIO=normal uvicorn tools.mock_sim:app --port 8000
-curl -s localhost:8000/api/state
+SO101_SIM_LINK=real SO101_BOARD_LINK=reference uvicorn app.main:app --port 8001 --workers 1
 ```
-
-Tên đường dẫn RESET, STOP, thoát HOLD là **tạm** (Q4, Q7): `POST /api/reset`, `/api/stop`, `/api/release`.
 
 ## Kiểm tra
 
 ```bash
-cd backend && pytest          # 123 test: đơn vị, hợp đồng, toàn tuyến
+cd backend && pytest          # 146 test: đơn vị, hợp đồng (16 mẫu MuJoCo thật), toàn tuyến
 cd .. && npm test             # FE, gồm src/transport/contract.test.ts
 ```
 
@@ -97,16 +141,17 @@ backend/
     export.py       file .zip của một run
     camera.py       proxy MJPEG
     api.py          REST
-    sim_client.py   KHUNG, Phase 2
+    sim_client.py   MuJoCo thật qua HTTP (board_server, schema v2)
+    reference_driver.py  "board" ở local mode: controller tham chiếu của MuJoCo, không phải AI
     board_link.py   KHUNG, Phase 3
   tools/
-    mock_sim.py         MuJoCo giả (trong BE hoặc HTTP :8000), nhiều kịch bản lỗi
+    mock_sim.py         MuJoCo giả, cùng khuôn với board_server (trong BE hoặc HTTP :8000)
     mock_board.py       board giả, chỉ nhận prompt
     import_board_log.py nhập file T0–T3 của board sau mỗi run (D18)
     run_campaign.py     chạy cả đợt qua REST
-  config/  profiles.json (9 profile, id tạm), protocol.dev.json
+  config/  profiles.json (9 profile theo ma trận của nhóm AI, tạm), protocol.dev.json (bóng đỏ)
   tests/
-contracts/  web_examples.json, sim_examples.json (pytest và vitest cùng đọc)
+contracts/  web_examples.json (pytest và vitest cùng đọc), sim_examples_real/ (16 câu trả lời thật của MuJoCo)
 ```
 
 ## Các quyết định khi code (spec để ngỏ hoặc chưa nói)
@@ -117,21 +162,25 @@ Mỗi điểm dưới đây nằm gọn trong một chỗ, đổi được khi n
 - **Timeout mỗi lần hỏi MuJoCo là 500 ms** (`SO101_SIM_POLL_TIMEOUT_MS`), tách khỏi ngưỡng 2 s "mất MuJoCo". Nếu một lần hỏi được chờ đủ 2 s, BE không kịp báo dữ liệu ngừng ở 1,5 s.
 - **Stop không có HOLD:** BE thử lại STOP và đọc lại trạng thái mỗi 500 ms trong 10 s (`SO101_STOP_CONFIRM_TIMEOUT_S`). Hết hạn thì run `interrupted` + `incomplete`, robot `error` (`STOP_UNCONFIRMED`). HOLD đến muộn vẫn được nhận, và mọi Stop chưa trả lời đều nhận `stop_ack`.
 - **Stop lúc rảnh mà MuJoCo không trả lời:** trả `stop_ack` ngay, robot `unknown` (spec 8.2).
-- **HOLD chỉ là "đã dừng" khi BE đã gửi STOP và `hold_reason` không phải `model`.**
+- **HOLD chỉ là "đã dừng" khi BE đã gửi STOP và nguyên nhân HOLD là `USER_ABORT`** (xem bảng ở cách B).
 - **MuJoCo không có kết quả quá `SO101_RUN_WALL_TIMEOUT_S`:** BE gửi STOP để episode không chạy tiếp, ghi `error` + `incomplete` (`no_result`), cần Sẵn sàng. Không ghi `timeout` thay MuJoCo.
-- **Kết quả của episode trước:** nếu `/api/evaluation` có `run_id` khác run đang chạy thì bỏ qua. Cần IoT thêm trường này (Q8).
+- **Kết quả của episode trước:** nếu `run_id` của `/api/evaluation` khác `run_id` MuJoCo trả lúc RESET thì bỏ qua.
 - **Mất MuJoCo giữa run:** run `error` + `incomplete`, robot `error` (`SIM_OFFLINE`), và cần Sẵn sàng.
 - **Board nối lại:** luôn cần Sẵn sàng, kể cả khi lúc mất không có run.
 - **Dữ liệu ngừng (R12):** chỉ xét khi run đang `running` và chưa có Stop.
 - **Seed ở chế độ dev:** xoay vòng các seed trong `protocol.dev.json` theo từng profile. Chế độ `scored` lấy trial kế tiếp trong bảng `trials`.
-- **Camera:** tên nguồn `overhead`, `wrist` được gửi lên web thành `object`, `overview` (`SO101_CAMERA_WEB_NAMES`) cho tới khi FE đổi tên (spec 14, việc 10). Chỉ hỏi ảnh khi có người xem.
-- **Dải kẹp:** để trống thì dùng `gripperMap` của FE (−0,17 đến 1,6 rad), để mô hình 3D khớp.
+- **Camera:** tên `overhead`, `wrist` giống MuJoCo. Chỉ hỏi ảnh khi có người xem.
+- **Dải kẹp:** để trống thì dùng giới hạn MJCF (−0,17453 đến 1,74533 rad), giống `joint_limits` của MuJoCo và `gripperMap` của FE.
+- **Task:** bóng đỏ vào hộp (cảnh `board_server`). Cảnh bóng-vào-bát (quyết định 0009) chưa có API. Đổi vật ở `config/protocol.dev.json` và `src/config/index.ts` cùng lúc.
+- **Profile:** 9 profile lấy từ ma trận của nhóm AI (01–02/11). 3 bản FP16 được chọn, 6 bản INT8/INT4 bị chặn kèm lý do; chưa bản nào được nghiệm thu trên board.
 - **Origin của WebSocket:** trang do chính BE phục vụ luôn được nhận, dù mở bằng `localhost`, `127.0.0.1` hay IP LAN của laptop (iPad). `SO101_ALLOWED_ORIGINS` chỉ cần cho Vite ở cổng 5173. Spec 12.6 bảo thêm IP laptop vào danh sách; nay không cần nữa.
 - **N8:** BE chỉ lưu các trường đã biết của lệnh web; trường lạ (ví dụ token) không vào DB.
 - **Tắt máy chủ:** nên chạy kèm `--timeout-graceful-shutdown 3`, để Ctrl+C không chờ mãi một kết nối WebSocket chưa đóng.
 
 ## Việc FE đã sửa trong nhánh này (spec mục 14)
 
-Việc 3 (`WebSocketTransport`), 4 (cổng 8001), 5 (địa chỉ tương đối), 6 (ô chọn profile, khóa Gửi khi chưa chọn), 7 (chỉ còn khối lập phương), 8 (thiếu `action`: ẩn robot bóng, cột lệnh và sai số hiện "—", độ bám lệnh là "không rõ"), 11 (mã `SIM_OFFLINE`).
+Đã xong: 3 (`WebSocketTransport`), 4 (cổng 8001), 5 (địa chỉ tương đối), 6 (ô chọn profile), 7 (một vật: bóng đỏ), 8 (thiếu `action` không làm hỏng web), 9 (chữ "USB" → "Board"), 10 (camera `overhead`/`wrist` qua `/api/camera/<tên>/stream`, "Chưa có hình" khi chưa có ảnh), 11 (`SIM_OFFLINE`), danh sách profile đọc từ `GET /api/v1/profiles` (profile bị chặn hiện xám, kèm lý do; nhãn "Chưa kiểm trên board"), nút "Tải dữ liệu run" trong lịch sử, bỏ các câu về nút dừng khẩn cấp vật lý.
 
-Còn lại cho Khanh: 1, 2, 9 (ô USB → Board), 10 (camera `wrist` và URL luồng MJPEG), 12–18. Danh sách profile trên FE đang ghi cứng trong `src/config/index.ts`; nên đọc từ `GET /api/v1/profiles` để thấy profile bị chặn.
+Thêm: máy không có GPU (WebGL vẽ bằng CPU) thì mô hình 3D tắt sẵn, vì nó làm trang trễ gần 1 s mỗi nhịp, kể cả nút STOP. Người dùng bấm "Vẫn bật 3D" nếu muốn.
+
+Còn lại: 1 (gộp nhánh iPad), 12–18 ngoài các việc trên.

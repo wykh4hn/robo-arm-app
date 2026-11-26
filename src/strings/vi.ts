@@ -9,13 +9,13 @@ export const vi = {
     stopping: 'Đang dừng…',
     stopped: 'Đã dừng',
     unconfirmed: 'Chưa xác nhận dừng',
-    note: 'Dùng nút dừng khẩn cấp vật lý trên robot.',
+    note: 'STOP dừng mô phỏng MuJoCo, không phải dừng khẩn cấp vật lý.',
     ready: 'Sẵn sàng',
     announce: {
       idle: '',
       stopping: 'Đã gửi lệnh dừng, đang chờ xác nhận.',
       stopped: 'Robot đã dừng. Bấm Sẵn sàng trước khi gửi lệnh mới.',
-      unconfirmed: 'Chưa xác nhận dừng. Dùng nút dừng khẩn cấp vật lý.',
+      unconfirmed: 'Chưa xác nhận dừng. Xem cửa sổ MuJoCo ngay.',
     },
   },
   tabs: { label: 'Trang', monitoring: 'Monitoring', tutorial: 'Tutorial' },
@@ -49,7 +49,7 @@ export const vi = {
     task: 'Task',
     tracking: 'Độ bám lệnh',
     web: 'Web',
-    usb: 'USB',
+    usb: 'Board',
     webLost: 'Web mất · thử lại lần {n}',
     webConnecting: 'Web đang kết nối',
     webSyncing: 'Web · đang tải lại trạng thái',
@@ -60,7 +60,8 @@ export const vi = {
     stoppedReady: 'Đã dừng · bấm Sẵn sàng',
     seconds: '{n} s',
     tips: {
-      connection: 'Web: trình duyệt ↔ gateway, kèm độ trễ ms. USB: gateway ↔ tay robot.',
+      connection:
+        'Web: trình duyệt ↔ BE, kèm độ trễ ms. Board: thứ đang lái tay robot trong MuJoCo (board VENTUNO Q, hoặc controller tham chiếu ở chế độ local).',
       robot: 'Trạng thái do robot báo về: sẵn sàng, đang chạy, đã dừng hoặc lỗi.',
       task: 'Task đang chạy: số thứ tự, việc đang làm và thời gian đã chạy.',
       tracking:
@@ -71,6 +72,7 @@ export const vi = {
   },
   values: {
     usb: { plugged: 'ổn', lost: 'mất', unknown: 'không rõ' },
+    driver: { reference: 'local · tham chiếu, không phải AI', mock: 'giả' },
     robot: {
       ready: 'Sẵn sàng',
       moving: 'Đang chạy',
@@ -100,7 +102,7 @@ export const vi = {
     robotLabel: 'Robot',
     todoLabel: 'Việc cần làm',
     openTutorial: 'Xem hướng dẫn',
-    reconnectUsb: 'Kết nối lại USB',
+    reconnectUsb: 'Kiểm tra lại board',
     ready: 'Sẵn sàng',
     errorCodes: {
       OVERLOAD: 'quá tải ở khớp {joint}',
@@ -112,8 +114,8 @@ export const vi = {
     },
     titles: {
       estop: 'Nút dừng khẩn cấp vật lý đang được nhấn',
-      webDown: 'Mất kết nối tới gateway',
-      usbLost: 'Mất kết nối USB với tay robot',
+      webDown: 'Mất kết nối tới BE',
+      usbLost: 'Board mất kết nối với MuJoCo',
       robotError: 'Robot báo lỗi: {detail}',
       stopUnconfirmed: 'Chưa xác nhận lệnh dừng sau {s} s',
       stale: 'Dữ liệu cũ: không nhận được tin nhắn trong {s} s',
@@ -122,7 +124,7 @@ export const vi = {
     robot: {
       estop: 'Đã dừng bởi nút dừng khẩn cấp. Robot không tự chạy lại.',
       webDown: 'Không rõ — robot có thể vẫn đang chạy task.',
-      usbLost: 'Không rõ — gateway không còn điều khiển được tay robot.',
+      usbLost: 'Không rõ — board không còn điều khiển tay robot trong MuJoCo.',
       robotError: 'Đã dừng — task bị huỷ.',
       stopUnconfirmed: 'Không rõ — robot có thể vẫn đang chuyển động.',
       stale: 'Không rõ. Nút Gửi lệnh tạm khoá.',
@@ -131,12 +133,12 @@ export const vi = {
     todo: {
       estop: 'Kiểm tra an toàn quanh robot, nhả nút dừng khẩn cấp, rồi bấm Sẵn sàng.',
       webDown:
-        'Nếu cần dừng ngay, dùng nút dừng khẩn cấp vật lý. Khi có lại kết nối, giao diện tải lại trạng thái rồi mới mở khoá điều khiển.',
+        'Lượt chạy vẫn tiếp tục và vẫn được ghi. Nếu cần dừng ngay, dừng trong cửa sổ MuJoCo. Khi có lại kết nối, giao diện tải lại trạng thái rồi mới mở khoá điều khiển.',
       usbLost:
-        'Kiểm tra cáp USB giữa gateway và tay robot, rồi bấm Kết nối lại USB. Nếu robot còn chuyển động, dùng nút dừng khẩn cấp vật lý.',
+        'Kiểm tra board và cáp USB-C (ADB) tới laptop chạy MuJoCo, rồi bấm Kiểm tra lại board. MuJoCo tự giữ yên tay robot khi mất board.',
       robotError: 'Gỡ vật cản, kiểm tra dây servo, rồi bấm Sẵn sàng và gửi lệnh mới.',
-      stopUnconfirmed: 'Bấm nút dừng khẩn cấp vật lý trên robot ngay.',
-      stale: 'Kiểm tra mạng và gateway. Giao diện tự mở khoá khi dữ liệu mới về.',
+      stopUnconfirmed: 'Xem cửa sổ MuJoCo ngay; tắt mô phỏng nếu tay robot vẫn chạy.',
+      stale: 'Kiểm tra mạng, BE và MuJoCo. Giao diện tự mở khoá khi dữ liệu mới về.',
       trackingStuck: 'Bấm STOP, kiểm tra vật cản hoặc dây vướng quanh tay robot.',
     },
   },
@@ -172,19 +174,25 @@ export const vi = {
       red_duck: 'vịt đỏ',
       yellow_duck: 'vịt vàng',
       cube: 'khối lập phương',
+      red_ball: 'bóng đỏ',
       pink_box: 'hộp nhỏ màu hồng',
     },
     profile: 'Profile AI',
     profilePick: '— Chọn profile —',
     needProfile: 'Chọn profile AI trước khi gửi.',
+    profileBlocked: 'bị chặn',
+    profileNotOnBoard: 'Chưa kiểm trên board',
+    profileBlockedList: '{n} profile bị chặn: xem lý do',
+    referenceDriver:
+      'Chế độ local: tay robot chạy bằng controller tham chiếu của MuJoCo (biết vị trí thật của vật), không phải AI. Profile chỉ được ghi vào log.',
     preview: 'Lệnh sẽ gửi',
     send: 'Gửi lệnh',
     blocked: {
       estop: 'Nút dừng khẩn cấp đang được nhấn. Nhả nút rồi bấm Sẵn sàng.',
-      disconnected: 'Mất kết nối tới gateway. Đợi kết nối lại.',
+      disconnected: 'Mất kết nối tới BE. Đợi kết nối lại.',
       syncing: 'Đang tải lại trạng thái sau khi kết nối lại.',
       stale: 'Dữ liệu cũ. Đợi dữ liệu mới về.',
-      usbLost: 'Mất kết nối USB với tay robot.',
+      usbLost: 'Board mất kết nối với MuJoCo.',
       robotError: 'Robot đang báo lỗi. Xử lý lỗi rồi bấm Sẵn sàng.',
       stopping: 'Đang chờ robot xác nhận lệnh dừng.',
       stopped: 'Robot đã dừng. Bấm Sẵn sàng trước khi gửi lệnh mới.',
@@ -218,6 +226,8 @@ export const vi = {
     started: 'Bắt đầu',
     empty1: 'Chưa có task nào trong phiên này.',
     empty2: 'Chọn vật thể ở thẻ Ra lệnh rồi bấm Gửi lệnh.',
+    export: 'Tải dữ liệu run',
+    exportLabel: 'Tải dữ liệu run #{id} (zip: manifest, mẫu, sự kiện)',
   },
 
   viewer: {
@@ -253,6 +263,9 @@ export const vi = {
     noUrdf: 'Không tải được URDF ở {path}. Đang hiển thị chuỗi khớp đơn giản thay thế.',
     loading: 'Đang tải mô hình URDF…',
     noWebgl: 'Trình duyệt không hỗ trợ WebGL nên không vẽ được mô hình 3D.',
+    softwareGl:
+      'Mô hình 3D đang tắt: máy này vẽ 3D bằng CPU (không có GPU), sẽ làm chậm cả trang, kể cả nút STOP. Camera, bảng khớp và biểu đồ vẫn chạy.',
+    softwareGlOn: 'Vẫn bật 3D',
     pick: '{object} · điểm gắp',
     drop: 'Hộp · điểm thả',
     canvasLabel: 'Mô hình 3D tay robot SO-101',
@@ -325,11 +338,12 @@ export const vi = {
   },
 
   camera: {
-    names: { object: 'Nhìn vật (trên xuống)', overview: 'Toàn cảnh' },
+    names: { overhead: 'Camera trên cao', wrist: 'Camera cổ tay' },
     meta: '{fps} fps · {age} s',
     metaNone: '— fps · —',
     frozen: 'Hình bị đứng',
-    noUrl: 'Chưa có URL camera trong config',
+    noUrl: 'Chưa có hình: camera chỉ có khi web nối với MuJoCo qua BE',
+    noFrame: 'Chưa có hình',
     swap: 'Đổi chỗ với mô hình 3D',
     swapBack: 'Đưa mô hình 3D về ô lớn',
   },
@@ -353,7 +367,7 @@ export const vi = {
       'Ô đầu tiên là đèn tổng: luôn hiện mức nặng nhất đang xảy ra. Các ô còn lại màu xám khi bình thường và chỉ đổi màu khi có chuyện. Mỗi mức luôn có biểu tượng và chữ.',
     statusCols: { level: 'Mức', meaning: 'Ý nghĩa', todo: 'Bạn cần làm gì' },
     statusChips:
-      'Sau đèn tổng là Kết nối (Web và USB), Robot, Task và Độ bám lệnh. Bên phải là "Cập nhật … trước": thời gian từ lúc trình duyệt nhận dữ liệu cuối cùng. Quá {stale} s không có dữ liệu thì số liệu chuyển sang "Dữ liệu cũ".',
+      'Sau đèn tổng là Kết nối (Web và Board), Robot, Task và Độ bám lệnh. Bên phải là "Cập nhật … trước": thời gian từ lúc trình duyệt nhận dữ liệu cuối cùng. Quá {stale} s không có dữ liệu thì số liệu chuyển sang "Dữ liệu cũ".',
     model: {
       measured: 'Tay robot thật đang ở đâu, dựng từ vị trí đo của từng khớp.',
       commanded:
@@ -373,7 +387,7 @@ export const vi = {
     ],
     stopSoft: {
       title: 'STOP trên màn hình',
-      body: 'Nút đỏ đầu tiên trên thanh trên cùng, có ở mọi trang. Bấm một lần là gửi lệnh dừng qua phần mềm, không hỏi lại; dùng được bằng bàn phím (Tab rồi Enter). Chỉ hiện "Đã dừng" khi robot xác nhận. Không có xác nhận sau 2 s thì dùng nút vật lý.',
+      body: 'Nút đỏ đầu tiên trên thanh trên cùng, có ở mọi trang. Bấm một lần là gửi lệnh dừng qua phần mềm, không hỏi lại; dùng được bằng bàn phím (Tab rồi Enter). Chỉ hiện "Đã dừng" khi MuJoCo xác nhận đã giữ yên tay robot. Project A chỉ có mô phỏng: STOP không phải dừng khẩn cấp vật lý.',
     },
     stopHard: {
       title: 'Nút dừng khẩn cấp vật lý',
@@ -384,8 +398,8 @@ export const vi = {
     incidentCols: { see: 'Bạn thấy', todo: 'Việc cần làm' },
     incidents: {
       usbLost: {
-        see: 'Mất kết nối USB với tay robot',
-        todo: 'Kiểm tra cáp USB, bấm "Kết nối lại USB", rồi bấm Sẵn sàng. Robot có thể còn giữ tư thế; dùng nút vật lý nếu cần.',
+        see: 'Board mất kết nối với MuJoCo',
+        todo: 'Kiểm tra board và cáp USB-C, bấm "Kiểm tra lại board", rồi bấm Sẵn sàng. MuJoCo giữ yên tay robot trong lúc chờ.',
       },
       robotError: {
         see: 'Robot báo lỗi',

@@ -1,11 +1,11 @@
 {
-  "_note": "Dev protocol. protocol.scored.json is owned by Hoan (SO101-101, Q12).",
+  "_note": "Dev protocol for so101sim/board_server (4 balls + box). The ball-into-bowl task (decision 0009) has no API yet. protocol.scored.json is owned by Hoan (SO101-101, Q12).",
   "id": "dev-v1",
   "rule_version": "dev",
   "template_id": "pick_into_box",
-  "object": "cube",
-  "ui_text": "pick the cube and put it in the box",
-  "policy_task_text": "pick the cube and put it in the box",
+  "object": "red_ball",
+  "ui_text": "pick the red ball and put it in the box",
+  "policy_task_text": "pick the red ball and put it in the box",
   "seeds": [
     7,
     11,
@@ -13,7 +13,7 @@
   ],
   "trials_per_seed": 1,
   "warmup_chunks": 5,
-  "episode_limit_s": null,
+  "episode_limit_s": 60.0,
   "retry_incomplete": false,
   "dataset": {
     "id": "lerobot/svla_so100_pickplace",

@@ -160,7 +160,7 @@ export const SCENARIOS: Record<ScenarioName, ScenarioDef> = {
   'camera-frozen': {
     ...base,
     startRunning: false,
-    lowFpsCamera: 'object',
+    lowFpsCamera: 'overhead',
     fault: { kind: 'cameraFrozen', atMs: 2000 },
     expect: [
       {

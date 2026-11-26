@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { config, type ObjectId, type TemplateId } from '../config';
+import { useProfiles } from '../config/profiles';
 import type { DerivedStatus } from '../state/deriveStatus';
 import { useStore } from '../state/store';
 import type { CommandRecord } from '../state/types';
@@ -15,6 +16,10 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
   const [templateId, setTemplateId] = useState<TemplateId>(config.templates[0]!.id);
   const [object, setObject] = useState<ObjectId>(config.objects[0]!.id);
   const [profileId, setProfileId] = useState('');
+  const profiles = useProfiles();
+  const driver = useStore((s) => s.driver);
+  const chosen = profiles.find((p) => p.id === profileId);
+  const blockedProfiles = profiles.filter((p) => !p.enabled);
 
   const template = config.templates.find((x) => x.id === templateId) ?? config.templates[0]!;
   const params = { object };
@@ -24,7 +29,7 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
     : !profileId
       ? t.command.needProfile
       : null;
-  const canSend = derived.canSend && !!profileId;
+  const canSend = derived.canSend && !!chosen?.enabled;
   const last = commands.findLast((c) => c.kind === 'command');
 
   const onSubmit = (e: FormEvent) => {
@@ -77,13 +82,38 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
             onChange={(e) => setProfileId(e.target.value)}
           >
             <option value="">{t.command.profilePick}</option>
-            {config.profiles.map((p) => (
-              <option key={p.id} value={p.id}>
+            {profiles.map((p) => (
+              <option key={p.id} value={p.id} disabled={!p.enabled} title={p.reason}>
                 {p.model} · {p.precision}
+                {p.enabled ? '' : ` (${t.command.profileBlocked})`}
               </option>
             ))}
           </select>
         </label>
+        {chosen && !chosen.boardVerified && (
+          <span className="rb-tag rb-tag--warn app-self-start" data-testid="profile-not-on-board">
+            <Icon name="warn" size="sm" />
+            {t.command.profileNotOnBoard}
+          </span>
+        )}
+        {blockedProfiles.length > 0 && (
+          <details className="rb-help app-m0">
+            <summary>{fmt(t.command.profileBlockedList, { n: blockedProfiles.length })}</summary>
+            <ul className="app-blocked-list">
+              {blockedProfiles.map((p) => (
+                <li key={p.id}>
+                  {p.model} · {p.precision}: {p.reason ?? '—'}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+        {driver === 'reference' && (
+          <p className="rb-help app-m0" data-testid="reference-driver">
+            <Icon name="info" />
+            {t.command.referenceDriver}
+          </p>
+        )}
         <div className="rb-field">
           <span className="rb-field__label" id="cmd-preview-label">
             {t.command.preview}

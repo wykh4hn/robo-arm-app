@@ -1,24 +1,27 @@
-"""A stand-in for MuJoCo `app.py` (spec 3.4, 7). Two ways to use it:
+"""A stand-in for the MuJoCo server `so101sim/board_server/app.py` (schema v2). Two ways to use it:
 
 1. In-process, as a `SimPort` (`SO101_SIM_LINK=mock`, the default; also in tests).
-2. Over HTTP, with the same API the real simulator is expected to have:
+   It then behaves like board mode: a fake board (`tools/mock_board.py`) starts the episode.
+2. Over HTTP, with the same routes and replies as the real server in local mode:
        MOCK_SIM_SCENARIO=normal uvicorn tools.mock_sim:app --port 8000
-   This is what the real `sim_client.py` (Phase 2) can be developed against.
+   then run the BE with SO101_SIM_LINK=real SO101_BOARD_LINK=reference. `POST /api/reference`
+   starts the episode, as MuJoCo's reference controller does.
 
-Endpoint names for RESET, STOP and release, `status: "HOLD"`, `hold_reason` and
-`run_id` in the evaluation are PROVISIONAL (Q4, Q5, Q7, Q8).
+`/api/state` and `/api/evaluation` have the real shape (see `contracts/sim_examples_real/`):
+`hold_latched` + `fault` for HOLD, `episode.status` READY|RUNNING|SUCCESS|FAILURE|ABORTED,
+`target_positions` for the commanded set-point, a string `run_id` that changes at RESET.
 
 Scenarios (MOCK_SIM_SCENARIO, or `sim.scenario = ...`, or POST /mock/scenario):
-  normal            episode ends with success
-  failure:<code>    episode ends with failure (no_grasp, drop, misplacement)
-  timeout           episode ends with timeout
-  no_result         evaluation never becomes final
-  bad_evaluation    final evaluation with an unknown outcome
-  model_hold        MuJoCo keeps pausing with hold_reason "model" (T12)
-  no_hold           STOP is accepted but HOLD never shows (T7)
-  late_hold         HOLD shows `late_hold_s` after STOP (T7)
-  stop_error        STOP is refused
-  release_rejected  leaving HOLD is refused (T8)
+  normal            episode ends with SUCCESS
+  failure:<code>    episode ends with FAILURE, reason <CODE> (e.g. failure:object_fell_off_table)
+  timeout           FAILURE / EPISODE_TIMEOUT
+  no_result         the episode never ends
+  bad_evaluation    the episode ends with an unknown status
+  model_hold        MuJoCo keeps pausing while the AI computes (status HOLD, no latch) (T12)
+  no_hold           ABORT is accepted but HOLD never shows (T7)
+  late_hold         HOLD shows `late_hold_s` after ABORT (T7)
+  stop_error        ABORT is refused
+  release_rejected  RESUME is refused (T8)
   reset_fail        RESET fails
   board_lost        board_connected turns false `fault_after_s` into the run (T9)
   board_offline     board never connected
@@ -40,9 +43,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.ports import (
+    JOINT_NAMES,
     Evaluation,
     ResetResult,
     SimError,
+    SimForbidden,
     SimRejected,
     SimState,
     parse_evaluation,
@@ -78,6 +83,13 @@ KEYFRAMES = (
     (1.00, REST),  # home
 )
 CONTROL_HZ = 10.0
+# MJCF limits of so101_new_calib.xml (rad), as `/api/state.joint_limits` reports them.
+LIMITS = (
+    (-1.91986, 1.91986), (-1.74533, 1.74533), (-1.69, 1.69),
+    (-1.65806, 1.65806), (-2.74385, 2.84121), (-0.17453, 1.74533),
+)
+SUCCESS_TEXT = "Lifted, released and stable inside the box"
+TARGETS = ("red_ball", "green_ball", "blue_ball", "yellow_ball")
 
 
 def _pose(fraction: float, pan_offset: float = 0.0) -> tuple[float, ...]:
@@ -97,17 +109,24 @@ def _pose(fraction: float, pan_offset: float = 0.0) -> tuple[float, ...]:
 
 @dataclass
 class _Episode:
-    run_id: int
+    run_id: int  # the BE's run, so the fake board can start the right episode
     seed: int
-    episode_id: int
+    sim_run_id: str
     pan_offset: float
+    target: str = "red_ball"
     started: bool = False
     load_left: float = 0.0
     wall: float = 0.0  # seconds since the board started, pauses included
     t: float = 0.0  # simulated seconds of motion
     steps: int = 0
     paused: bool = False
-    result: tuple[str, str | None] | None = None
+    result: tuple[str, str | None] | None = None  # (episode.status, episode.reason)
+
+    @property
+    def status(self) -> str:
+        if self.result is not None:
+            return self.result[0]
+        return "RUNNING" if self.started and self.load_left <= 0 else "READY"
 
 
 class FakeSim:
@@ -122,6 +141,7 @@ class FakeSim:
         fault_after_s: float = 2.0,
         late_hold_s: float = 3.0,
         autostart: bool = False,
+        mode: str = "board",
     ) -> None:
         self.scenario = scenario
         self.episode_s = episode_s
@@ -130,6 +150,9 @@ class FakeSim:
         self.fault_after_s = fault_after_s
         self.late_hold_s = late_hold_s
         self.autostart = autostart  # no board in the loop: the episode starts at RESET
+        self.mode = mode  # "board": a board drives it; "local": the BE may command it
+        self.session_id = "fakesession0000000000000000000000"
+        self.fault: str | None = None  # first cause of the current HOLD
         self.down = False
         self.board_override: bool | None = None
         self.sim_time = 0.0
@@ -141,8 +164,10 @@ class FakeSim:
         self.stop_calls = 0
         self.release_calls = 0
         self.resets: list[tuple[int, int]] = []
+        self.targets: list[str] = []
         self.state_calls = 0
         self._episodes = 0
+        self.sim_run_id = "fake00000000"
         self._pose = REST
         self._stop_at: float | None = None
         self._last = time.monotonic()
@@ -158,6 +183,7 @@ class FakeSim:
             with_action=env.get("MOCK_SIM_WITH_ACTION", "0") == "1",
             fault_after_s=float(env.get("MOCK_SIM_FAULT_AFTER_S", "2")),
             autostart=env.get("MOCK_SIM_AUTOSTART", "0") == "1",
+            mode=env.get("MOCK_SIM_MODE", "board"),
         )
 
     # --- simulation ----------------------------------------------------------
@@ -166,8 +192,8 @@ class FakeSim:
         now = time.monotonic()
         dt, self._last = now - self._last, now
         if self._stop_at is not None and self.scenario == "late_hold":
-            if now - self._stop_at >= self.late_hold_s:
-                self.hold_stop = True
+            if now - self._stop_at >= self.late_hold_s and not self.hold_stop:
+                self._latch("USER_ABORT")
         ep = self.episode
         if ep is None or not ep.started or ep.result is not None or self.hold_stop:
             return
@@ -190,6 +216,9 @@ class FakeSim:
         if ep.t >= self.episode_s and self.scenario != "no_result":
             ep.result = self._outcome()
             self._pose = REST
+            if ep.result[0] == "FAILURE":  # real MuJoCo holds after a failure too
+                self.hold_stop = True
+                self.fault = ep.result[1]
 
     def _measured(self, ep: _Episode) -> tuple[float, ...]:
         frac = ep.t / self.episode_s
@@ -202,12 +231,20 @@ class FakeSim:
 
     def _outcome(self) -> tuple[str, str | None]:
         if self.scenario.startswith("failure:"):
-            return "failure", self.scenario.split(":", 1)[1]
+            return "FAILURE", self.scenario.split(":", 1)[1].upper()
         if self.scenario == "timeout":
-            return "timeout", "timeout"
+            return "FAILURE", "EPISODE_TIMEOUT"
         if self.scenario == "bad_evaluation":
-            return "weird", None
-        return "success", None
+            return "WEIRD", None
+        return "SUCCESS", SUCCESS_TEXT
+
+    def _latch(self, cause: str) -> None:
+        """HOLD like `engine._hold_locked`: queue cleared, episode ABORTED if still open."""
+        self.hold_stop = True
+        self.fault = cause
+        ep = self.episode
+        if ep is not None and ep.result is None:
+            ep.result = ("ABORTED", cause)
 
     def _faulted(self) -> bool:
         ep = self.episode
@@ -221,6 +258,8 @@ class FakeSim:
 
     @property
     def board_connected(self) -> bool:
+        if self.mode == "local":
+            return False
         if self.board_override is not None:
             return self.board_override
         if self.scenario == "board_offline":
@@ -237,32 +276,73 @@ class FakeSim:
 
     # --- the API of the simulator --------------------------------------------
 
+    def _episode_summary(self) -> dict[str, Any]:
+        ep = self.episode
+        if ep is None:
+            return {"status": "READY", "reason": None, "target": "red_ball", "seed": 0,
+                    "elapsed_sim_s": 0.0, "grasped": False, "lifted": False,
+                    "max_object_height_m": 0.0, "in_box": False}  # fmt: skip
+        done = ep.result is not None and ep.result[0] == "SUCCESS"
+        return {
+            "status": ep.status,
+            "reason": ep.result[1] if ep.result else None,
+            "target": ep.target,
+            "seed": ep.seed,
+            "elapsed_sim_s": round(ep.t, 4),
+            "grasped": ep.t > self.episode_s * 0.4,
+            "lifted": ep.t > self.episode_s * 0.45,
+            "max_object_height_m": 0.12 if ep.t > self.episode_s * 0.45 else 0.02,
+            "in_box": done,
+        }
+
     def raw_state(self) -> dict[str, Any]:
         self._check_up()
         self.state_calls += 1
         ep = self.episode
         waiting_model = ep is not None and ep.started and ep.result is None and ep.paused
         connected = self.board_connected
-        raw: dict[str, Any] = {
-            "status": "BOARD_CONNECTED" if connected else "WAITING_FOR_BOARD",
-            "board_connected": connected,
-            "cameras": {"overhead": True, "wrist": True},
-            "camera_error": "renderer stalled" if self.scenario == "freeze_camera" else None,
-            "sim_time": round(self.sim_time, 3),
-            "last_board_heartbeat_age_s": 0.1 if connected else None,
-            "accepted_sequence": self.accepted,
-            "applied_sequence": self.applied,
-            "joint_positions": list(self._pose),
-        }
         if self.hold_stop:
-            raw.update(status="HOLD", hold_reason="stop")
+            status = "FAULT" if self.fault not in ("USER_ABORT", None) else "HOLD"
         elif waiting_model:
-            raw.update(status="HOLD", hold_reason="model")
-        if ep is not None:
-            raw["episode"] = {"id": ep.episode_id, "run_id": ep.run_id, "seed": ep.seed}
+            status = "HOLD"  # paused for the AI, no latch
+        elif ep is not None and ep.status == "RUNNING":
+            status = "RUNNING"
+        elif self.mode == "local":
+            status = "LOCAL_TEST"
+        else:
+            status = "BOARD_CONNECTED" if connected else "WAITING_FOR_BOARD"
+        target = None
         if self.with_action:
             target = _pose(ep.t / self.episode_s, ep.pan_offset) if ep and ep.started else REST
-            raw["joint_targets"] = list(target if ep and ep.result is None else self._pose)
+            target = list(target if ep and ep.result is None else self._pose)
+        raw: dict[str, Any] = {
+            "schema_version": 2,
+            "run_id": self.sim_run_id,
+            "session_id": self.session_id,
+            "status": status,
+            "mode": self.mode,
+            "board_link": "usb" if self.mode == "board" else None,
+            "fault": self.fault if self.hold_stop else None,
+            "hold_latched": self.hold_stop,
+            "joint_names": list(JOINT_NAMES),
+            "units": "radians",
+            "joint_positions": list(self._pose),
+            "joint_velocities": [0.0] * 6,
+            "joint_limits": [list(x) for x in LIMITS],
+            "target_positions": target,
+            "final_target_positions": None,
+            "sim_time": round(self.sim_time, 3),
+            "accepted_sequence": self.accepted,
+            "applied_sequence": self.applied,
+            "completed_sequence": self.applied,
+            "episode": self._episode_summary(),
+            "board_connected": connected,
+            "last_board_heartbeat_age_s": 0.1 if connected else None,
+            "mcu_execution_verified": False,
+            "cameras": {"overhead": True, "wrist": True},
+            "camera_error": "renderer stalled" if self.scenario == "freeze_camera" else None,
+            "model_sha256": "fake-model",
+        }
         if self.scenario == "bad_state" and self.state_calls % 3 == 0:
             broken = (self.state_calls // 3) % 3
             if broken == 0:
@@ -275,20 +355,15 @@ class FakeSim:
 
     def raw_evaluation(self) -> dict[str, Any]:
         self._check_up()
-        ep = self.episode
-        if ep is None:
-            return {"final": False}
-        if ep.result is None:
-            return {"final": False, "run_id": ep.run_id, "episode_id": ep.episode_id}
-        outcome, reason = ep.result
         return {
-            "final": True,
-            "outcome": outcome,
-            "reason_code": reason,
-            "run_id": ep.run_id,
-            "episode_id": ep.episode_id,
+            "purpose": "evaluation/reference controller only; not a vision-policy observation",
+            "run_id": self.sim_run_id,
             "sim_time": round(self.sim_time, 3),
+            "episode": self._episode_summary(),
         }
+
+    def identity(self) -> dict[str, Any]:
+        return {"model_sha256": "fake-model", "files": {}, "contact_model": "fake"}
 
     async def get_state(self) -> SimState:
         return parse_sim_state(self.raw_state())
@@ -296,49 +371,76 @@ class FakeSim:
     async def get_evaluation(self) -> Evaluation | None:
         return parse_evaluation(self.raw_evaluation())
 
-    async def reset(self, seed: int, run_id: int) -> ResetResult:
+    async def reset(self, seed: int, run_id: int, target: str = "red_ball") -> ResetResult:
         self._check_up()
         if self.scenario == "reset_fail":
             raise SimError("reset failed")
-        if self.hold_stop:
-            raise SimRejected("simulator is in HOLD")
+        if target not in TARGETS:
+            raise SimRejected("Invalid target or randomize flag")
         self._episodes += 1
         rng = random.Random(seed)
         offset_mm = [round(rng.uniform(-8, 8), 2), round(rng.uniform(-8, 8), 2)]  # +-8 mm [I4]
+        # RESET clears any HOLD and starts a new MuJoCo run_id, like engine._reset_locked.
+        self.hold_stop = False
+        self.fault = None
+        self._stop_at = None
+        self.accepted = self.applied = -1
+        self.sim_run_id = f"fake{self._episodes:08d}"
         self.episode = _Episode(
             run_id=run_id,
             seed=seed,
-            episode_id=self._episodes,
+            sim_run_id=self.sim_run_id,
             pan_offset=offset_mm[1] / 1000 * 5,
+            target=target,
         )
         self.resets.append((seed, run_id))
+        self.targets.append(target)
         self._pose = REST
         if self.autostart:
             self.board_started(run_id)
+        ack = {"type": "ACK", "command": "RESET", "run_id": self.sim_run_id,
+               "session_id": self.session_id, "status": "LOCAL_TEST" if self.mode == "local" else "BOARD_CONNECTED"}  # fmt: skip
         return ResetResult(
-            episode_id=self._episodes,
-            raw={"episode_id": self._episodes, "object_offset_mm": offset_mm},
+            sim_run_id=self.sim_run_id,
+            raw={"ack": ack, "target": target, "object_offset_mm": offset_mm,
+                 "model_sha256": "fake-model", "identity": self.identity()},  # fmt: skip
         )
 
     async def stop(self) -> None:
         self._check_up()
         if self.scenario == "stop_error":
-            raise SimError("STOP is not open to the backend")
+            raise SimError("ABORT is not open to the backend")
         self.stop_calls += 1
         self._stop_at = time.monotonic()
         if self.scenario not in ("no_hold", "late_hold"):
-            self.hold_stop = True  # HOLD at once: no further action is accepted
+            self._latch("USER_ABORT")  # HOLD at once: no further action is accepted
 
     async def release_hold(self) -> None:
+        """RESUME: leaves HOLD; an aborted episode stays aborted (never resumes)."""
         self._check_up()
         if self.scenario == "release_rejected":
-            raise SimRejected("still settling")
+            raise SimRejected("Cannot resume without a healthy gateway")
         self.release_calls += 1
         self.hold_stop = False
+        self.fault = None
         self._stop_at = None
         ep = self.episode
         if ep is not None and ep.result is None:
-            ep.result = ("aborted", None)  # a stopped episode never resumes
+            ep.result = ("ABORTED", "USER_ABORT")
+
+    async def start_reference(self) -> dict[str, Any]:
+        """`POST /api/reference` in local mode: the episode starts moving."""
+        self._check_up()
+        if self.mode != "local":
+            raise SimForbidden("Web control disabled in board mode; use the authenticated gateway")
+        ep = self.episode
+        if ep is None or ep.started or self.hold_stop:
+            raise SimRejected("RESET to a fresh episode before reference playback")
+        if ep.target != "red_ball":
+            raise SimRejected("The validated local reference task uses red_ball; RESET with that target")
+        self.board_started(ep.run_id)
+        return {"type": "ACK", "meaning": "Local reference plan queued", "run_id": self.sim_run_id,
+                "action_count": 8, "controller": "ground-truth reference, not AI"}  # fmt: skip
 
     async def get_frame(self, camera: str) -> bytes:
         self._check_up()
@@ -363,7 +465,7 @@ class FakeSim:
         x = 160 + int(110 * math.sin(pan))
         y = 150 + int(50 * math.cos(lift))
         d.rectangle((240, 150, 300, 200), outline=(210, 170, 60), width=2)  # box
-        d.rectangle((92, 168, 108, 184), fill=(200, 70, 70))  # cube
+        d.ellipse((92, 168, 108, 184), fill=(200, 70, 70))  # red ball
         d.line((160, 230, x, y), fill=(170, 190, 210), width=5)  # arm
         d.ellipse((x - 6, y - 6, x + 6, y + 6), fill=(90, 200, 230))
         d.text((8, 8), f"MOCK {camera}  t={self.sim_time:6.2f}s", fill=(230, 230, 230))
@@ -376,57 +478,111 @@ class FakeSim:
 
 
 def create_http_app(sim: FakeSim | None = None):  # noqa: ANN201 - FastAPI imported lazily
-    from fastapi import Body, FastAPI, HTTPException
-    from fastapi.responses import Response
+    """The routes and replies of `board_server/app.py` in local mode."""
+    from fastapi import Body, FastAPI
+    from fastapi.responses import JSONResponse, Response
 
     sim = sim or FakeSim.from_env()
-    if "MOCK_SIM_AUTOSTART" not in os.environ:
-        sim.autostart = True  # standalone server: no fake board to start the episode
-    http = FastAPI(title="mock MuJoCo (provisional API)")
+    if "MOCK_SIM_MODE" not in os.environ:
+        sim.mode = "local"  # standalone: no fake board; /api/reference drives the episode
+    http = FastAPI(title="mock MuJoCo board_server (schema v2)")
     http.state.sim = sim
 
-    def guard(fn):  # noqa: ANN001, ANN202
-        try:
-            return fn()
-        except SimRejected as exc:
-            raise HTTPException(409, str(exc)) from exc
-        except SimError as exc:
-            raise HTTPException(503, str(exc)) from exc
+    def rejected(reason: str, code: int = 400) -> JSONResponse:
+        return JSONResponse({"type": "REJECTED", "reason": reason}, status_code=code)
 
-    async def aguard(coro):  # noqa: ANN001, ANN202
+    def unavailable(exc: Exception) -> JSONResponse:
+        return JSONResponse({"error": str(exc)}, status_code=503)
+
+    def context_error(body: dict[str, Any]) -> str | None:
+        if body.get("schema_version") != 2:
+            return "schema_version must be 2; read /api/state or WELCOME"
+        if body.get("run_id") != sim.sim_run_id:
+            return "Wrong or stale run_id; read the current state after RESET"
+        if body.get("session_id") != sim.session_id:
+            return "Wrong or stale session_id; authenticate/read state again"
+        return None
+
+    async def command(kind: str, body: dict[str, Any], run) -> JSONResponse:  # noqa: ANN001
+        if sim.mode != "local":
+            return rejected("Web control disabled in board mode; use the authenticated gateway", 403)
+        err = context_error(body)
+        if err:
+            return rejected(err)
         try:
-            return await coro
+            extra = await run()
+        except SimForbidden as exc:
+            return rejected(str(exc), 403)
         except SimRejected as exc:
-            raise HTTPException(409, str(exc)) from exc
+            return rejected(str(exc))
         except SimError as exc:
-            raise HTTPException(503, str(exc)) from exc
+            return unavailable(exc)
+        status = "HOLD" if sim.hold_stop else ("IDLE" if kind == "RESUME" else "LOCAL_TEST")
+        reply = {"type": "ACK", "command": kind, "run_id": sim.sim_run_id,
+                 "session_id": sim.session_id, "status": status}  # fmt: skip
+        return JSONResponse({**reply, **(extra or {})}, status_code=202)
 
     @http.get("/api/state")
-    def state() -> dict[str, Any]:
-        return guard(sim.raw_state)
+    def state() -> Any:
+        try:
+            return sim.raw_state()
+        except SimError as exc:
+            return unavailable(exc)
 
     @http.get("/api/evaluation")
-    def evaluation() -> dict[str, Any]:
-        return guard(sim.raw_evaluation)
+    def evaluation() -> Any:
+        try:
+            return sim.raw_evaluation()
+        except SimError as exc:
+            return unavailable(exc)
 
-    @http.post("/api/reset")
-    async def reset(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
-        result = await aguard(sim.reset(int(body["seed"]), int(body.get("run_id", 0))))
-        return {"ok": True, **result.raw}
-
-    @http.post("/api/stop")
-    async def stop() -> dict[str, Any]:
-        await aguard(sim.stop())
-        return {"ok": True}
-
-    @http.post("/api/release")
-    async def release() -> dict[str, Any]:
-        await aguard(sim.release_hold())
-        return {"ok": True}
+    @http.get("/api/identity")
+    def identity() -> dict[str, Any]:
+        return sim.identity()
 
     @http.get("/api/camera/{camera}")
-    async def camera(camera: str) -> Response:
-        return Response(await aguard(sim.get_frame(camera)), media_type="image/jpeg")
+    async def camera(camera: str) -> Any:
+        if camera not in ("overhead", "wrist"):
+            return JSONResponse({"error": "Not found"}, status_code=404)
+        try:
+            frame = await sim.get_frame(camera)
+        except SimError:
+            return JSONResponse({"error": "Camera not ready; inspect camera_error in /api/state"}, status_code=503)
+        return Response(frame, media_type="image/jpeg", headers={"X-Run-Id": sim.sim_run_id})
+
+    @http.post("/api/reset")
+    async def reset(body: dict[str, Any] = Body(...)) -> JSONResponse:
+        seed, target = body.get("seed", 0), body.get("target", "red_ball")
+        if type(seed) is not int or not 0 <= seed < 2**32:
+            return rejected("seed must be uint32")
+
+        async def run() -> None:
+            await sim.reset(seed, sim.episode.run_id + 1 if sim.episode else 1, target)
+
+        return await command("RESET", body, run)
+
+    @http.post("/api/abort")
+    async def abort(body: dict[str, Any] = Body(...)) -> JSONResponse:
+        return await command("ABORT", body, sim.stop)
+
+    @http.post("/api/resume")
+    async def resume(body: dict[str, Any] = Body(...)) -> JSONResponse:
+        return await command("RESUME", body, sim.release_hold)
+
+    @http.post("/api/reference")
+    async def reference(body: dict[str, Any] = Body(...)) -> JSONResponse:
+        if sim.mode != "local":
+            return rejected("Web control disabled in board mode; use the authenticated gateway", 403)
+        err = context_error(body)
+        if err:
+            return rejected(err)
+        try:
+            ack = await sim.start_reference()
+        except SimRejected as exc:
+            return rejected(str(exc))
+        except SimError as exc:
+            return unavailable(exc)
+        return JSONResponse(ack, status_code=202)
 
     @http.post("/mock/scenario")
     def scenario(body: dict[str, Any] = Body(...)) -> dict[str, Any]:

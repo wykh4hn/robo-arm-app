@@ -1,0 +1,45 @@
+{
+ "run_id": "01c0532a050642a79a8204fac13460a0",
+ "sim_time": 14.060000000001365,
+ "purpose": "evaluation/reference controller only; not a vision-policy observation",
+ "objects": {
+  "red_ball": [
+   -0.20836806790006038,
+   0.19486331305613674,
+   0.026975534798429363
+  ],
+  "green_ball": [
+   -0.24,
+   -0.11,
+   0.01599840173959675
+  ],
+  "blue_ball": [
+   -0.27,
+   -0.19,
+   0.01599840173959675
+  ],
+  "yellow_ball": [
+   -0.13,
+   -0.23,
+   0.01599840173959675
+  ]
+ },
+ "box_position": [
+  -0.18,
+  0.16,
+  0.0
+ ],
+ "target_jaw_contact_count": 0,
+ "target_speed_m_s": 1.1630437313931241e-05,
+ "episode": {
+  "status": "SUCCESS",
+  "reason": "Lifted, released and stable inside the box",
+  "target": "red_ball",
+  "seed": 0,
+  "elapsed_sim_s": 13.124,
+  "grasped": true,
+  "lifted": true,
+  "max_object_height_m": 0.13718696890523102,
+  "in_box": true
+ }
+}

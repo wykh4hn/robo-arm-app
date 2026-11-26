@@ -33,17 +33,24 @@ class Settings(BaseSettings):
     be_host: str = "0.0.0.0"
     be_port: int = 8001
 
-    # SimPort: "mock" is the in-process FakeSim, "real" is app/sim_client.py (Phase 2).
+    # SimPort: "mock" is the in-process FakeSim, "real" is app/sim_client.py, which talks to
+    # so101sim/board_server/app.py (schema v2) of Robo-Arm-COS40005.
     sim_link: Literal["mock", "real"] = "mock"
     sim_url: str = "http://127.0.0.1:8000"
+    # RESET moves the balls by up to +-8 mm, seeded, so each seed is its own scene.
+    sim_randomize: bool = True
     sim_poll_hz: float = 10.0
     sim_timeout_ms: int = 2000
     # One /api/state call may not eat the whole offline budget (see README, "Khác với spec").
     sim_poll_timeout_ms: int = 500
     eval_poll_ms: int = 500
 
-    # BoardPort: "mock" is the in-process FakeBoard, "real" is app/board_link.py (Phase 3, Q1).
-    board_link: Literal["mock", "real"] = "mock"
+    # Who drives the arm once a run starts (BoardPort):
+    #   "mock"      in-process FakeBoard (with SO101_SIM_LINK=mock)
+    #   "reference" MuJoCo's own ground-truth reference controller, local mode only.
+    #               It is NOT the AI: runs are marked driver=reference in the manifest.
+    #   "real"      app/board_link.py, the VENTUNO Q board (Phase 3, blocked by Q1)
+    board_link: Literal["mock", "reference", "real"] = "mock"
     board_timeout_ms: int = 2000
 
     data_dir: Path = Path("./data")
@@ -70,9 +77,10 @@ class Settings(BaseSettings):
     camera_fps: float = 10.0
     camera_meta_ms: int = 250
     # MuJoCo camera name -> camera id in the FE `camera` message (spec 9.4, FE task 10).
-    camera_web_names: str = "overhead:object,wrist:overview"
+    camera_web_names: str = "overhead:overhead,wrist:wrist"
 
-    # Gripper range in rad (Q6). Empty falls back to the FE gripperMap, so the 3D model matches.
+    # Gripper range in rad. Empty: use `joint_limits` from MuJoCo, else the MJCF limits below
+    # (so101_new_calib.xml), which the FE gripperMap mirrors.
     gripper_closed_rad: float | None = None
     gripper_open_rad: float | None = None
 
@@ -92,10 +100,14 @@ class Settings(BaseSettings):
 
     @property
     def gripper_range(self) -> tuple[float, float]:
-        """(closed, open) in rad. Defaults mirror `gripperMap` in the FE config."""
-        closed = -0.17 if self.gripper_closed_rad is None else self.gripper_closed_rad
-        opened = 1.6 if self.gripper_open_rad is None else self.gripper_open_rad
+        """(closed, open) in rad. Defaults are the MJCF gripper limits, mirrored by the FE."""
+        closed = -0.17453 if self.gripper_closed_rad is None else self.gripper_closed_rad
+        opened = 1.74533 if self.gripper_open_rad is None else self.gripper_open_rad
         return closed, opened
+
+    @property
+    def gripper_configured(self) -> bool:
+        return self.gripper_closed_rad is not None and self.gripper_open_rad is not None
 
     @property
     def camera_names(self) -> dict[str, str]:

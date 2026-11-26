@@ -69,7 +69,7 @@ def _versions() -> dict[str, Any]:
 
 
 def build_ports(settings: Settings) -> tuple[SimPort, BoardPort]:
-    """Fakes run in-process; the real links are Phase 2 and 3 (D17)."""
+    """Fakes run in-process; MuJoCo is real with SO101_SIM_LINK=real; the board link is Phase 3."""
     if settings.sim_link == "mock":
         from tools.mock_sim import FakeSim
 
@@ -82,6 +82,10 @@ def build_ports(settings: Settings) -> tuple[SimPort, BoardPort]:
         from tools.mock_board import FakeBoard
 
         board: BoardPort = FakeBoard.from_env(sim)
+    elif settings.board_link == "reference":
+        from .reference_driver import ReferenceDriver
+
+        board = ReferenceDriver(sim)
     else:
         from .board_link import BoardLink
 

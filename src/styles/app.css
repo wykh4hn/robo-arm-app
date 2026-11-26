@@ -292,3 +292,21 @@ main:focus {
     scroll-behavior: auto !important;
   }
 }
+
+/* "No picture yet" over a camera stream that has not sent a frame. The <img> stays
+   mounted underneath: the BE only fetches frames while someone is watching. */
+.app-camera__cover {
+  position: absolute;
+  inset: 0;
+  place-content: center;
+  background: var(--camera-bg);
+}
+
+.app-self-start {
+  align-self: flex-start;
+  justify-self: start;
+}
+.app-blocked-list {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+}

@@ -1,5 +1,6 @@
 import { config, type CameraDef } from '../config';
 import { useStore } from '../state/store';
+import { cameraStreamUrl } from '../transport';
 import { fmt, useT } from '../strings';
 import { formatNumber } from '../utils/units';
 import { Icon } from './Icon';
@@ -18,6 +19,7 @@ export function CameraTile({ camera, stale, large = false }: CameraTileProps) {
   const now = useStore((s) => s.now);
   const swapLarge = useStore((s) => s.swapLarge);
   const name = t.camera.names[camera.id];
+  const url = camera.url || cameraStreamUrl(camera.id);
 
   const ageMs = cam ? Math.max(0, now - cam.lastFrameChangeAt) : null;
   const frozen =
@@ -51,8 +53,16 @@ export function CameraTile({ camera, stale, large = false }: CameraTileProps) {
         </button>
       </div>
       <div className="rb-camera__img">
-        {camera.url ? (
-          <img src={camera.url} alt={name} />
+        {url ? (
+          <>
+            <img src={url} alt={name} />
+            {!cam && (
+              <div className="rb-camera__ph app-camera__cover" data-testid="camera-no-frame">
+                <Icon name="cameraOff" />
+                <span>{t.camera.noFrame}</span>
+              </div>
+            )}
+          </>
         ) : (
           <div className="rb-camera__ph">
             <Icon name="cameraOff" />

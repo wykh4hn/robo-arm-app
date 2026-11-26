@@ -50,7 +50,8 @@ CREATE TABLE IF NOT EXISTS runs (
   incomplete INTEGER DEFAULT 0, quality_flags TEXT,
   post_stop_accepted INTEGER, post_stop_applied INTEGER, stop_latency_ms INTEGER,
   created_at INTEGER, started_at INTEGER, ended_at INTEGER,
-  sim_time_end REAL, sim_episode_id INTEGER
+  sim_time_end REAL, sim_episode_id TEXT,
+  template_id TEXT, params TEXT
 );
 CREATE TABLE IF NOT EXISTS commands (
   command_id TEXT PRIMARY KEY, kind TEXT, payload TEXT, received_at INTEGER,
@@ -134,6 +135,11 @@ class Storage:
         self.settings.runs_dir.mkdir(parents=True, exist_ok=True)
         conn = self._connect()
         conn.executescript(SCHEMA)
+        # Databases made before these columns existed get them added (older rows stay NULL).
+        have = {row[1] for row in conn.execute("PRAGMA table_info(runs)")}
+        for col in ("template_id", "params"):
+            if col not in have:
+                conn.execute(f"ALTER TABLE runs ADD COLUMN {col} TEXT")
         conn.commit()
         conn.close()
         self._read_conn = self._connect()
