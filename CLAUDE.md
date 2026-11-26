@@ -1,8 +1,11 @@
 # robo-arm-app — notes for Claude Code
 
-Frontend (React 18 + TypeScript + Vite) that monitors and commands an SO-101 robot arm doing pick-and-place ("pick [object] and put it in the box"). Frontend only; data comes from an in-browser mock transport.
+Web app that monitors and commands a robot arm doing LIBERO pick-and-place tasks: a React 18 + TypeScript + Vite frontend and a FastAPI backend (`backend/`, port 8001).
+
+Architecture (details in `docs/communication-plan.md` §1): Web ⇄ WebSocket `/ws` ⇄ BE ⇄ HTTP `127.0.0.1:8000` ⇄ LIBERO sim (Franka, contract `franka_ee_v1`) ⇄ TCP 5050 ⇄ Board (runner + model). The BE only calls the sim's Operator API (state poll, reset, stop, resume, heartbeat); it never talks to the Board and never runs the model. The web picks a task (`suite`, `task_id`), not a profile. The old SO-101 path (6 joints, mock sim/board, `/api/evaluation`) is gone. The in-browser `MockTransport` (`?scenario=…`) is for UI dev and tests only.
 
 ## Sources of truth
+- **Communication (Web ↔ BE ↔ LIBERO sim ↔ Board):** `docs/communication-plan.md` — read it first for any BE/transport work; it overrides `docs/backend-spec.md` §6, §7, §9.1.
 - **Behaviour and scope:** `docs/requirements.md`. Follow its build steps, scenarios, config list and "Done when" checklist.
 - **Layout sketch:** `docs/sketch.png`.
 - **Visual design:** `design-system/`. Read `design-system/README.md` before any UI work, then the `components/<Name>/README.md` of each component you build.

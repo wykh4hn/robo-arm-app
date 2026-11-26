@@ -6,6 +6,7 @@ import { Icon, type IconName } from './Icon';
 const ICON: Record<StopPhase, IconName> = {
   idle: 'stop',
   stopping: 'running',
+  resetting: 'running',
   stopped: 'ok',
   unconfirmed: 'warn',
   rejected: 'critical',
@@ -27,7 +28,7 @@ export function StopButton() {
       <button
         type="button"
         className="rb-stop"
-        data-state={phase === 'idle' ? undefined : phase}
+        data-state={phase === 'idle' ? undefined : phase === 'resetting' ? 'stopping' : phase}
         onClick={requestStop}
         aria-describedby={phase === 'unconfirmed' || phase === 'rejected' ? 'stop-note' : undefined}
       >

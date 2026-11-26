@@ -213,6 +213,8 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
     );
   }
 
+  // Q5: `resetting` is still a stop on its way (the sim finishes its reset first).
+  const stopInFlight = s.stop.phase === 'stopping' || s.stop.phase === 'resetting';
   if (s.stop.phase === 'unconfirmed') {
     add('stopUnconfirmed', 'action', 'critical', s.stop.reason ? { reason: s.stop.reason } : {});
   } else if (s.stop.phase === 'rejected') {
@@ -226,7 +228,7 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
     : s.robot === 'stopped' || s.awaitingReady;
   if (
     !nativeMode && usable && !s.estop && s.robot !== 'error' && stoppedState &&
-    s.stop.phase !== 'stopping'
+    !stopInFlight
   ) {
     add('awaitingReady', 'waiting', null);
   }
@@ -252,7 +254,7 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
         add('liberoBoardOffline', 'action', 'critical');
         break;
       case 'stopped':
-        if (s.stop.phase !== 'stopping') add('awaitingReady', 'waiting', null);
+        if (!stopInFlight) add('awaitingReady', 'waiting', null);
         break;
       case 'ended':
         if (lib.status !== 'SUCCESS') {
@@ -330,7 +332,7 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   else if (!nativeMode && s.usb !== 'plugged') reason = 'usbLost';
   else if (!nativeMode && s.robot === 'error') reason = 'robotError';
   else if (
-    s.stop.phase === 'stopping' || s.stop.phase === 'unconfirmed' || s.stop.phase === 'rejected'
+    stopInFlight || s.stop.phase === 'unconfirmed' || s.stop.phase === 'rejected'
   ) reason = 'stopping';
   else if (lib) {
     if (lib.view === 'unknown') {
@@ -353,9 +355,9 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   const nativeHealthFresh = liberoSimFresh(s.liberoConnectionHealth);
   const canReady = nativeMode
     ? needsReady && nativeHealthFresh && s.web === 'connected' && s.synced &&
-      s.stop.phase !== 'stopping' && s.stop.phase !== 'unconfirmed' &&
+      !stopInFlight && s.stop.phase !== 'unconfirmed' &&
       s.stop.phase !== 'rejected' && !readyPending && !readyAckAwaitingState
-    : needsReady && usable && s.usb === 'plugged' && s.stop.phase !== 'stopping' && !readyPending;
+    : needsReady && usable && s.usb === 'plugged' && !stopInFlight && !readyPending;
 
   const banner = problems
     .filter((p) => p.banner !== null)

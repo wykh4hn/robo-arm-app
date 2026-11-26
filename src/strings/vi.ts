@@ -7,6 +7,7 @@ export const vi = {
   stop: {
     idle: 'STOP',
     stopping: 'Đang dừng…',
+    resetting: 'Đang dừng · sim đang dựng scene',
     stopped: 'Đã dừng',
     unconfirmed: 'Chưa xác nhận dừng',
     rejected: 'STOP bị từ chối',
@@ -16,6 +17,7 @@ export const vi = {
     announce: {
       idle: '',
       stopping: 'Đã gửi lệnh dừng, đang chờ xác nhận.',
+      resetting: 'Đang dừng. Sim đang dựng scene, lệnh dừng sẽ có hiệu lực khi xong (tối đa 30 giây).',
       stopped: 'Robot đã dừng. Bấm Sẵn sàng trước khi gửi lệnh mới.',
       unconfirmed: 'Chưa xác nhận dừng. Dùng nút dừng khẩn cấp vật lý.',
       rejected: 'STOP bị từ chối: {reason}.',
@@ -280,6 +282,7 @@ export const vi = {
     resetEpisode: 'RESET episode',
     resetPending: 'Đang RESET episode…',
     resetOutcomeUnknown: 'Chưa rõ kết quả RESET. Kiểm tra state episode trước khi thử lại.',
+    fromBoard: 'Chạy từ Board · runner tự RESET, không phải lệnh từ web',
   },
 
   run: {

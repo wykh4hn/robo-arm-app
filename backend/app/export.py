@@ -10,40 +10,15 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from . import adapter
 from .pipeline import RESOURCE_FIELDS, TIMING_FIELDS
-from .settings import JOINT_ORDER, Settings
+from .settings import Settings
 from .storage import Storage
 
-SAMPLES_HEADER = ("t_ms", "joint", "action", "state", "velocity")  # same as the FE "Tải log"
-
-
-def samples_csv(rows: list[dict[str, Any]], gripper_range: tuple[float, float]) -> str:
-    """deg and gripper %. `action` and `velocity` stay empty when MuJoCo gave none."""
-    out = io.StringIO()
-    w = csv.writer(out, lineterminator="\n")
-    w.writerow(SAMPLES_HEADER)
-    for row in rows:
-        try:
-            state = adapter.convert_joints(tuple(json.loads(row["state"])), gripper_range)
-            action = (
-                adapter.convert_joints(tuple(json.loads(row["action"])), gripper_range)
-                if row.get("action")
-                else None
-            )
-        except (ValueError, TypeError):
-            continue
-        for i, joint in enumerate(JOINT_ORDER):
-            w.writerow(
-                [
-                    row["received_at"],
-                    joint,
-                    "" if action is None else round(action[i], 3),
-                    round(state[i], 3),
-                    "",
-                ]
-            )
-    return out.getvalue()
+# Old spec v2 rows, as stored. LIBERO states are in `sim_raw.jsonl` (`source: "libero"`).
+SAMPLES_FIELDS = (
+    "run_id", "step", "received_at", "sim_time", "sim_status",
+    "accepted_sequence", "applied_sequence", "state", "action",
+)
 
 
 def table_csv(rows: list[dict[str, Any]], fields: tuple[str, ...]) -> str:
@@ -149,7 +124,7 @@ async def export_run(storage: Storage, settings: Settings, run_id: int) -> bytes
         return _build_zip(
             run_dir,
             manifest,
-            samples_csv(samples, settings.gripper_range),
+            table_csv(samples, SAMPLES_FIELDS),
             table_csv(timings, ("run_id", *TIMING_FIELDS, "received_at")),
             table_csv(resources, ("run_id", *RESOURCE_FIELDS)),
             events,

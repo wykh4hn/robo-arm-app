@@ -3,9 +3,8 @@
 The Backend talks to LIBERO over localhost HTTP. It does NOT send robot motion
 commands; those travel between the Board runner and LIBERO over TCP 5050.
 
-This module intentionally exposes the LIBERO payloads as dictionaries. The old
-SO-101 SimState (six joint angles + /api/evaluation) is not a valid representation
-of Franka's LIBERO state and must not be fabricated here.
+This module intentionally exposes the LIBERO payloads as dictionaries (`franka_ee_v1`);
+`libero_state.LiberoState` checks their shape.
 """
 from __future__ import annotations
 
@@ -127,7 +126,9 @@ class SimClient:
         )
 
     async def stop(self) -> dict[str, Any]:
-        return await self._request("POST", "/api/operator/stop", body={}, authenticated=True)
+        # Q5: the sim holds a stop until a running reset is done; same budget as reset.
+        return await self._request("POST", "/api/operator/stop", body={}, authenticated=True,
+                                   timeout_ms=self.settings.libero_reset_timeout_ms)
 
     async def resume(self) -> dict[str, Any]:
         return await self._request("POST", "/api/operator/resume", body={}, authenticated=True)

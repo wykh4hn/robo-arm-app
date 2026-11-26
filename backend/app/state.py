@@ -17,7 +17,6 @@ from .models_web import (
     StatusTaskOut,
     TaskInfoOut,
 )
-from .ports import SimState
 from .libero_state import LiberoState
 
 REASON_TEXT = {
@@ -65,7 +64,6 @@ class ActiveRun:
 @dataclass
 class SystemState:
     sim_ok: bool | None = None  # None until the first poll
-    sim: SimState | None = None  # last good legacy SO-101 read
     libero: LiberoState | None = None  # native franka_ee_v1 state; never coerce to SO-101 joints
     last_sample_mono: float | None = None
     board_connected: bool | None = None

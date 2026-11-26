@@ -17,7 +17,9 @@ const STATE_MS = 100;
 const CAMERA_MS = 250;
 const STEPS_PER_TICK = 2;
 const STEP_S = 0.05;
-const MOCK_DESCRIPTION = 'pick up the alphabet soup and place it in the basket';
+// Q2: the default demo task is libero_spatial #0.
+const MOCK_DESCRIPTION =
+  'pick up the black bowl between the plate and the ramekin and place it on the plate';
 
 /** Sim end reasons the mock reports, per outcome. */
 const END_REASON = { SUCCESS: 'TASK_SUCCESS', TIMEOUT: 'MAX_STEPS', ABORTED: 'MODEL' } as const;
@@ -59,7 +61,7 @@ export class MockTransport implements Transport {
       sim_time: 0,
       end_reason: null,
       hold_reason: null,
-      task: { suite: 'libero_object', task_id: 0, init_state: 0, seed: 1000, description: MOCK_DESCRIPTION },
+      task: { suite: 'libero_spatial', task_id: 0, init_state: 0, seed: 1000, description: MOCK_DESCRIPTION },
       pose: { eef_pos: [0.1, 0, 1.05], gripper_qpos: [0.04, -0.04] },
       metrics: {},
     };

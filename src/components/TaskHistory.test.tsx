@@ -17,6 +17,17 @@ describe('TaskHistory LIBERO episode', () => {
     });
   });
 
+  it('marks a task the Board runner started on its own (Q1)', () => {
+    useStore.setState({
+      tasks: [
+        { id: 2, command: 'pick up the bowl', state: 'running', startedTs: Date.now(), source: 'board' },
+        { id: 1, command: 'from the web', state: 'done', startedTs: Date.now() - 9000, source: 'web' },
+      ],
+    });
+    render(<TaskHistory />);
+    expect(screen.getAllByText(/Started on the Board/)).toHaveLength(1);
+  });
+
   it('shows native status, session, HOLD and progress when max_steps is valid', () => {
     useStore.setState({ libero: liberoStateFixture, liberoConnectionHealth: liberoHealthFixture });
     render(<TaskHistory />);

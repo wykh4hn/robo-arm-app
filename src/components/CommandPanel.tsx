@@ -16,7 +16,8 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
   const sendCommand = useStore((s) => s.sendCommand);
   const commands = useStore((s) => s.commands);
   const libero = useStore((s) => s.libero);
-  // TODO(Q2): the list comes from config until the BE serves `/api/libero/tasks`.
+  // Q2 demo tasks. The BE serves the same list at `/api/libero/tasks` (SO101_LIBERO_TASKS);
+  // reading it from there is not wired yet.
   const tasks = config.liberoTasks;
   const [key, setKey] = useState(taskKey(tasks[0]!));
   const [profileId, setProfileId] = useState('');

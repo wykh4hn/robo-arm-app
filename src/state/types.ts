@@ -64,7 +64,8 @@ export interface CommandRecord {
   endedAt?: number;
 }
 
-export type StopPhase = 'idle' | 'stopping' | 'stopped' | 'unconfirmed' | 'rejected';
+/** `resetting`: the sim holds the stop until its reset is done (Q5, `stop_pending`). */
+export type StopPhase = 'idle' | 'stopping' | 'resetting' | 'stopped' | 'unconfirmed' | 'rejected';
 
 export interface LiberoResetState {
   id: string | null;

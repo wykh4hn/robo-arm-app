@@ -9,6 +9,7 @@ export const en: Strings = {
   stop: {
     idle: 'STOP',
     stopping: 'Stopping…',
+    resetting: 'Stopping · sim is building the scene',
     stopped: 'Stopped',
     unconfirmed: 'Stop not confirmed',
     rejected: 'STOP rejected',
@@ -18,6 +19,7 @@ export const en: Strings = {
     announce: {
       idle: '',
       stopping: 'Stop sent, waiting for confirmation.',
+      resetting: 'Stopping. The sim is building the scene; the stop applies when it is done (up to 30 seconds).',
       stopped: 'Robot stopped. Press Ready before sending a new command.',
       unconfirmed: 'Stop not confirmed. Use the physical emergency stop.',
       rejected: 'STOP was rejected: {reason}.',
@@ -283,6 +285,7 @@ export const en: Strings = {
     resetEpisode: 'Reset episode',
     resetPending: 'Resetting episode…',
     resetOutcomeUnknown: 'RESET outcome unknown. Check the episode state before retrying.',
+    fromBoard: 'Started on the Board · the runner reset the sim, not a web command',
   },
 
   run: {

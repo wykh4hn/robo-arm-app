@@ -1,17 +1,9 @@
-"""Command checks in the order of spec 5.5. Pure: no I/O, no clock.
-
-The first failing step wins. Step 7 only blames the board when MuJoCo answers;
-with MuJoCo down the answer is `sim_offline` (spec 8.3).
-"""
+"""Pure checks: the LIBERO task selector, plus the profile/protocol records kept in SQLite."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
-
-from pydantic import ValidationError
-
-from .models_web import LegacyCommandIn as CommandIn  # SO-101 path, gone in step 5
 
 
 @dataclass(frozen=True)
@@ -65,98 +57,13 @@ class Protocol:
         )
 
 
-# Values the scored mode refuses to run without (Q11, Q12).
-SCORED_CONTRACT_KEYS = ("stop_to_halt_ms", "control_period_ms", "action_queue_capacity")
-
-
-@dataclass(frozen=True)
-class Context:
-    """Everything a decision depends on, captured at the moment the command arrives."""
-
-    protocol: Protocol
-    profiles: dict[str, Profile]
-    mode: str = "dev"
-    has_active_run: bool = False
-    awaiting_ready: bool = False
-    sim_ok: bool = True
-    board_connected: bool | None = True
-    robot_error: str | None = None
-    logger_ready: bool = True
-    trials_left: int | None = None  # scored mode only
-
-
 @dataclass(frozen=True)
 class Rejection:
     code: str
     reason: str
 
 
-def scored_config_gaps(protocol: Protocol, profile: Profile) -> list[str]:
-    """Names of the settings a scored run still lacks."""
-    gaps = []
-    if not protocol.file_hash:
-        gaps.append("protocol.file_hash")
-    if not protocol.policy_task_text:
-        gaps.append("protocol.policy_task_text")
-    if protocol.episode_limit_s is None:
-        gaps.append("protocol.episode_limit_s")
-    if not protocol.rule_version:
-        gaps.append("protocol.rule_version")
-    gaps += [f"contract.{k}" for k in SCORED_CONTRACT_KEYS if protocol.contract.get(k) is None]
-    if not profile.artifact_hash:
-        gaps.append(f"profile.{profile.profile_id}.artifact_hash")
-    return gaps
-
-
-def parse_command(raw: Any) -> CommandIn | Rejection:
-    """Step 1."""
-    try:
-        return CommandIn.model_validate(raw)
-    except ValidationError:
-        return Rejection("bad_schema", "Lệnh sai định dạng")
-
-
-def validate_command(cmd: CommandIn, ctx: Context) -> Rejection | None:
-    """Steps 2-10. Returns None when the command may run."""
-    p = ctx.protocol
-    if cmd.templateId != p.template_id:
-        return Rejection("bad_template", "Project A chỉ có task khối lập phương")
-    if cmd.params.get("object") != p.object:
-        return Rejection("bad_object", "Project A chỉ có task khối lập phương")
-    if cmd.text != p.ui_text:
-        return Rejection("text_mismatch", "Câu lệnh không đúng mẫu")
-
-    profile = ctx.profiles.get(cmd.profileId) if cmd.profileId else None
-    if profile is None or (profile.dev_only and ctx.mode != "dev"):
-        return Rejection("unknown_profile", "Profile không có trong danh sách")
-    if profile.status == "blocked":
-        why = profile.blocked_reason or "không rõ lý do"
-        return Rejection("profile_blocked", f"Profile đang bị chặn: {why}")
-
-    if ctx.has_active_run:
-        return Rejection("busy", "Đang có lần chạy khác")
-    if ctx.awaiting_ready:
-        return Rejection("needs_ready", "Bấm Sẵn sàng trước")
-    if ctx.sim_ok:
-        if ctx.board_connected is not True:
-            return Rejection("board_offline", "Board chưa kết nối")
-        if ctx.robot_error:
-            return Rejection("robot_error", f"Robot đang báo lỗi: {ctx.robot_error}")
-    else:
-        return Rejection("sim_offline", "MuJoCo chưa chạy")
-    if not ctx.logger_ready:
-        return Rejection("logger_not_ready", "Chưa ghi được dữ liệu")
-
-    if ctx.mode == "scored":
-        gaps = scored_config_gaps(p, profile)
-        if gaps:
-            return Rejection("config_invalid", "Thiếu cấu hình: " + ", ".join(gaps))
-        if ctx.trials_left is not None and ctx.trials_left <= 0:
-            return Rejection("no_trials_left", "Profile này đã chạy hết số lần trong protocol")
-    return None
-
-
-# LIBERO task selector validation (separate from legacy FE prompt/profile validation).
+# LIBERO task selector validation.
 LIBERO_SUITE_LIMITS = {
     "libero_spatial": 10, "libero_object": 10, "libero_goal": 10,
     "libero_10": 10, "libero_90": 90,

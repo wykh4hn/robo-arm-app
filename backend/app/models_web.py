@@ -80,17 +80,6 @@ class CommandIn(_In):
     profile_id: str | None = None
 
 
-class LegacyCommandIn(_In):
-    """SO-101 prompt command. Only the old runner path uses it; removed in step 5."""
-
-    type: Literal["command"]
-    id: str = Field(min_length=1, max_length=128)
-    text: str
-    templateId: str
-    params: dict[str, str]
-    profileId: str | None = None
-
-
 class StopIn(_In):
     type: Literal["stop"]
     id: str = Field(min_length=1, max_length=128)
@@ -185,6 +174,8 @@ class TaskInfoOut(_Out):
     # LIBERO (communication-plan §4): the sim's run and how it ended.
     run_id: str | None = None
     end_reason: str | None = None
+    # Q1: "board" = a run the Board runner reset on its own, not a web command.
+    source: Literal["web", "board"] | None = None
 
 
 class TaskOut(_Out):
@@ -218,6 +209,15 @@ class StopAckOut(_Out):
     type: Literal["stop_ack"] = "stop_ack"
     ts: int
     id: str
+
+
+class StopPendingOut(_Out):
+    """Q5: the stop went out but the sim answers only once its reset is done."""
+
+    type: Literal["stop_pending"] = "stop_pending"
+    ts: int
+    id: str
+    reason: Literal["SIM_RESETTING"]
 
 
 class PipelineFailedOut(_Out):
@@ -274,6 +274,7 @@ Outgoing = Annotated[
         AckOut,
         NackOut,
         StopAckOut,
+        StopPendingOut,
         PipelineOut,
         CameraOut,
         PingOut,

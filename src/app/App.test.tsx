@@ -80,7 +80,7 @@ describe('App', () => {
     await advance(1500);
     expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Chọn profile AI trước khi gửi.');
     await user.selectOptions(screen.getByLabelText('Profile AI'), 'smolvla-int8');
-    expect(screen.getByTestId('cmd-preview')).toHaveTextContent('libero_object #0');
+    expect(screen.getByTestId('cmd-preview')).toHaveTextContent('libero_spatial #0');
     await user.click(screen.getByRole('button', { name: 'Gửi lệnh' }));
     expect(screen.getByTestId('cmd-lifecycle')).toHaveAttribute('data-phase', 'sent');
     await advance(300);
@@ -129,7 +129,7 @@ describe('App', () => {
     expect(pose.querySelector('[data-row="step"] td:last-child')).toHaveTextContent(/^\d+ \/ 800$/);
     expect(screen.getByTestId('run-chip')).toHaveTextContent('Đang chạy');
     expect(screen.getByTestId('cmd-description')).toHaveTextContent(
-      'pick up the alphabet soup and place it in the basket',
+      'pick up the black bowl between the plate and the ramekin and place it on the plate',
     );
   });
 

@@ -5,12 +5,10 @@ from __future__ import annotations
 import pytest
 
 from app.models_web import NACK_CODES, incoming_adapter, outgoing_adapter
-from app.ports import parse_evaluation, parse_sim_state
 
 from .conftest import load_contract
 
 WEB = load_contract("web_examples.json")
-SIM = load_contract("sim_examples.json")
 
 
 @pytest.mark.parametrize("name", sorted(WEB["web_to_be"]))
@@ -72,12 +70,3 @@ def test_nack_codes_match_the_backend():
         if msg["type"] == "nack":
             assert msg["code"] in NACK_CODES
 
-
-@pytest.mark.parametrize("name", [k for k in SIM if k.startswith("state")])
-def test_sim_state_examples_parse(name):
-    s = parse_sim_state(SIM[name])
-    assert len(s.joint_positions) == 6
-
-
-def test_sim_evaluation_examples_parse():
-    assert parse_evaluation(SIM["evaluation_final"]).final is True

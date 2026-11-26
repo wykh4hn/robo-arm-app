@@ -142,6 +142,9 @@ export function TaskHistory() {
                     </span>
                   </div>
                   <div className="rb-task__cmd">{commandLabel(t, task)}</div>
+                  {task.source === 'board' && (
+                    <div className="rb-task__meta">{t.history.fromBoard}</div>
+                  )}
                   <div className="rb-task__meta">
                     {running && `${t.history.started} `}
                     <span className="rb-mono">{formatClock(task.startedTs)}</span>

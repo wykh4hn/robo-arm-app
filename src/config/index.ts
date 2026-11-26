@@ -107,6 +107,8 @@ export const config = {
   staleAfterMs: 1500,
   ackTimeoutMs: 5_000,
   stopAckTimeoutMs: 4_000,
+  /** Q5: after `stop_pending` the BE waits up to its reset timeout (30 s) for the sim. */
+  stopResetTimeoutMs: 35_000,
   liberoResetTimeoutMs: 32_000,
   /**
    * The sim is LIBERO/Franka (communication-plan §1): no SO-101 joint angles, so the
@@ -118,7 +120,11 @@ export const config = {
    * TODO(Q2): the BE has no `/api/libero/tasks` yet; load the list from it once it exists.
    * Until then this is the plan's stand-in. The description comes from the sim's state.
    */
-  liberoTasks: [{ suite: 'libero_object', task_id: 0 }] as LiberoTaskRef[],
+  /** Q2: the two tasks IoT ran to SUCCESS on the Board; the first is the default. */
+  liberoTasks: [
+    { suite: 'libero_spatial', task_id: 0 },
+    { suite: 'libero_object', task_id: 0 },
+  ] as LiberoTaskRef[],
   liberoInitState: 0,
   liberoSeed: 1000,
   fpsWarn: 8,

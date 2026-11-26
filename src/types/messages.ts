@@ -125,6 +125,8 @@ export interface TaskInfo {
   /** LIBERO: the sim's run and how it ended (communication-plan §4). */
   run_id?: string;
   end_reason?: string;
+  /** Q1: `board` = a run the Board runner reset on its own, not a web command. */
+  source?: 'web' | 'board';
 }
 
 export interface TaskEventMsg {
@@ -186,6 +188,17 @@ export interface StopAckMsg {
   id: string;
 }
 
+/**
+ * Q5: the stop went out, but the sim answers only once its reset has built the
+ * scene (3–15 s). The `stop_ack` (or a `nack`) follows.
+ */
+export interface StopPendingMsg {
+  type: 'stop_pending';
+  ts: number;
+  id: string;
+  reason: 'SIM_RESETTING';
+}
+
 export interface CameraMetaMsg {
   type: 'camera';
   ts: number;
@@ -218,6 +231,7 @@ export type IncomingMessage =
   | AckMsg
   | NackMsg
   | StopAckMsg
+  | StopPendingMsg
   | CameraMetaMsg
   | PipelineMsg
   | ConnectionMsg;

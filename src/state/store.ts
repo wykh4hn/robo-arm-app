@@ -305,7 +305,8 @@ export function applyMessage(
     }
     case 'nack': {
         const stopMatches = msg.id === s.stop.id &&
-          (s.stop.phase === 'stopping' || s.stop.phase === 'unconfirmed');
+          (s.stop.phase === 'stopping' || s.stop.phase === 'resetting' ||
+            s.stop.phase === 'unconfirmed');
         const command = s.commands.find((c) => c.id === msg.id);
         const commandPending = command?.phase === 'sent' || command?.phase === 'noAck';
         return {
@@ -327,10 +328,19 @@ export function applyMessage(
           ...(command?.kind === 'ready' && commandPending ? { awaitingReady: true } : {}),
         };
       }
+    case 'stop_pending':
+      // Q5: not an error. Keep waiting; the 4 s "not confirmed" timer no longer applies.
+      if (msg.id !== s.stop.id || s.stop.phase !== 'stopping') return base;
+      return {
+        ...base,
+        stop: { ...s.stop, phase: 'resetting', reason: undefined },
+        events: logEvent(s, 'stop_pending', msg, at),
+      };
     case 'stop_ack':
       if (
         msg.id !== s.stop.id ||
-        (s.stop.phase !== 'stopping' && s.stop.phase !== 'unconfirmed')
+        (s.stop.phase !== 'stopping' && s.stop.phase !== 'resetting' &&
+          s.stop.phase !== 'unconfirmed')
       ) return base;
       return {
         ...base,
@@ -442,6 +452,13 @@ export const useStore = create<StoreState>()((set, get) => {
             : {},
         );
       }, config.stopAckTimeoutMs);
+      setTimeout(() => {
+        set((s) =>
+          s.stop.id === id && s.stop.phase === 'resetting'
+            ? { stop: { ...s.stop, phase: 'unconfirmed' } }
+            : {},
+        );
+      }, config.stopResetTimeoutMs);
     },
 
     resetLiberoEpisode: async () => {

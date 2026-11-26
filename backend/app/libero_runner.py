@@ -2,8 +2,6 @@
 
 This deliberately does not send prompts or motion commands to the Board. The
 Board connects to the simulator itself; this coordinator only uses Operator HTTP.
-It is kept separate from the legacy SO-101 Runner until FE task/profile mapping
-and the new Franka telemetry contract are agreed.
 """
 from __future__ import annotations
 
@@ -49,20 +47,22 @@ def nack_code_for(exc: Exception) -> str:
 
 @dataclass
 class _Episode:
-    """One web `command`: its `task` message and the run it started."""
+    """One `task` message and its sim run: started by a web `command`, or (Q1) by
+    the Board runner resetting the sim on its own (`source="board"`)."""
 
     task_id: int
-    command_id: str
+    command_id: str | None
     suite: str
     libero_task_id: int
-    init_state: int
-    seed: int
+    init_state: int | None
+    seed: int | None
     profile_id: str | None
     started_ts: int
     before_run_id: str | None
     state: str = "preparing"
     run_id: str | None = None
     command: str = ""
+    source: str = "web"
     extra: dict[str, Any] = field(default_factory=dict)
 
     def wire(self) -> dict[str, Any]:
@@ -71,9 +71,12 @@ class _Episode:
             "command": self.command,
             "state": self.state,
             "startedTs": self.started_ts,
-            "commandId": self.command_id,
-            "seed": self.seed,
+            "source": self.source,
         }
+        if self.command_id is not None:
+            info["commandId"] = self.command_id
+        if self.seed is not None:
+            info["seed"] = self.seed
         if self.profile_id is not None:
             info["profileId"] = self.profile_id
         if self.run_id is not None:
@@ -127,6 +130,8 @@ class LiberoRunner:
         self._episode: _Episode | None = None
         self._episode_task: asyncio.Task | None = None
         self._reset_inflight = False
+        # Resets the BE itself is sending (web command or REST); Q1 and Q5 depend on it.
+        self._resetting = 0
         self._next_task_id = 1
         self._stop_count = 0
         self._watch_enabled = False
@@ -156,6 +161,7 @@ class LiberoRunner:
             self._poll_failed(exc)
             raise
 
+        previous = self.state
         self.state = state
         self.last_poll_success_mono = time.monotonic()
         self.last_poll_error = None
@@ -181,6 +187,8 @@ class LiberoRunner:
                 state.raw,
             )
 
+        self._observe_board_run(previous, state)
+
         if self.on_state is not None:
             try:
                 self.on_state(state)
@@ -188,6 +196,66 @@ class LiberoRunner:
                 log.exception("LIBERO on_state callback failed")
 
         return state
+
+    @property
+    def reset_in_progress(self) -> bool:
+        """True while a reset the BE sent is still building the scene (Q5).
+
+        TODO(Q5): IoT may add a `RESETTING` status so that stop answers at once and a
+        reset started by the Board shows too; `LiberoState` rejects it until then.
+        """
+        return self._resetting > 0
+
+    def _observe_board_run(self, previous: LiberoState | None, state: LiberoState) -> None:
+        """Q1: a new `run_id` the BE did not reset is a run the Board runner started.
+
+        The Board runner has no "wait for command" mode yet: each launch resets the
+        sim and runs one episode. Show it as a task with `source="board"` so the web
+        follows it like its own; Stop works on it as on any run.
+        TODO(Q1): with the waiting mode only a web `command` starts a run.
+        """
+        if previous is None or state.run_id == previous.run_id or self._closed:
+            return
+        if self._resetting or self._reset_inflight:
+            return  # our own reset, or the read that reconciles it
+        current = self._episode
+        if current is not None and current.run_id == state.run_id:
+            return
+        suite = state.task.get("suite")
+        task_id = state.task.get("task_id")
+        description = state.task.get("description")
+        if isinstance(description, str) and description:
+            label = description
+        elif isinstance(suite, str) and isinstance(task_id, int):
+            label = f"{suite} #{task_id}"
+        else:
+            label = state.run_id
+        episode = _Episode(
+            task_id=self._next_task_id,
+            command_id=None,
+            suite=suite if isinstance(suite, str) else "",
+            libero_task_id=task_id if isinstance(task_id, int) else -1,
+            init_state=None,
+            seed=None,
+            profile_id=None,
+            started_ts=_now_ms(),
+            before_run_id=previous.run_id,
+            run_id=state.run_id,
+            command=label,
+            source="board",
+        )
+        self._next_task_id += 1
+        self._episode = episode
+        if current is not None and current.state in {"preparing", "running"}:
+            self._finish_replaced(current)
+        self._event(
+            "libero_board_run",
+            {"task_id": episode.task_id, "run_id": state.run_id, "status": state.status},
+        )
+        if state.status == "RUNNING":
+            episode.state = "running"
+        self._emit(episode)
+        self._episode_task = asyncio.create_task(self._follow_run(episode))
 
     def _poll_failed(self, exc: Exception) -> None:
         self.last_poll_error = str(exc)
@@ -333,7 +401,9 @@ class LiberoRunner:
             return self._nack(command_id, "SIM_OFFLINE", "Simulator state is not fresh.")
         state = self.state
         # TODO(Q4): `session_active` is the only Board signal; require it until IoT confirms.
-        if not state.session_active:
+        # TODO(Q1): SO101_REQUIRE_BOARD_SESSION=false lets a dev reset without a session
+        # (the operator then starts the runner with `--no-reset`), until the waiting mode.
+        if self.settings.require_board_session and not state.session_active:
             return self._nack(
                 command_id, "BOARD_NOT_CONNECTED", "Board has no session with the simulator."
             )
@@ -593,6 +663,22 @@ class LiberoRunner:
         # The BE owns the run from its first reset on: watchdog on first (§3.3).
         await self._enable_watch()
 
+        self._resetting += 1
+        try:
+            return await self._send_reset(
+                before, selected_suite, selected_task, selected_init, selected_seed
+            )
+        finally:
+            self._resetting -= 1
+
+    async def _send_reset(
+        self,
+        before: LiberoState,
+        selected_suite: str,
+        selected_task: int,
+        selected_init: int,
+        selected_seed: int,
+    ) -> LiberoState:
         timeout_s = self.settings.libero_reset_timeout_ms / 1000
         try:
             response = await asyncio.wait_for(
@@ -636,9 +722,11 @@ class LiberoRunner:
 
     async def _stop(self) -> LiberoState:
         self._stop_count += 1
+        # Q5: a stop sent while a reset builds the scene waits for that reset (3-15 s),
+        # so it gets the reset's timeout (30 s), not the usual 2 s.
         try:
             response = await asyncio.wait_for(
-                self.sim.stop(), timeout=self.settings.sim_timeout_ms / 1000
+                self.sim.stop(), timeout=self.settings.libero_reset_timeout_ms / 1000
             )
         except (asyncio.TimeoutError, SimOutcomeUnknown) as exc:
             raise SimOutcomeUnknown(

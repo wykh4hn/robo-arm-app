@@ -81,6 +81,22 @@ describe('web <-> BE contract', () => {
     expect(new Set(states)).toEqual(new Set(['preparing', 'running', 'done', 'failed', 'stopped']));
   });
 
+  it('stop_pending moves a matching stop to "resetting" (Q5)', () => {
+    const pendingMsg = be.stop_pending as Extract<IncomingMessage, { type: 'stop_pending' }>;
+    expect(pendingMsg).toMatchObject({ id: 'stop-m1a3-2', reason: 'SIM_RESETTING' });
+    let s = initialMonitorState(0);
+    s = { ...s, stop: { phase: 'stopping', id: 'stop-m1a3-2', requestedAt: 0 } };
+    s = { ...s, ...applyMessage(s, pendingMsg, 100) };
+    expect(s.stop.phase).toBe('resetting');
+    s = { ...s, ...applyMessage(s, be.stop_ack as IncomingMessage, 200) };
+    expect(s.stop.phase).toBe('stopped');
+  });
+
+  it('a task the Board started keeps source "board" (Q1)', () => {
+    const s = run(['task_board_running']);
+    expect(s.tasks.find((x) => x.id === 15)).toMatchObject({ state: 'running', source: 'board' });
+  });
+
   it('what the FE sends has the shapes the BE expects', () => {
     const cmd = contract.web_to_be.command as Extract<OutgoingMessage, { type: 'command' }>;
     expect(Object.keys(cmd).sort()).toEqual(

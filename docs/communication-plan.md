@@ -148,19 +148,21 @@ Bảng hiển thị trạng thái (icon + chữ, theo README design-system):
 | CLAUDE.md: "data comes from an in-browser mock transport" | Đã lỗi thời; mock chỉ còn cho dev/test UI |
 | Blueprint: 9 profile chọn từ web | Profile/model do Board chọn khi khởi động runner; web chỉ ghi lại `profile_id` (Q7) |
 
-## 8. Câu hỏi còn mở [CẦN XÁC NHẬN]
+## 8. Câu hỏi: IoT đã trả lời Q1–Q6 (27/11/2026)
 
-| # | Hỏi ai | Câu hỏi | Dùng tạm |
-|---|---|---|---|
-| Q1 | IoT | Runner chế độ chờ lệnh đã có chưa (lệnh chạy, cờ)? Board nhận biết lượt mới bằng gì (`run_id` đổi + `READY`)? Sau `stop` Board có tự đóng session không? | Chưa có → test bằng `runner.py --policy wiggle --no-reset` chạy tay |
-| Q2 | IoT + AI + nhóm | Demo dùng suite/task nào? Model đã train cho task nào? | `libero_object`, task 0, `init_state` 0, `seed` 1000 |
-| Q3 | IoT | Thêm `joint_pos` (7 khớp Franka) vào `/api/state` được không? Nếu có thì FE dùng URDF Franka (Panda, Apache-2.0) cho 3D | Không có → chỉ hiện pose đầu tay |
-| Q4 | IoT | Ở chế độ chờ, `session_active` có `true` trước khi `reset` không? Có được `reset` khi Board chưa nối không? | Bắt buộc `session_active=true` mới cho Gửi |
-| Q5 | IoT | Gọi `stop` trong lúc `reset` đang dựng scene (3–15 s) có được xử lý ngay không, hay chờ reset xong? `reset` khi đang `RUNNING` có bị 409 không? | BE gửi Stop song song, không chờ; không reset khi `RUNNING` |
-| Q6 | AI | Đường dẫn checkpoint X-VLA và thiết bị (CPU/CUDA) để chạy 1 episode thật | Chưa có → không xác minh được SUCCESS |
-| Q7 | AI | Web có cần chọn profile (model × precision) không, hay Board cố định? | Web không chọn; ghi `profile_id` từ cấu hình BE |
-| Q8 | Nhóm | Thiết bị mục tiêu (iPad?) và ai chạy `adb reverse tcp:5050 tcp:5050` | iPad qua LAN tới 8001; ADB do IoT lo |
-| Q9 | Giảng viên | Chấp nhận AC-03…06 là "không hỗ trợ" trong Project A? | Có, ghi rõ trong báo cáo |
+| # | Trả lời của IoT | Hệ quả cho code |
+|---|---|---|
+| Q1 | **Chưa có** chế độ chờ lệnh. Runner trên Board (app "Libero Runner", khởi động từ laptop bằng `board_runner/deploy_runner.py --suite S --task-id N`) chạy một lượt mỗi lần khởi động: tự RESET, chạy tới khi xong, in `RUN_DONE` rồi dừng. IoT sẽ làm chế độ chờ sau. | BE phải **quan sát được lượt do Board tự RESET** (`run_id` đổi mà BE không gọi reset) → hiện thành task "chạy từ Board" trong FE, vẫn Stop được. Cờ dev `SO101_REQUIRE_BOARD_SESSION` (mặc định `true`): đặt `false` để thử nút Gửi khi chưa có chế độ chờ (BE chỉ reset; người vận hành chạy runner `--no-reset` bằng tay). `TODO(Q1)` ở chỗ nối chế độ chờ. |
+| Q2 | Leader chưa chốt. Đã chạy SUCCESS trên Board thật (X-VLA W8A16, NPU, qua STM32): `libero_spatial` task 0 (bước 75), `libero_object` task 0 (bước 140). IoT đề xuất demo hai task này. | Danh sách task mặc định trong BE/FE = hai task này; `libero_spatial:0` đứng đầu. Vẫn đọc được thêm task từ `/api/contract`. |
+| Q3 | **Được**, IoT sẽ thêm `joint_pos` (7 khớp, rad), `gripper_qpos` (2 ngón, m), `base_pos` vào `/api/state`. Hiện mới có trong `/api/observation` (nặng). | Bước 8 (sau khi IoT thêm): 3D tay Franka bằng URDF Panda. Trước đó giữ panel pose. BE đã nhận các trường này nếu có (không bắt buộc) và chuyển tiếp nguyên vẹn. |
+| Q4 | Theo thiết kế chế độ chờ: **có**, runner nối ngay khi app khởi động nên `session_active=true` lúc chờ. | Giữ luật: chỉ cho Gửi khi `session_active=true` (trừ cờ dev ở Q1). |
+| Q5 | Stop **không mất nhưng bị trễ**: reset giữ khoá sim 3–15 s; stop chờ reset xong, kết quả là lượt mới `READY` + `hold_latched=true` (`OPERATOR_STOP`). HTTP stop treo trong lúc đó → BE cần timeout ≥ 30 s. IoT đề xuất thêm trạng thái `RESETTING` để stop trả lời ngay. | Timeout HTTP của `stop` = `SO101_LIBERO_RESET_TIMEOUT_MS` (30 s), không dùng 2 s. Trong lúc stop đang chờ reset: gửi FE trạng thái "Đang dừng — sim đang dựng scene" thay vì báo lỗi sau 4 s; `stop_ack` khi `hold_latched && OPERATOR_STOP` (kể cả ở lượt mới `READY`). Nếu sau này có `RESETTING` thì hiện nó (`TODO(Q5)`). |
+| Q6 | Trên Board: X-VLA LIBERO W8A16 trên NPU Hexagon, ~330–370 ms/chunk. Chạy: `python board_runner/deploy_runner.py --suite libero_spatial --task-id 0` (sim chạy ở terminal khác). Trên laptop (thử, không Board): `lerobot/xvla-libero` FP32 CUDA RTX 4060, bản sao `C:\RobotArm\libero_sim\model_weights\xvla-libero`; lệnh `HF_HUB_OFFLINE=1 bash run_wsl.sh runner --policy xvla --suite libero_spatial --task-id 0`. BE không chạy model. | Bước 7 dùng đúng các lệnh này, chỉ khi người dùng duyệt. |
+| Q7 | Chưa hỏi | Web không chọn profile; ghi `profile_id` từ cấu hình BE (giữ). |
+| Q8 | Chưa hỏi | iPad qua LAN tới 8001; ADB do IoT lo (giữ). |
+| Q9 | Chưa hỏi giảng viên | AC-03…06 ghi "không hỗ trợ" trong báo cáo (giữ). |
+
+**Việc chờ IoT:** chế độ chờ lệnh (Q1), `joint_pos`/`base_pos` trong `/api/state` (Q3), trạng thái `RESETTING` (Q5).
 
 ## 9. Thứ tự làm (mỗi bước một phiên Claude Code, một commit)
 
@@ -172,7 +174,9 @@ Bảng hiển thị trạng thái (icon + chữ, theo README design-system):
 6. **Tích hợp** với `server.py --backend fake` + `runner.py --policy wiggle`; sửa lỗi.
 7. **E2E thật** theo mục 6, có người dùng duyệt; ghi kết quả đo vào `docs/`.
 
-Bước 1–5 làm được ngay. Bước 6 cần Q1/Q4. Bước 7 cần Q1, Q2, Q6.
+8. **3D Franka** (khi IoT đã thêm `joint_pos` vào `/api/state`): URDF Panda, ẩn/hiện theo có dữ liệu.
+
+Bước 1–6 làm được với thông tin hiện có. Bước 7 cần người dùng có mặt và duyệt. Bước 8 chờ IoT.
 
 ## 10. Bàn giao cho phiên Claude Code (đọc mục này + mục liên quan, không đọc thêm tài liệu)
 
@@ -193,6 +197,8 @@ Bước 1–5 làm được ngay. Bước 6 cần Q1/Q4. Bước 7 cần Q1, Q2,
 | 2 BE lệnh | 3.2, 3.3 | `backend/app/libero_runner.py`, `main.py` (hàm `handle_libero_message`/`handle_libero_stop`), `api.py` | Test mới cho: ack trước reset, preparing→running→done/failed, Stop khi đang reset, Ready ở READY/RUNNING/terminal (terminal không gọi sim), dedup id, outcome unknown không retry, `BOARD_NOT_CONNECTED`, `SIM_OFFLINE`, watch bật trước reset đầu |
 | 3 BE live | 3.4 | `backend/app/live.py`, `camera.py`, `sim_client.get_frame` | Queue gộp `libero_state`, giữ ack/nack/stop_ack/task; snapshot khi kết nối; `seq` tăng; MJPEG `agentview`/`wrist`, không client thì không poll; test cho từng ý |
 | 4 FE | 4, 5 (+ README design-system và README component nào sửa) | `src/state/store.ts`, `deriveStatus.ts`, `src/components/CommandPanel.tsx`, `CameraTile.tsx`, `StatusBar.tsx`, `RobotViewer3D.tsx`/`JointTable.tsx`/`TrajectoryCharts.tsx` (ẩn ở chế độ LIBERO), panel pose mới, `src/strings/*.ts`, `src/transport/MockTransport.ts`, `scenarios.ts` | typecheck/test/lint xanh; mỗi dòng bảng trạng thái mục 4 có test deriveStatus; mock phát `libero_state` đủ các tình huống |
-| 5 Dọn | 3.1, 7 | xoá `runner.py`, `board_link.py`, `tools/mock_sim.py`, `tools/mock_board.py`, `tests/test_flow.py`, phần khớp trong `adapter.py`, nhánh `sim_link=mock`; sửa `ports.py`, `settings.py`, `state.py`, `storage.py`, `main.py`; `CLAUDE.md`, `backend/README.md`, `.env.example` | Grep `SimState\|FakeSim\|FakeBoard\|BoardPort\|evaluation\|send_prompt` trong `backend/app` rỗng; toàn bộ `pytest` xanh; FE xanh |
+| 5 Dọn | 3.1, 7 | xoá `runner.py`, `board_link.py`, `tools/mock_sim.py`, `tools/mock_board.py`, `tests/test_flow.py`, phần khớp trong `adapter.py`, nhánh `sim_link=mock`; sửa `ports.py`, `settings.py`, `state.py`, `storage.py`, `main.py`; `CLAUDE.md`, `backend/README.md`, `.env.example` | Grep `SimState\|FakeSim\|FakeBoard\|BoardPort\|evaluation\|send_prompt` trong `backend/app` rỗng; toàn bộ `pytest` xanh; FE xanh. **Kèm Q5:** timeout HTTP `stop` = 30 s + trạng thái "đang dừng, sim đang dựng scene" (BE gửi, FE hiện) + test. **Kèm Q1:** BE nhận lượt do Board tự RESET (`run_id` đổi không do BE) thành task nguồn `board`; cờ `SO101_REQUIRE_BOARD_SESSION`; test. **Kèm Q2:** task mặc định `libero_spatial:0`, `libero_object:0` |
+| 6 Tích hợp | 6, 8 (Q1) | Không sửa nếu không lỗi. Viết `docs/integration-runbook.md` (lệnh từng terminal) và `backend/tools/smoke_ws.py` (client WS chỉ đọc, in state/ack theo thời gian) | Trên laptop, không GPU: chạy `server.py --backend fake` (WSL, `C:\studies\Project A\RobotArm\libero_board`), BE `SO101_SIM_LINK=real`, mở trang 8001. Kiểm tra và ghi kết quả: state lên web; Stop/Ready khi READY; Gửi với `SO101_REQUIRE_BOARD_SESSION=false` → reset → chạy `runner.py --policy wiggle --no-reset` → RUNNING → Stop → ABORTED; runner tự reset (không `--no-reset`) → FE hiện task nguồn `board`; kill runner khi chạy → `CONNECTION_LOST`/`HEARTBEAT_TIMEOUT`; tắt BE khi chạy → `OPERATOR_LOST` sau 5 s. Sửa lỗi tìm được, có test. Chỉ điều khiển sim **fake**; không đụng sim thật/Board |
+| 7 E2E thật | 6, 8 (Q6), `Docs/codex-runtime-audit.md` mục E | `docs/e2e-results-<ngày>.md` | **Từng thao tác điều khiển phải được người dùng duyệt trong chat trước khi chạy.** Sim LIBERO thật + Board qua `deploy_runner.py` (hoặc X-VLA CUDA trên laptop nếu không có Board). Ghi PASS/FAIL + bằng chứng cho 12 mục checklist E, đo Stop→`hold_latched` (ms) và state→màn hình (ms). Không tuyên bố PASS khi không có bằng chứng |
 
-**Trạng thái:** bước 1 ☑ · bước 2 ☑ · bước 3 ☑ · bước 4 ☑ · bước 5 ☐
+**Trạng thái:** bước 1 ☑ · bước 2 ☑ · bước 3 ☑ · bước 4 ☑ · bước 5 ☑ · bước 6 ☐ · bước 7 ☐ · bước 8 ☐ (chờ IoT)

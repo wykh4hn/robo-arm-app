@@ -1,11 +1,9 @@
-"""REST endpoints for the SO-101 and LIBERO backend."""
+"""REST endpoints of the LIBERO backend."""
 
 from __future__ import annotations
 
 import asyncio
 import json
-import time
-import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,7 +16,6 @@ from .export import export_run
 from .live import Hub
 from .libero_runner import nack_code_for
 from .ports import SimConnectionError, SimError, SimOutcomeUnknown, SimRejected
-from .runner import Runner
 from .settings import CAMERAS, Settings
 from .state import SystemState, task_info
 from .storage import Storage
@@ -32,7 +29,6 @@ class Core:
     state: SystemState
     storage: Storage
     hub: Hub
-    runner: Runner | None
     camera: CameraProxy
     libero_runner: Any | None = None
 
@@ -58,30 +54,14 @@ def build_router(core: Core) -> APIRouter:
     r = APIRouter()
 
     s = core.settings
-    st = core.state
     storage = core.storage
-    runner = core.runner
     libero_runner = core.libero_runner
-
-    def require_legacy_runner() -> Runner:
-        if runner is None:
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    "This endpoint belongs to the legacy SO-101 runner. "
-                    "The backend is currently running in LIBERO mode."
-                ),
-            )
-        return runner
 
     def require_libero_runner():
         if libero_runner is None:
             raise HTTPException(
                 status_code=409,
-                detail=(
-                    "LIBERO endpoints require SO101_SIM_LINK=real "
-                    "and a configured LIBERO connection."
-                ),
+                detail="The LIBERO runner is not configured.",
             )
         return libero_runner
 
@@ -127,153 +107,96 @@ def build_router(core: Core) -> APIRouter:
 
     @r.get("/api/health")
     async def health() -> dict[str, Any]:
-        if libero_runner is not None:
-            libero_state = libero_runner.state
-            connection_health = libero_runner.connection_health()
-            sim_ok = (
-                connection_health["simulator_connection"] == "connected"
-                and connection_health["state_freshness"] == "fresh"
-                and connection_health["poll_error"] is None
-            )
-
-            return {
-                "status": (
-                    "ok"
-                    if sim_ok and storage.ready
-                    and connection_health["heartbeat_status"] != "degraded"
-                    else "degraded"
-                ),
-                "db": storage.ready,
-                "mode": s.mode,
-                "backend_mode": "libero",
-                "connection_health": connection_health,
-                "board": {
-                    "connected": None,
-                    "last_board_heartbeat_age_s": None,
-                    "session_status": connection_health["session_status"],
-                },
-                "sim": {
-                    "ok": sim_ok,
-                    "link": s.sim_link,
-                    "contract": (
-                        libero_state.contract
-                        if libero_state is not None
-                        else None
-                    ),
-                    "status": (
-                        libero_state.status
-                        if libero_state is not None
-                        else None
-                    ),
-                    "hold_latched": (
-                        libero_state.hold_latched
-                        if libero_state is not None
-                        else None
-                    ),
-                    "session_active": (
-                        libero_state.session_active
-                        if libero_state is not None
-                        else None
-                    ),
-                    "step": (
-                        libero_state.step
-                        if libero_state is not None
-                        else None
-                    ),
-                    "max_steps": (
-                        libero_state.max_steps
-                        if libero_state is not None
-                        else None
-                    ),
-                    "sim_time": (
-                        libero_state.sim_time
-                        if libero_state is not None
-                        else None
-                    ),
-                    "end_reason": (
-                        libero_state.end_reason
-                        if libero_state is not None
-                        else None
-                    ),
-                },
-                "logger": {
-                    "queue_depth": storage.queue_depth,
-                    "gaps": storage.gaps,
-                    "last_error": storage.last_error,
-                },
-                "web_clients": len(core.hub.clients),
-            }
-
-        sim_state = st.sim
-
-        age = (
-            round((time.monotonic() - st.last_sample_mono) * 1000)
-            if st.last_sample_mono is not None
-            else None
+        current = require_libero_runner()
+        libero_state = current.state
+        connection_health = current.connection_health()
+        sim_ok = (
+            connection_health["simulator_connection"] == "connected"
+            and connection_health["state_freshness"] == "fresh"
+            and connection_health["poll_error"] is None
         )
 
-        ok = st.sim_ok is True and storage.ready
-
         return {
-            "status": "ok" if ok else "degraded",
+            "status": (
+                "ok"
+                if sim_ok and storage.ready
+                and connection_health["heartbeat_status"] != "degraded"
+                else "degraded"
+            ),
             "db": storage.ready,
             "mode": s.mode,
-            "backend_mode": "so101",
+            "backend_mode": "libero",
+            "connection_health": connection_health,
             "board": {
-                "connected": st.board_connected,
-                "last_board_heartbeat_age_s": (
-                    sim_state.raw.get("last_board_heartbeat_age_s")
-                    if sim_state and st.sim_ok
-                    else None
-                ),
+                "connected": None,
+                "last_board_heartbeat_age_s": None,
+                "session_status": connection_health["session_status"],
             },
             "sim": {
-                "ok": st.sim_ok is True,
+                "ok": sim_ok,
                 "link": s.sim_link,
-                "status": (
-                    sim_state.status
-                    if sim_state and st.sim_ok
+                "contract": (
+                    libero_state.contract
+                    if libero_state is not None
                     else None
                 ),
-                "hold": (
-                    sim_state.hold
-                    if sim_state and st.sim_ok
+                "status": (
+                    libero_state.status
+                    if libero_state is not None
+                    else None
+                ),
+                "hold_latched": (
+                    libero_state.hold_latched
+                    if libero_state is not None
+                    else None
+                ),
+                "session_active": (
+                    libero_state.session_active
+                    if libero_state is not None
+                    else None
+                ),
+                "step": (
+                    libero_state.step
+                    if libero_state is not None
+                    else None
+                ),
+                "max_steps": (
+                    libero_state.max_steps
+                    if libero_state is not None
                     else None
                 ),
                 "sim_time": (
-                    sim_state.sim_time
-                    if sim_state and st.sim_ok
+                    libero_state.sim_time
+                    if libero_state is not None
                     else None
                 ),
-                "camera_error": (
-                    sim_state.raw.get("camera_error")
-                    if sim_state and st.sim_ok
+                "end_reason": (
+                    libero_state.end_reason
+                    if libero_state is not None
                     else None
                 ),
-                "last_poll_age_ms": age,
             },
             "logger": {
                 "queue_depth": storage.queue_depth,
                 "gaps": storage.gaps,
                 "last_error": storage.last_error,
             },
-            "robot": st.robot,
-            "awaiting_ready": st.awaiting_ready,
-            "active_run": (
-                {
-                    "run_id": st.run.run_id,
-                    "phase": st.run.phase,
-                    "profile_id": st.run.profile_id,
-                }
-                if st.run
-                else None
-            ),
             "web_clients": len(core.hub.clients),
         }
 
     # ------------------------------------------------------------------
     # LIBERO-native endpoints
     # ------------------------------------------------------------------
+
+    @r.get("/api/libero/tasks")
+    async def libero_tasks() -> dict[str, Any]:
+        """Demo tasks the web may offer (Q2); the first one is the default."""
+        return {
+            "tasks": [
+                {"suite": suite, "task_id": task_id}
+                for suite, task_id in s.libero_task_list
+            ]
+        }
 
     @r.get("/api/libero/state")
     async def libero_state() -> dict[str, Any]:
@@ -344,26 +267,13 @@ def build_router(core: Core) -> APIRouter:
             ) from exc
 
     # ------------------------------------------------------------------
-    # Existing SO-101 endpoints
+    # Run history (SQLite)
     # ------------------------------------------------------------------
 
     @r.get("/api/v1/profiles")
     async def profiles() -> dict[str, Any]:
         await storage.flush()
         rows = await storage.list_profiles()
-
-        dev_only = (
-            {
-                profile.profile_id
-                for profile in runner.profiles.values()
-                if profile.dev_only
-            }
-            if runner is not None
-            else set()
-        )
-
-        for row in rows:
-            row["dev_only"] = row["profile_id"] in dev_only
 
         return {"profiles": rows}
 
@@ -436,91 +346,6 @@ def build_router(core: Core) -> APIRouter:
             "warmup": len(rows) - measured,
             **pipeline.timing_stats(rows),
         }
-
-    @r.get("/api/v1/trials")
-    async def trials(
-        protocol_id: str | None = None,
-    ) -> dict[str, Any]:
-        current = require_legacy_runner()
-
-        await storage.flush()
-        pid = protocol_id or current.protocol.id
-
-        return {
-            "protocol_id": pid,
-            "matrix": await storage.trial_matrix(pid),
-        }
-
-    @r.post("/api/v1/runs")
-    async def post_run(
-        body: dict[str, Any] = Body(...),
-    ) -> JSONResponse:
-        current = require_legacy_runner()
-        proto = current.protocol
-
-        raw = {
-            "type": "command",
-            "id": body.get("id") or f"rest-{uuid.uuid4().hex[:12]}",
-            "text": body.get("text", proto.ui_text),
-            "templateId": body.get("templateId", proto.template_id),
-            "params": body.get(
-                "params",
-                {"object": proto.object},
-            ),
-            "profileId": body.get(
-                "profileId",
-                body.get("profile_id"),
-            ),
-        }
-
-        reply = await current.start_run(raw)
-        assert reply is not None
-
-        return JSONResponse(
-            reply,
-            status_code=(
-                200 if reply["type"] == "ack" else 409
-            ),
-        )
-
-    @r.post("/api/v1/stop")
-    async def post_stop(
-        body: dict[str, Any] | None = Body(None),
-        wait_s: float = Query(3.0, ge=0, le=30),
-    ) -> dict[str, Any]:
-        current = require_legacy_runner()
-
-        stop_id = (
-            (body or {}).get("id")
-            or f"rest-stop-{uuid.uuid4().hex[:12]}"
-        )
-
-        current.handle_stop(stop_id)
-
-        return {
-            "id": stop_id,
-            **await current.wait_stop(wait_s),
-        }
-
-    @r.post("/api/v1/ready")
-    async def post_ready(
-        body: dict[str, Any] | None = Body(None),
-    ) -> JSONResponse:
-        current = require_legacy_runner()
-
-        ready_id = (
-            (body or {}).get("id")
-            or f"rest-ready-{uuid.uuid4().hex[:12]}"
-        )
-
-        reply = await current.handle_ready(ready_id)
-
-        return JSONResponse(
-            reply,
-            status_code=(
-                200 if reply["type"] == "ack" else 409
-            ),
-        )
 
     # ------------------------------------------------------------------
     # Camera

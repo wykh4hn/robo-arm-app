@@ -18,7 +18,6 @@ from concurrent.futures import Future
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
-from .ports import SimState
 from .settings import Settings
 from .validation import Profile, Protocol
 
@@ -429,16 +428,6 @@ class Storage:
             (run_id, source_id, self.boot_id, self._event_seq, type_, source_ts, clock_id,
              now_ms(), json.dumps(payload or {}, ensure_ascii=False)),
         )  # fmt: skip
-
-    def add_sample(self, run_id: int, step: int, received_at: int, s: SimState) -> None:
-        """Original units (rad). The raw answer also goes to sim_raw.jsonl, untouched."""
-        self.enqueue(
-            "INSERT INTO samples VALUES (?,?,?,?,?,?,?,?,?)",
-            (run_id, step, received_at, s.sim_time, s.status, s.accepted_sequence,
-             s.applied_sequence, json.dumps(list(s.joint_positions)),
-             json.dumps(list(s.joint_targets)) if s.joint_targets is not None else None),
-        )  # fmt: skip
-        self.append_raw(run_id, {"received_at": received_at, "state": s.raw})
 
     def quarantine(self, raw: Any, error: str) -> None:
         limit = self.settings.quarantine_max_rows
