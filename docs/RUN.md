@@ -109,8 +109,10 @@ $lanIp = (Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress;
 **Gỡ** sau buổi demo (PowerShell Admin):
 
 ```powershell
-netsh interface portproxy reset
+$lanIp = (Get-NetIPAddress -InterfaceAlias Wi-Fi -AddressFamily IPv4).IPAddress; netsh interface portproxy delete v4tov4 listenaddress=$lanIp listenport=8001
 ```
+
+Chỉ xoá quy tắc 8001. Đừng dùng `netsh interface portproxy reset`: lệnh đó xoá luôn quy tắc 5050 của IoT.
 
 ```powershell
 Remove-NetFirewallRule -DisplayName "robo-arm-app 8001"
