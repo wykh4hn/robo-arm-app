@@ -1,0 +1,7 @@
+{
+ "type": "ACK",
+ "command": "ABORT",
+ "run_id": "57b11f26e9ea4a6a9521ae4244d029a1",
+ "session_id": "b9a77470b64e46f9af789e7447c18562",
+ "status": "HOLD"
+}

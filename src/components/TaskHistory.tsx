@@ -1,7 +1,8 @@
 import { TASK_STATUS } from '../config/levels';
 import { useStore } from '../state/store';
 import { sortTasks } from '../state/tasks';
-import { useT } from '../strings';
+import { fmt, useT } from '../strings';
+import { runExportUrl } from '../transport';
 import { commandLabel } from '../utils/commandText';
 import { formatClock, formatDuration } from '../utils/time';
 import { Icon } from './Icon';
@@ -61,6 +62,17 @@ export function TaskHistory() {
                   </div>
                   {task.state === 'failed' && task.reason && (
                     <div className="rb-task__reason">{task.reason}</div>
+                  )}
+                  {!running && runExportUrl(task.id) && (
+                    <a
+                      className="rb-btn rb-btn--quiet app-self-start"
+                      href={runExportUrl(task.id) ?? undefined}
+                      download
+                      aria-label={fmt(t.history.exportLabel, { id: task.id })}
+                    >
+                      <Icon name="download" />
+                      {t.history.export}
+                    </a>
                   )}
                 </li>
               );

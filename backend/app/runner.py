@@ -7,6 +7,7 @@ success or failure itself: MuJoCo does (F2). Nothing here may delay a Stop.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from collections import OrderedDict
@@ -27,6 +28,12 @@ log = logging.getLogger("so101.runner")
 SIM_OUTCOMES = ("success", "failure", "timeout")
 # Only these keys of a web command are ever stored (N8: no stray token reaches the DB).
 _COMMAND_KEYS = ("type", "id", "text", "templateId", "params", "profileId")
+
+
+def _eval_event(raw: dict[str, Any]) -> dict[str, Any]:
+    """The evaluation as logged: the result, not the ground-truth object positions."""
+    keep = ("run_id", "sim_time", "episode", "target_jaw_contact_count", "target_speed_m_s")
+    return {k: raw[k] for k in keep if k in raw}
 
 
 def safe_payload(raw: Any) -> dict[str, Any]:
@@ -76,6 +83,8 @@ class Runner:
     ) -> None:
         self.settings = settings
         self.state = state
+        state.driver = {"real": "board"}.get(settings.board_link, settings.board_link)
+        self._warned_bad_state = False
         self.storage = storage
         self.hub = hub
         self.sim = sim
@@ -268,6 +277,8 @@ class Runner:
             "evidence_class": self.settings.evidence_class,
             "ui_text": cmd.text,
             "policy_task_text": self.protocol.policy_task_text or cmd.text,
+            "template_id": cmd.templateId,
+            "params": json.dumps(cmd.params, ensure_ascii=False),
             "phase": "preparing",
             "quality_flags": "[]",
             "created_at": created,
@@ -330,15 +341,22 @@ class Runner:
                 async with asyncio.timeout(s.prepare_timeout_s):
                     try:
                         result = await asyncio.wait_for(
-                            self.sim.reset(run.seed, run.run_id), self._ms(s.sim_timeout_ms)
+                            self.sim.reset(run.seed, run.run_id, self.protocol.object),
+                            self._ms(s.sim_timeout_ms),
                         )
                     except _IO_ERRORS as exc:
                         self.storage.add_event(run.run_id, "reset_failed", {"error": str(exc)})
                         self._finish("finished", "error", "reset_failed")
                         return
-                    self.storage.add_event(run.run_id, "reset", {"seed": run.seed, **result.raw})
-                    if result.episode_id is not None:
-                        self.storage.update_run(run.run_id, sim_episode_id=result.episode_id)
+                    event = {k: v for k, v in result.raw.items() if k != "identity"}
+                    self.storage.add_event(
+                        run.run_id, "reset",
+                        {"seed": run.seed, "sim_run_id": result.sim_run_id, **event},
+                    )  # fmt: skip
+                    run.sim_run_id = result.sim_run_id
+                    run.sim_identity = result.raw.get("identity")
+                    if result.sim_run_id is not None:
+                        self.storage.update_run(run.run_id, sim_episode_id=result.sim_run_id)
                     try:
                         await asyncio.wait_for(
                             self.board.send_prompt(
@@ -382,12 +400,24 @@ class Runner:
                     continue  # the poll loop owns "MuJoCo is gone"
                 if ev is None or not ev.final:
                     continue
-                if ev.run_id is not None and ev.run_id != run.run_id:
+                if ev.sim_run_id and run.sim_run_id and ev.sim_run_id != run.sim_run_id:
                     continue  # still the previous episode's result
-                self.storage.add_event(run.run_id, "evaluation", ev.raw)
+                op = self._stop_op
+                if ev.outcome == "aborted" and op is not None and op.run_id == run.run_id:
+                    continue  # our own STOP: the stop path finishes the run once HOLD shows
+                self.storage.add_event(run.run_id, "evaluation", _eval_event(ev.raw))
                 if ev.outcome in SIM_OUTCOMES:
                     code = None if ev.outcome == "success" else (ev.reason_code or ev.outcome)
                     self._finish("finished", ev.outcome, code)
+                elif ev.outcome in ("aborted", "error"):
+                    # MuJoCo ended the episode itself (board lost, heartbeat, execution
+                    # fault) or someone pressed ABORT outside the web. It holds now:
+                    # the user has to press Ready, like after a Stop.
+                    code = (
+                        "sim_aborted" if ev.outcome == "aborted" else (ev.reason_code or "sim_aborted")
+                    )
+                    self.state.awaiting_ready = True
+                    self._finish("finished", "error", code, incomplete=True)
                 else:
                     self._finish("finished", "error", "bad_evaluation", incomplete=True)
                 return
@@ -529,6 +559,13 @@ class Runner:
                 "firmware": None,
                 "sim_commit": None,
                 "mujoco": None,
+                "sim_model_sha256": (run.sim_identity or {}).get("model_sha256"),
+            },
+            "sim": {
+                "run_id": run.sim_run_id,
+                "target": self.protocol.object,
+                "randomize": self.settings.sim_randomize if self.settings.sim_link == "real" else None,
+                "identity": run.sim_identity,
             },
             "setup": {
                 "link": None,
@@ -536,6 +573,8 @@ class Runner:
                 "camera_preview": self.settings.camera_preview,
                 "sim_link": self.settings.sim_link,
                 "board_link": self.settings.board_link,
+                # Who drove the arm. "reference" = MuJoCo's ground-truth controller, not AI.
+                "driver": self.settings.board_link,
                 "laptop": self.versions.get("hostname"),
                 "board": None,
             },
@@ -583,6 +622,14 @@ class Runner:
         except SimBadPayload as exc:
             # T11: kept for investigation, never shown to the web.
             self.storage.quarantine(exc.raw, str(exc))
+            if self.state.sim_ok is None and not self._warned_bad_state:
+                # Never one good read: most likely the wrong server on the port.
+                self._warned_bad_state = True
+                log.warning(
+                    "MuJoCo at %s answers, but /api/state is not schema v2 (%s). Run "
+                    "so101sim/board_server/app.py, not so101sim/app.py.",
+                    self.settings.sim_url, exc,
+                )  # fmt: skip
             self._check_stale(time.monotonic())
             return
         except _IO_ERRORS:
@@ -648,6 +695,22 @@ class Runner:
         self._check_stop(s, now)
 
         run = st.run
+        if (
+            run is not None
+            and run.phase in ("running", "stopping")
+            and run.sim_run_id
+            and s.sim_run_id
+            and s.sim_run_id != run.sim_run_id
+        ):
+            # Someone RESET MuJoCo from elsewhere (its own page has buttons too). This run's
+            # episode is gone: end it now instead of waiting for a result that never comes.
+            self.storage.add_event(
+                run.run_id, "sim_reset_elsewhere", {"expected": run.sim_run_id, "seen": s.sim_run_id}
+            )
+            st.awaiting_ready = True
+            self._finish("finished", "error", "reset", incomplete=True)
+            changed = False
+            run = None
         if run is not None and run.phase in ("preparing", "running") and not s.board_connected:
             self._on_board_lost(run)
             changed = False  # _finish already sent status

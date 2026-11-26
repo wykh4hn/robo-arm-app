@@ -26,6 +26,14 @@ class Profile:
     status: str = "not_attempted"  # not_attempted|attempted|blocked|completed (F5)
     blocked_reason: str | None = None
     dev_only: bool = False  # e.g. the reference controller (Q17)
+    # From the AI team's matrix (shown on the web, not used for decisions):
+    ai_id: str | None = None  # id in the AI logs, e.g. "smolvla/int8_mixed"
+    validation: str | None = None  # server-validated | failed
+    board_verified: bool = False  # accepted on the VENTUNO Q board
+    package_mb: float | None = None
+    server_policy_p50_s: float | None = None  # server timing, never board latency
+    server_policy_p95_s: float | None = None
+    note: str | None = None
 
 
 @dataclass(frozen=True)
@@ -33,7 +41,7 @@ class Protocol:
     id: str
     ui_text: str
     template_id: str = "pick_into_box"
-    object: str = "cube"
+    object: str = "red_ball"  # so101sim/board_server targets: red|green|blue|yellow_ball
     policy_task_text: str | None = None
     seeds: tuple[int, ...] = (7,)
     trials_per_seed: int = 1
@@ -51,7 +59,7 @@ class Protocol:
             id=str(d["id"]),
             ui_text=str(d["ui_text"]),
             template_id=str(d.get("template_id", "pick_into_box")),
-            object=str(d.get("object", "cube")),
+            object=str(d.get("object", "red_ball")),
             policy_task_text=d.get("policy_task_text"),
             seeds=tuple(int(s) for s in d.get("seeds", [7])),
             trials_per_seed=int(d.get("trials_per_seed", 1)),
@@ -120,9 +128,9 @@ def validate_command(cmd: CommandIn, ctx: Context) -> Rejection | None:
     """Steps 2-10. Returns None when the command may run."""
     p = ctx.protocol
     if cmd.templateId != p.template_id:
-        return Rejection("bad_template", "Project A chỉ có task khối lập phương")
+        return Rejection("bad_template", f"Chỉ có task: {p.ui_text}")
     if cmd.params.get("object") != p.object:
-        return Rejection("bad_object", "Project A chỉ có task khối lập phương")
+        return Rejection("bad_object", f"Chỉ có vật: {p.object}")
     if cmd.text != p.ui_text:
         return Rejection("text_mismatch", "Câu lệnh không đúng mẫu")
 

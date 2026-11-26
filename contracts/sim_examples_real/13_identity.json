@@ -1,0 +1,23 @@
+{
+ "model_sha256": "c7762355e9281ec9baedf507632f256283e53dbe14986b83a6810a9b194018d2",
+ "files": {
+  "models/SO101/workspace.xml": "ef4461976d4eb51f2fc50662a37d18d5b9f4f7f25a1db2c55e503f7119ec9d42",
+  "models/SO101/so101_new_calib.xml": "90e3d74e3fc546e929574549a8a3e544edba87c3c101ac78e344e731ce773bf0",
+  "ready_pose.json": "c963d748159b57bf92aaa8a3eaa4122585ae9cbb8b41e395ae8a96fe45349102",
+  "settings.json": "2f83f508c82af28761fcc3cea8bce6f22805af49e49239bb7c3f51e6409c539a",
+  "models/SO101/assets/base_motor_holder_so101_v1.stl": "8cd2f241037ea377af1191fffe0dd9d9006beea6dcc48543660ed41647072424",
+  "models/SO101/assets/base_so101_v2.stl": "bb12b7026575e1f70ccc7240051f9d943553bf34e5128537de6cd86fae33924d",
+  "models/SO101/assets/motor_holder_so101_base_v1.stl": "31242ae6fb59d8b15c66617b88ad8e9bded62d57c35d11c0c43a70d2f4caa95b",
+  "models/SO101/assets/motor_holder_so101_wrist_v1.stl": "887f92e6013cb64ea3a1ab8675e92da1e0beacfd5e001f972523540545e08011",
+  "models/SO101/assets/moving_jaw_so101_v1.stl": "785a9dded2f474bc1d869e0d3dae398a3dcd9c0c345640040472210d2861fa9d",
+  "models/SO101/assets/rotation_pitch_so101_v1.stl": "9be900cc2a2bf718102841ef82ef8d2873842427648092c8ed2ca1e2ef4ffa34",
+  "models/SO101/assets/sts3215_03a_no_horn_v1.stl": "75ef3781b752e4065891aea855e34dc161a38a549549cd0970cedd07eae6f887",
+  "models/SO101/assets/sts3215_03a_v1.stl": "a37c871fb502483ab96c256baf457d36f2e97afc9205313d9c5ab275ef941cd0",
+  "models/SO101/assets/under_arm_so101_v1.stl": "d01d1f2de365651dcad9d6669e94ff87ff7652b5bb2d10752a66a456a86dbc71",
+  "models/SO101/assets/upper_arm_so101_v1.stl": "475056e03a17e71919b82fd88ab9a0b898ab50164f2a7943652a6b2941bb2d4f",
+  "models/SO101/assets/waveshare_mounting_plate_so101_v2.stl": "e197e24005a07d01bbc06a8c42311664eaeda415bf859f68fa247884d0f1a6e9",
+  "models/SO101/assets/wrist_roll_follower_so101_v1.stl": "4b17b410a12d64ec39554abc3e8054d8a97384b2dc4a8d95a5ecb2a93670f5f4",
+  "models/SO101/assets/wrist_roll_pitch_so101_v2.stl": "6c7ec5525b4d8b9e397a30ab4bb0037156a5d5f38a4adf2c7d943d6c56eda5ae"
+ },
+ "contact_model": "SO101 finger collision approximation v1; simulated contact, not hardware calibration"
+}

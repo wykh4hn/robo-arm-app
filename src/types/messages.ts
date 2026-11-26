@@ -7,10 +7,12 @@ export type JointName =
 
 export type WebLink = 'connecting' | 'connected' | 'disconnected' | 'failed';
 export type UsbLink = 'plugged' | 'lost' | 'unknown';
+export type Driver = 'board' | 'reference' | 'mock';
 export type RobotState = 'ready' | 'moving' | 'stopped' | 'error' | 'unknown';
 export type TaskState = 'idle' | 'running' | 'done' | 'failed' | 'stopped';
 export type TaskPhase = 'reach' | 'grasp' | 'carry' | 'release' | 'home';
-export type CameraId = 'object' | 'overview';
+/** MuJoCo camera names (so101sim/board_server/cameras.py). */
+export type CameraId = 'overhead' | 'wrist';
 export type PipelineStepId = 'camera' | 'ai' | 'gateway' | 'robot' | 'result';
 
 export interface JointSample {
@@ -40,7 +42,13 @@ export interface RobotError {
 export interface StatusMsg {
   type: 'status';
   ts: number;
-  link: { web: WebLink; usb: UsbLink; latencyMs?: number };
+  link: {
+    web: WebLink;
+    usb: UsbLink;
+    latencyMs?: number;
+    /** Who drives the arm: the board, MuJoCo's reference controller (not AI), or the mock. */
+    driver?: Driver;
+  };
   robot: { state: RobotState; error?: RobotError };
   task: { id: number | null; state: TaskState };
   /** Present only when the hardware reports the physical emergency stop. */

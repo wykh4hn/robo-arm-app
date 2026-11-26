@@ -6,6 +6,8 @@ exactly one source of truth for "is a run active" and "is Ready required".
 
 from __future__ import annotations
 
+import json
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -34,6 +36,14 @@ REASON_TEXT = {
     "stop_unconfirmed": "không hoàn chỉnh: không xác nhận được lệnh dừng",
     "be_restart": "không hoàn chỉnh: BE khởi động lại",
     "internal_error": "lỗi bên trong BE",
+    "object_fell_off_table": "vật rơi khỏi bàn",
+    "sim_aborted": "không hoàn chỉnh: MuJoCo tự dừng lượt chạy",
+    "connection_lost": "không hoàn chỉnh: board ngắt kết nối với MuJoCo",
+    "heartbeat_timeout": "không hoàn chỉnh: board ngừng gửi nhịp tim",
+    "stale_action": "không hoàn chỉnh: action đến quá hạn",
+    "execution_timeout": "không hoàn chỉnh: action chạy quá thời gian",
+    "nonfinite_physics": "không hoàn chỉnh: mô phỏng lỗi số học",
+    "reset": "không hoàn chỉnh: MuJoCo bị đặt lại từ nơi khác giữa chừng",
 }
 
 
@@ -59,6 +69,8 @@ class ActiveRun:
     step: int = 0
     gaps_at_start: int = 0
     quality_flags: list[str] = field(default_factory=list)
+    sim_run_id: str | None = None  # MuJoCo's run_id after our RESET
+    sim_identity: dict[str, Any] | None = None  # /api/identity, for the manifest
 
 
 @dataclass
@@ -72,6 +84,7 @@ class SystemState:
     robot_error: tuple[str, str | None] | None = None  # (code, message)
     run: ActiveRun | None = None
     last_task: TaskInfoOut | None = None  # most recent run shown to the web
+    driver: str | None = None  # SO101_BOARD_LINK, mapped for the web ("real" -> "board")
 
     # --- derived -------------------------------------------------------------
 
@@ -110,7 +123,7 @@ class SystemState:
             error = RobotErrorOut(code=self.robot_error[0], message=self.robot_error[1])
         return StatusOut(
             ts=ts,
-            link=LinkOut(usb=self.usb, latencyMs=latency_ms),  # type: ignore[arg-type]
+            link=LinkOut(usb=self.usb, latencyMs=latency_ms, driver=self.driver),  # type: ignore[arg-type]
             robot=RobotOut(state=self.robot, error=error),  # type: ignore[arg-type]
             task=task,
         )
@@ -131,6 +144,16 @@ def task_state(phase: str | None, outcome: str | None) -> str | None:
     return None  # preparing
 
 
+def _params(raw: Any) -> dict[str, str]:
+    """`params` as stored (JSON text) or in memory (dict). Unknown for runs older than the column."""
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            return {}
+    return {str(k): str(v) for k, v in raw.items()} if isinstance(raw, dict) else {}
+
+
 def task_info(run: dict[str, Any]) -> TaskInfoOut | None:
     """A `runs` row (or the same fields) -> `TaskInfo` for the web."""
     state = task_state(run.get("phase"), run.get("outcome"))
@@ -144,7 +167,7 @@ def task_info(run: dict[str, Any]) -> TaskInfoOut | None:
         id=int(run["run_id"]),
         command=run.get("ui_text") or "",
         templateId=run.get("template_id") or "pick_into_box",
-        params=run.get("params") or {"object": "cube"},
+        params=_params(run.get("params")),
         state=state,  # type: ignore[arg-type]
         startedTs=int(run.get("started_at") or run.get("created_at") or 0),
         endedTs=int(run["ended_at"]) if terminal and run.get("ended_at") else None,

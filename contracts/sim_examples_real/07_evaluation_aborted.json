@@ -1,0 +1,45 @@
+{
+ "run_id": "57b11f26e9ea4a6a9521ae4244d029a1",
+ "sim_time": 0.7100000000000005,
+ "purpose": "evaluation/reference controller only; not a vision-policy observation",
+ "objects": {
+  "red_ball": [
+   -0.15799847253432533,
+   -0.12364457918448679,
+   0.015998401739596498
+  ],
+  "green_ball": [
+   -0.2355890289560769,
+   -0.11439668496015053,
+   0.015998401739596498
+  ],
+  "blue_ball": [
+   -0.2731973394414204,
+   -0.1840231448736598,
+   0.015998401739596498
+  ],
+  "yellow_ball": [
+   -0.1379157551269508,
+   -0.22486034530587576,
+   0.015998401739596498
+  ]
+ },
+ "box_position": [
+  -0.18,
+  0.16,
+  0.0
+ ],
+ "target_jaw_contact_count": 0,
+ "target_speed_m_s": 8.070132565620609e-15,
+ "episode": {
+  "status": "ABORTED",
+  "reason": "USER_ABORT",
+  "target": "red_ball",
+  "seed": 7,
+  "elapsed_sim_s": 0.704,
+  "grasped": false,
+  "lifted": false,
+  "max_object_height_m": 0.0161076,
+  "in_box": false
+ }
+}

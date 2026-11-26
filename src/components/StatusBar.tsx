@@ -40,6 +40,7 @@ function Chip({ icon, label, level, tip, stale, children }: ChipProps) {
 export function StatusBar({ derived }: { derived: DerivedStatus }) {
   const t = useT();
   const lang = useStore((s) => s.lang);
+  const driver = useStore((s) => s.driver);
   const { connection: c, robot, task, tracking, stale, ageMs } = derived;
   const lamp = LEVEL_META[derived.overall];
 
@@ -85,7 +86,10 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
         {!webDown && (
           <>
             {' · '}
-            {t.status.usb} {t.values.usb[c.usb]}
+            {t.status.usb}{' '}
+            {c.usb === 'plugged' && driver && driver !== 'board'
+              ? t.values.driver[driver]
+              : t.values.usb[c.usb]}
           </>
         )}
       </Chip>

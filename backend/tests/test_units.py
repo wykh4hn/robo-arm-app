@@ -10,11 +10,11 @@ import pytest
 from app import adapter, pipeline
 from app.live import Client
 from app.models_web import CommandIn
-from app.ports import SimBadPayload, parse_evaluation, parse_sim_state
+from app.ports import SimBadPayload, hold_caused_by_our_stop, parse_evaluation, parse_sim_state
 from app.state import SystemState, task_info, task_state
 from app.validation import Context, Profile, Protocol, parse_command, validate_command
 
-from .conftest import CMD, load_contract
+from .conftest import CMD, real_sample
 
 # --- adapter (spec 9.1) ------------------------------------------------------
 
@@ -37,20 +37,27 @@ def test_convert_joints_rejects_wrong_length_and_nan():
 
 
 def test_telemetry_has_six_joints_and_no_invented_action():
-    s = parse_sim_state(load_contract("sim_examples.json")["state"])
-    msg = adapter.to_telemetry(s, 1000, (-0.17, 1.6)).wire()
+    raw = {**real_sample("04_state_running"), "target_positions": None}
+    msg = adapter.to_telemetry(parse_sim_state(raw), 1000, (-0.17453, 1.74533)).wire()
     assert list(msg["joints"]) == [
         "shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper",
     ]  # fmt: skip
     for j in msg["joints"].values():
         assert set(j) == {"state"}  # R3: no action copied from state; no velocity
-    assert msg["joints"]["shoulder_pan"]["state"] == pytest.approx(0.12 * 180 / math.pi, abs=1e-3)
+    pan = raw["joint_positions"][0]
+    assert msg["joints"]["shoulder_pan"]["state"] == pytest.approx(pan * 180 / math.pi, abs=1e-3)
 
 
-def test_telemetry_carries_action_when_mujoco_has_targets():
-    raw = {**load_contract("sim_examples.json")["state"], "joint_targets": [0.2] * 6}
-    msg = adapter.to_telemetry(parse_sim_state(raw), 1000, (-0.17, 1.6)).wire()
-    assert msg["joints"]["elbow_flex"]["action"] == pytest.approx(0.2 * 180 / math.pi, abs=1e-3)
+def test_telemetry_carries_action_from_target_positions():
+    raw = real_sample("04_state_running")
+    msg = adapter.to_telemetry(parse_sim_state(raw), 1000, (-0.17453, 1.74533)).wire()
+    elbow = raw["target_positions"][2]
+    assert msg["joints"]["elbow_flex"]["action"] == pytest.approx(elbow * 180 / math.pi, abs=1e-3)
+
+
+def test_gripper_limits_come_from_the_model():
+    s = parse_sim_state(real_sample("02_state_after_reset"))
+    assert s.gripper_limits == pytest.approx((-0.17453, 1.74533), abs=1e-4)
 
 
 # --- /api/state shape (F7, T11) ------------------------------------------------
@@ -64,41 +71,73 @@ def test_telemetry_carries_action_when_mujoco_has_targets():
         lambda r: r.update(joint_positions=[0.0, float("inf"), 0, 0, 0, 0]),
         lambda r: r.pop("status"),
         lambda r: r.update(board_connected="yes"),
+        lambda r: r.update(hold_latched=None),
         lambda r: r.update(sim_time="12"),
         lambda r: r.pop("accepted_sequence"),
+        lambda r: r.update(schema_version=1),
+        lambda r: r.update(joint_names=["gripper", "shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll"]),
+        lambda r: r.update(units="degrees"),
     ],
 )
 def test_bad_state_is_rejected(mutate):
-    raw = json.loads(json.dumps(load_contract("sim_examples.json")["state"]))
+    raw = json.loads(json.dumps(real_sample("04_state_running")))
     mutate(raw)
     with pytest.raises(SimBadPayload):
         parse_sim_state(raw)
 
 
-def test_hold_is_read_from_status_and_reason():
-    ex = load_contract("sim_examples.json")
-    stop = parse_sim_state(ex["state_hold_stop"])
-    model = parse_sim_state(ex["state_hold_model"])
-    assert stop.hold and stop.hold_reason == "stop"
-    assert model.hold and model.hold_reason == "model"
-    assert not parse_sim_state(ex["state"]).hold
+def test_hold_after_abort_is_our_stop():
+    s = parse_sim_state(real_sample("06_state_after_abort"))
+    assert s.hold and s.hold_reason == "stop"
+    assert not parse_sim_state(real_sample("04_state_running")).hold
+    assert not parse_sim_state(real_sample("10_state_after_resume")).hold
+
+
+def test_hold_after_failure_is_not_a_stop():
+    s = parse_sim_state(real_sample("16_state_after_failure"))
+    assert s.hold and s.hold_reason == "failure"
+
+
+def test_stop_survives_fault_overwrite_bug_l1():
+    """After ABORT the board may drop: `fault` turns CONNECTION_LOST, the stop still counts."""
+    raw = real_sample("06_state_after_abort")
+    raw = {**raw, "fault": "CONNECTION_LOST"}
+    assert hold_caused_by_our_stop(raw)
+    assert parse_sim_state(raw).hold_reason == "stop"
+    patched = {**raw, "hold_origin": "HEARTBEAT_TIMEOUT"}  # IoT patch L1 wins when present
+    assert not hold_caused_by_our_stop(patched)
+
+
+def test_paused_for_model_is_not_a_latch():
+    raw = {**real_sample("04_state_running"), "status": "HOLD"}
+    s = parse_sim_state(raw)
+    assert s.hold and s.hold_reason == "model"
+
+
+def test_local_mode_counts_as_driver_connected():
+    s = parse_sim_state(real_sample("02_state_after_reset"))
+    assert s.local and s.board_connected  # local mode: the BE drives MuJoCo itself
 
 
 def test_evaluation_parse():
-    ex = load_contract("sim_examples.json")
-    assert parse_evaluation(ex["evaluation_running"]).final is False
-    final = parse_evaluation(ex["evaluation_final"])
-    assert (final.final, final.outcome, final.reason_code, final.run_id) == (
-        True, "failure", "no_grasp", 13,
-    )  # fmt: skip
+    running = {**real_sample("11_evaluation_final_reference")}
+    running["episode"] = {**running["episode"], "status": "RUNNING", "reason": None}
+    assert parse_evaluation(running).final is False
+    ok = parse_evaluation(real_sample("11_evaluation_final_reference"))
+    assert (ok.final, ok.outcome, ok.reason_code) == (True, "success", None)
+    assert ok.reason_text.startswith("Lifted")  # a sentence, never compared (L5)
+    fell = {**running, "episode": {**running["episode"], "status": "FAILURE", "reason": "OBJECT_FELL_OFF_TABLE"}}
+    assert (parse_evaluation(fell).outcome, parse_evaluation(fell).reason_code) == ("failure", "object_fell_off_table")
+    lost = {**running, "episode": {**running["episode"], "status": "ABORTED", "reason": "CONNECTION_LOST"}}
+    assert (parse_evaluation(lost).outcome, parse_evaluation(lost).reason_code) == ("error", "connection_lost")
     assert parse_evaluation({"nothing": 1}) is None
 
 
 # --- validation (spec 5.5) ----------------------------------------------------
 
-PROTO = Protocol(id="t", ui_text=CMD["text"], policy_task_text="x")
+PROTO = Protocol(id="t", ui_text=CMD["text"], object="red_ball", policy_task_text="x")
 PROFILES = {
-    "smolvla-int8": Profile("smolvla-int8"),
+    "smolvla-fp16": Profile("smolvla-fp16"),
     "pi0-int4": Profile("pi0-int4", status="blocked", blocked_reason="OOM khi nạp"),
     "reference": Profile("reference", dev_only=True),
 }

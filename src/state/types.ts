@@ -9,6 +9,7 @@ import type {
   TaskState,
   UsbLink,
   WebLink,
+  Driver,
 } from '../types/messages';
 
 /** Status levels, most severe first. */
@@ -125,6 +126,7 @@ export interface MonitorState {
   lastMessageAt: number | null;
   latencyMs: number | null;
   usb: UsbLink;
+  driver: Driver | null;
   robot: RobotState;
   robotError: RobotError | null;
   estop: boolean;

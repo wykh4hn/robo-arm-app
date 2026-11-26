@@ -1,0 +1,123 @@
+{
+ "schema_version": 2,
+ "run_id": "01c0532a050642a79a8204fac13460a0",
+ "session_id": "b9a77470b64e46f9af789e7447c18562",
+ "status": "RUNNING",
+ "mode": "local",
+ "board_link": null,
+ "fault": null,
+ "hold_latched": false,
+ "joint_names": [
+  "shoulder_pan",
+  "shoulder_lift",
+  "elbow_flex",
+  "wrist_flex",
+  "wrist_roll",
+  "gripper"
+ ],
+ "units": "radians",
+ "joint_positions": [
+  0.8442362866278018,
+  -0.42004032339582625,
+  0.2848910445189892,
+  1.3030122864641893,
+  2.0384354100473493e-08,
+  1.1996199866824357
+ ],
+ "joint_velocities": [
+  6.007428650309369e-09,
+  -0.00030451030186834366,
+  -0.0003793046718043255,
+  2.1495208398303842e-07,
+  -2.3751763691765724e-10,
+  -1.9978279626593306e-08
+ ],
+ "joint_limits": [
+  [
+   -1.91986,
+   1.91986
+  ],
+  [
+   -1.7453292519943224,
+   1.7453292519943366
+  ],
+  [
+   -1.69,
+   1.69
+  ],
+  [
+   -1.65806,
+   1.65806
+  ],
+  [
+   -2.7438472969992493,
+   2.841206309382605
+  ],
+  [
+   -0.17453,
+   1.7453291995659765
+  ]
+ ],
+ "target_positions": [
+  0.8442846754774295,
+  -0.4203890738019011,
+  0.28445649572301246,
+  1.3029145520238412,
+  9.545208032439976e-10,
+  1.1999730378945224
+ ],
+ "final_target_positions": [
+  0.8442883709608084,
+  -0.4204137876745248,
+  0.2844256992087425,
+  1.3029072697315285,
+  -5.262222037471942e-10,
+  1.2
+ ],
+ "sim_time": 14.062,
+ "server_monotonic_ns": 166819497660,
+ "accepted_sequence": 7,
+ "applied_sequence": 7,
+ "completed_sequence": 6,
+ "completion_reason": null,
+ "queue_depth": 0,
+ "queue_capacity": 8,
+ "phase": "SETTLE",
+ "reference_active": true,
+ "episode": {
+  "status": "SUCCESS",
+  "reason": "Lifted, released and stable inside the box",
+  "target": "red_ball",
+  "seed": 0,
+  "elapsed_sim_s": 13.124,
+  "grasped": true,
+  "lifted": true,
+  "max_object_height_m": 0.13718696890523102,
+  "in_box": true
+ },
+ "board_connected": false,
+ "last_board_heartbeat_age_s": null,
+ "mcu_execution_verified": false,
+ "cameras": {
+  "overhead": false,
+  "wrist": false
+ },
+ "camera_error": null,
+ "frame_id": null,
+ "frame_sim_time": null,
+ "frame_age_s": null,
+ "frame_stale": true,
+ "render": {},
+ "metrics": {
+  "real_time_factor": 1.000067420713236,
+  "discarded_wall_time_s": 0.0,
+  "physics_steps": 13970
+ },
+ "geometry": "SO101 finger collision approximation v1; simulated contact, not hardware calibration",
+ "model_sha256": "c7762355e9281ec9baedf507632f256283e53dbe14986b83a6810a9b194018d2",
+ "logging": {
+  "enabled": false,
+  "dropped_records": 0,
+  "error": null
+ }
+}

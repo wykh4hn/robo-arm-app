@@ -1,0 +1,4 @@
+{
+ "type": "REJECTED",
+ "reason": "shoulder_pan must be a finite number in [-1.91986, 1.91986]"
+}

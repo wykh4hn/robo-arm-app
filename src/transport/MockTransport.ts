@@ -386,9 +386,9 @@ export class MockTransport implements Transport {
 
   private cameras() {
     const now = Date.now();
-    const ids: CameraId[] = ['object', 'overview'];
+    const ids: CameraId[] = ['overhead', 'wrist'];
     for (const camera of ids) {
-      const frozen = camera === 'overview' && this.frozenFrameTs !== null;
+      const frozen = camera === 'wrist' && this.frozenFrameTs !== null;
       const fps = frozen ? 4 : 29 + Math.round(Math.random() * 2);
       this.emit({
         type: 'camera',

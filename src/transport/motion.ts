@@ -11,6 +11,7 @@ const OBJECT_PAN: Record<string, number> = {
   red_duck: -30,
   yellow_duck: -15,
   cube: 12,
+  red_ball: 12,
   pink_box: -42,
 };
 

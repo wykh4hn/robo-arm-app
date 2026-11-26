@@ -11,13 +11,13 @@ export const en: Strings = {
     stopping: 'Stopping…',
     stopped: 'Stopped',
     unconfirmed: 'Stop not confirmed',
-    note: 'Use the physical emergency stop on the robot.',
+    note: 'STOP halts the MuJoCo simulation; it is not a physical emergency stop.',
     ready: 'Ready',
     announce: {
       idle: '',
       stopping: 'Stop sent, waiting for confirmation.',
       stopped: 'Robot stopped. Press Ready before sending a new command.',
-      unconfirmed: 'Stop not confirmed. Use the physical emergency stop.',
+      unconfirmed: 'Stop not confirmed. Check the MuJoCo window now.',
     },
   },
   tabs: { label: 'Pages', monitoring: 'Monitoring', tutorial: 'Tutorial' },
@@ -51,7 +51,7 @@ export const en: Strings = {
     task: 'Task',
     tracking: 'Tracking',
     web: 'Web',
-    usb: 'USB',
+    usb: 'Board',
     webLost: 'Web lost · retry {n}',
     webConnecting: 'Web connecting',
     webSyncing: 'Web · reloading state',
@@ -62,7 +62,8 @@ export const en: Strings = {
     stoppedReady: 'Stopped · press Ready',
     seconds: '{n} s',
     tips: {
-      connection: 'Web: browser ↔ gateway, with latency in ms. USB: gateway ↔ robot arm.',
+      connection:
+        'Web: browser ↔ BE, with latency in ms. Board: what drives the arm in MuJoCo (the VENTUNO Q board, or the reference controller in local mode).',
       robot: 'State reported by the robot: ready, moving, stopped or error.',
       task: 'Running task: number, current step and elapsed time.',
       tracking:
@@ -73,6 +74,7 @@ export const en: Strings = {
   },
   values: {
     usb: { plugged: 'OK', lost: 'lost', unknown: 'unknown' },
+    driver: { reference: 'local · reference, not AI', mock: 'fake' },
     robot: {
       ready: 'Ready',
       moving: 'Moving',
@@ -102,7 +104,7 @@ export const en: Strings = {
     robotLabel: 'Robot',
     todoLabel: 'What to do',
     openTutorial: 'Open the tutorial',
-    reconnectUsb: 'Reconnect USB',
+    reconnectUsb: 'Check the board again',
     ready: 'Ready',
     errorCodes: {
       OVERLOAD: 'overload on joint {joint}',
@@ -114,8 +116,8 @@ export const en: Strings = {
     },
     titles: {
       estop: 'The physical emergency stop is pressed',
-      webDown: 'Lost connection to the gateway',
-      usbLost: 'Lost USB connection to the robot arm',
+      webDown: 'Lost connection to the BE',
+      usbLost: 'The board lost its link to MuJoCo',
       robotError: 'Robot error: {detail}',
       stopUnconfirmed: 'Stop not confirmed after {s} s',
       stale: 'Stale data: no message received for {s} s',
@@ -124,7 +126,7 @@ export const en: Strings = {
     robot: {
       estop: 'Stopped by the emergency stop. It will not restart by itself.',
       webDown: 'Unknown — the robot may still be running the task.',
-      usbLost: 'Unknown — the gateway can no longer control the arm.',
+      usbLost: 'Unknown — the board no longer drives the arm in MuJoCo.',
       robotError: 'Stopped — task cancelled.',
       stopUnconfirmed: 'Unknown — the robot may still be moving.',
       stale: 'Unknown. Send is disabled for now.',
@@ -133,13 +135,13 @@ export const en: Strings = {
     todo: {
       estop: 'Check it is safe around the robot, release the emergency stop, then press Ready.',
       webDown:
-        'If it must stop now, use the physical emergency stop. When the link is back, the page reloads the state before unlocking controls.',
+        'The run continues and is still logged. If it must stop now, stop it in the MuJoCo window. When the link is back, the page reloads the state before unlocking controls.',
       usbLost:
-        'Check the USB cable between gateway and arm, then press Reconnect USB. If the arm still moves, use the physical emergency stop.',
+        'Check the board and its USB-C (ADB) cable to the MuJoCo laptop, then press Check the board again. MuJoCo holds the arm still while the board is gone.',
       robotError:
         'Remove any obstacle, check the servo cables, then press Ready and send a new command.',
-      stopUnconfirmed: 'Press the physical emergency stop on the robot now.',
-      stale: 'Check the network and the gateway. Controls unlock when fresh data arrives.',
+      stopUnconfirmed: 'Check the MuJoCo window now; close the simulation if the arm still moves.',
+      stale: 'Check the network, the BE and MuJoCo. Controls unlock when fresh data arrives.',
       trackingStuck: 'Press STOP and check for obstacles or caught cables around the arm.',
     },
   },
@@ -175,19 +177,25 @@ export const en: Strings = {
       red_duck: 'red duck',
       yellow_duck: 'yellow duck',
       cube: 'cube',
+      red_ball: 'red ball',
       pink_box: 'pink small box',
     },
     profile: 'AI profile',
     profilePick: '— Choose a profile —',
     needProfile: 'Choose an AI profile before sending.',
+    profileBlocked: 'blocked',
+    profileNotOnBoard: 'Not checked on the board',
+    profileBlockedList: '{n} blocked profiles: see why',
+    referenceDriver:
+      "Local mode: the arm is driven by MuJoCo's reference controller (it knows where the object really is), not by the AI. The profile is only logged.",
     preview: 'Command to send',
     send: 'Send command',
     blocked: {
       estop: 'The emergency stop is pressed. Release it, then press Ready.',
-      disconnected: 'Disconnected from the gateway. Wait for the reconnect.',
+      disconnected: 'Disconnected from the BE. Wait for the reconnect.',
       syncing: 'Reloading state after the reconnect.',
       stale: 'Stale data. Wait for fresh data.',
-      usbLost: 'USB connection to the arm is lost.',
+      usbLost: 'The board lost its link to MuJoCo.',
       robotError: 'The robot reports an error. Fix it, then press Ready.',
       stopping: 'Waiting for the robot to confirm the stop.',
       stopped: 'The robot is stopped. Press Ready before a new command.',
@@ -221,6 +229,8 @@ export const en: Strings = {
     started: 'Started',
     empty1: 'No tasks in this session yet.',
     empty2: 'Choose an object in the Command card, then press Send command.',
+    export: 'Download run data',
+    exportLabel: 'Download run #{id} data (zip: manifest, samples, events)',
   },
 
   viewer: {
@@ -256,6 +266,9 @@ export const en: Strings = {
     noUrdf: 'Could not load the URDF at {path}. Showing a simple placeholder chain instead.',
     loading: 'Loading the URDF model…',
     noWebgl: 'This browser has no WebGL, so the 3D model cannot be drawn.',
+    softwareGl:
+      'The 3D model is off: this machine draws 3D on the CPU (no GPU), which would slow the whole page, STOP included. Cameras, joint table and charts still run.',
+    softwareGlOn: 'Turn 3D on anyway',
     pick: '{object} · pick point',
     drop: 'Box · drop point',
     canvasLabel: '3D model of the SO-101 arm',
@@ -328,11 +341,12 @@ export const en: Strings = {
   },
 
   camera: {
-    names: { object: 'Object view (top-down)', overview: 'Overview' },
+    names: { overhead: 'Overhead camera', wrist: 'Wrist camera' },
     meta: '{fps} fps · {age} s',
     metaNone: '— fps · —',
     frozen: 'Frozen image',
-    noUrl: 'No camera URL in config',
+    noUrl: 'No picture: cameras only show when the web is connected to MuJoCo through the BE',
+    noFrame: 'No picture yet',
     swap: 'Swap with the 3D model',
     swapBack: 'Put the 3D model back in the large slot',
   },
@@ -356,7 +370,7 @@ export const en: Strings = {
       'The first chip is the overall lamp: it always shows the most severe active level. The other chips are grey when normal and only take a colour when something is off. Every level has an icon and a word.',
     statusCols: { level: 'Level', meaning: 'Meaning', todo: 'What to do' },
     statusChips:
-      'After the lamp come Connection (Web and USB), Robot, Task and Tracking. On the right, "Updated … ago" is the time since the browser received the last data. After {stale} s without data, values switch to "Stale data".',
+      'After the lamp come Connection (Web and Board), Robot, Task and Tracking. On the right, "Updated … ago" is the time since the browser received the last data. After {stale} s without data, values switch to "Stale data".',
     model: {
       measured: 'Where the real arm is, built from each joint’s measured position.',
       commanded:
@@ -376,7 +390,7 @@ export const en: Strings = {
     ],
     stopSoft: {
       title: 'On-screen STOP',
-      body: 'The first red button in the top bar, on every page. One press sends a software stop, no confirmation; works by keyboard (Tab then Enter). Shows "Stopped" only once the robot confirms. With no confirmation after 2 s, use the physical button.',
+      body: 'The first red button in the top bar, on every page. One press sends a software stop, no confirmation; works by keyboard (Tab then Enter). Shows "Stopped" only once MuJoCo confirms it holds the arm still. Project A is simulation only: STOP is not a physical emergency stop.',
     },
     stopHard: {
       title: 'Physical emergency stop',
@@ -387,8 +401,8 @@ export const en: Strings = {
     incidentCols: { see: 'You see', todo: 'What to do' },
     incidents: {
       usbLost: {
-        see: 'Lost USB connection to the robot arm',
-        todo: 'Check the USB cable, press "Reconnect USB", then press Ready. The arm may still hold its pose; use the physical button if needed.',
+        see: 'The board lost its link to MuJoCo',
+        todo: 'Check the board and its USB-C cable, press "Check the board again", then press Ready. MuJoCo holds the arm still meanwhile.',
       },
       robotError: {
         see: 'Robot error',

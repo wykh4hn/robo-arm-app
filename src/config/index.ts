@@ -1,7 +1,7 @@
 // Single place for tunables. Values are placeholders to calibrate on the real robot.
 import type { CameraId, JointName, PipelineStepId } from '../types/messages';
 
-export type ObjectId = 'red_duck' | 'yellow_duck' | 'cube' | 'pink_box';
+export type ObjectId = 'red_ball' | 'red_duck' | 'yellow_duck' | 'cube' | 'pink_box';
 export type TemplateId = 'pick_into_box';
 export type AngleUnit = 'deg' | 'rad';
 export type ViewPreset = 'perspective' | 'top' | 'front' | 'side';
@@ -23,26 +23,7 @@ export interface CommandTemplate {
   build: (params: Record<string, string>) => string;
 }
 
-/** One of the 9 AI profiles (model x numeric precision). Ids follow the backend (spec Q14). */
-export interface ProfileDef {
-  id: string;
-  model: string;
-  precision: string;
-}
-
-const PROFILE_MODELS = [
-  ['smolvla', 'SmolVLA'],
-  ['pi0', 'Pi0'],
-  ['xvla', 'X-VLA'],
-] as const;
-const PROFILE_PRECISIONS = [
-  ['fp16', 'FP16'],
-  ['int8', 'INT8-mixed'],
-  ['int4', 'INT4-mixed'],
-] as const;
-const profiles: ProfileDef[] = PROFILE_MODELS.flatMap(([m, model]) =>
-  PROFILE_PRECISIONS.map(([p, precision]) => ({ id: `${m}-${p}`, model, precision })),
-);
+// The 9 AI profiles live in ./profiles.ts (fallback list + `useProfiles`, read from the BE).
 
 export interface CameraDef {
   id: CameraId;
@@ -51,9 +32,10 @@ export interface CameraDef {
 }
 
 /**
- * Data (LeRobot degrees) -> URDF radians: rad = sign * (deg * scale + offsetDeg) * PI / 180.
- * TODO(hardware team): calibrate sign/offset per joint. URDF and LeRobot zero
- * positions differ (e.g. shoulder_pan may need its sign flipped).
+ * Data (degrees) -> URDF radians: rad = sign * (deg * scale + offsetDeg) * PI / 180.
+ * MuJoCo (so101sim/board_server) uses so101_new_calib, the same model as this URDF: same
+ * axes, same zero, same limits. So the identity map below is right for MuJoCo. A real arm
+ * read through LeRobot may need sign/offset per joint (Phase 3).
  */
 export interface JointMapEntry {
   sign: 1 | -1;
@@ -70,11 +52,17 @@ export const ARM_JOINTS: JointName[] = [
 ];
 export const ALL_JOINTS: JointName[] = [...ARM_JOINTS, 'gripper'];
 
-/** Project A has one task: the cube into the box (Plan F3, table 5). */
-const objects: ObjectDef[] = [{ id: 'cube', commandName: 'cube' }];
+/**
+ * One task: the red ball into the box. This is the scene of so101sim/board_server (4 balls +
+ * box), the only MuJoCo scene with the API the BE needs. Its reference controller is validated
+ * for red_ball only. Change the ball here and in backend/config/protocol.dev.json together.
+ * The ball-into-bowl task (decision 0009) has no API yet.
+ */
+const objects: ObjectDef[] = [{ id: 'red_ball', commandName: 'red ball' }];
 
 /** Names of every object that may appear in history, including the mock's old demos. */
 const commandNames: Record<ObjectId, string> = {
+  red_ball: 'red ball',
   red_duck: 'red duck',
   yellow_duck: 'yellow duck',
   cube: 'cube',
@@ -116,8 +104,8 @@ export const config = {
     wrist_roll: { sign: 1, offsetDeg: 0, scale: 1 },
     gripper: { sign: 1, offsetDeg: 0, scale: 1 },
   } as Record<JointName, JointMapEntry>,
-  /** Gripper % open -> URDF gripper joint angle (rad). TODO: calibrate. */
-  gripperMap: { closedRad: -0.17, openRad: 1.6 },
+  /** Gripper % open -> gripper joint angle (rad): the MJCF limits of so101_new_calib.xml, as the BE uses. */
+  gripperMap: { closedRad: -0.17453, openRad: 1.74533 },
   /** Fallback joint ranges in data units when the URDF has no limits. */
   limits: {
     shoulder_pan: [-110, 110],
@@ -139,12 +127,11 @@ export const config = {
   } as Record<'position' | 'velocity' | 'error', [number, number]>,
 
   cameras: [
-    { id: 'object', url: '' },
-    { id: 'overview', url: '' },
+    { id: 'overhead', url: '' },
+    { id: 'wrist', url: '' },
   ] as CameraDef[],
 
   objects,
-  profiles,
 
   templates: [
     {
