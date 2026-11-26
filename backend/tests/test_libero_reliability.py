@@ -138,11 +138,12 @@ def test_poll_loop_recovers_after_a_failed_poll() -> None:
             deadline = time.monotonic() + 1
             while runner.last_poll_success_mono is None and time.monotonic() < deadline:
                 await asyncio.sleep(0.01)
-            while not sim.heartbeat_calls and time.monotonic() < deadline:
-                await asyncio.sleep(0.01)
+            await asyncio.sleep(0.1)
             assert runner.state is not None and runner.state.session_active is True
             assert runner.last_poll_error is None
-            assert sim.heartbeat_calls == [True]
+            # A Board session alone does not turn the watchdog on; the first
+            # reset the BE sends does (communication-plan §3.3).
+            assert sim.heartbeat_calls == []
             assert runner._poll_task is not None and not runner._poll_task.done()
         finally:
             runner._closed = True

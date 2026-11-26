@@ -16,7 +16,8 @@ from . import pipeline
 from .camera import BOUNDARY, CameraProxy
 from .export import export_run
 from .live import Hub
-from .ports import SimError, SimOutcomeUnknown, SimRejected
+from .libero_runner import nack_code_for
+from .ports import SimConnectionError, SimError, SimOutcomeUnknown, SimRejected
 from .runner import Runner
 from .settings import CAMERAS, Settings
 from .state import SystemState, task_info
@@ -87,17 +88,26 @@ def build_router(core: Core) -> APIRouter:
     def handle_libero_error(
         exc: Exception, command_id: str | None = None
     ) -> HTTPException:
+        # Same codes as the WebSocket nack (communication-plan §3.2).
         if isinstance(exc, SimOutcomeUnknown):
             return HTTPException(
                 status_code=504,
                 detail={
-                    "code": "outcome_unknown",
+                    "code": "OUTCOME_UNKNOWN",
                     "id": command_id,
                     "reason": str(exc),
                 },
             )
+        if isinstance(exc, SimConnectionError):
+            return HTTPException(
+                status_code=503,
+                detail={"code": "SIM_OFFLINE", "id": command_id, "reason": str(exc)},
+            )
         if isinstance(exc, SimRejected):
-            return HTTPException(status_code=409, detail=str(exc))
+            return HTTPException(
+                status_code=409,
+                detail={"code": nack_code_for(exc), "id": command_id, "reason": str(exc)},
+            )
 
         if isinstance(exc, ValueError):
             return HTTPException(status_code=422, detail=str(exc))

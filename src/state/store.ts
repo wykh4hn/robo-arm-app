@@ -303,7 +303,7 @@ export function applyMessage(
             ? {
                 stop: {
                   ...s.stop,
-                  phase: msg.code === 'outcome_unknown' ? 'unconfirmed' as const : 'rejected' as const,
+                  phase: String(msg.code).toLowerCase() === 'outcome_unknown' ? 'unconfirmed' as const : 'rejected' as const,
                   reason: msg.reason,
                 },
               }
@@ -471,7 +471,7 @@ export const useStore = create<StoreState>()((set, get) => {
           set({
             liberoReset: {
               id,
-              phase: code === 'outcome_unknown' ? 'outcome_unknown' : 'rejected',
+              phase: String(code).toLowerCase() === 'outcome_unknown' ? 'outcome_unknown' : 'rejected',
               previousRunId,
               reason,
             },

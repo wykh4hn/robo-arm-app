@@ -12,7 +12,8 @@ import logging
 import time
 import uuid
 from collections import OrderedDict
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Callable
 
 from .libero_state import LiberoState
 from .ports import SimConnectionError, SimError, SimOutcomeUnknown, SimRejected
@@ -21,6 +22,60 @@ from .validation import validate_libero_task
 from .settings import Settings
 
 log = logging.getLogger("so101.libero_runner")
+
+
+def _now_ms() -> int:
+    return int(time.time() * 1000)
+
+
+def nack_code_for(exc: Exception) -> str:
+    """Web nack code for a failed operator call (communication-plan §3.2)."""
+    if isinstance(exc, SimOutcomeUnknown):  # subclass of SimConnectionError
+        return "OUTCOME_UNKNOWN"
+    if isinstance(exc, SimConnectionError):
+        return "SIM_OFFLINE"
+    if isinstance(exc, SimRejected) and "EPISODE_ENDED" in str(exc):
+        return "EPISODE_ENDED"
+    if isinstance(exc, SimRejected):
+        return "busy"
+    # Timeouts, unverified postconditions and other sim errors: we cannot tell
+    # whether the sim acted, so say so instead of guessing.
+    return "OUTCOME_UNKNOWN"
+
+
+@dataclass
+class _Episode:
+    """One web `command`: its `task` message and the run it started."""
+
+    task_id: int
+    command_id: str
+    suite: str
+    libero_task_id: int
+    init_state: int
+    seed: int
+    profile_id: str | None
+    started_ts: int
+    before_run_id: str | None
+    state: str = "preparing"
+    run_id: str | None = None
+    command: str = ""
+    extra: dict[str, Any] = field(default_factory=dict)
+
+    def wire(self) -> dict[str, Any]:
+        info: dict[str, Any] = {
+            "id": self.task_id,
+            "command": self.command,
+            "state": self.state,
+            "startedTs": self.started_ts,
+            "commandId": self.command_id,
+            "seed": self.seed,
+        }
+        if self.profile_id is not None:
+            info["profileId"] = self.profile_id
+        if self.run_id is not None:
+            info["run_id"] = self.run_id
+        info.update({k: v for k, v in self.extra.items() if v is not None})
+        return {"type": "task", "ts": _now_ms(), "task": info}
 
 
 class LiberoRunner:
@@ -56,6 +111,16 @@ class LiberoRunner:
         self._command_results: OrderedDict[
             str, tuple[str, LiberoState | Exception]
         ] = OrderedDict()
+
+        # Web `command` path (communication-plan §3.2).
+        self.on_task: Callable[[dict[str, Any]], None] | None = None
+        self._web_replies: OrderedDict[str, dict[str, Any]] = OrderedDict()
+        self._episode: _Episode | None = None
+        self._episode_task: asyncio.Task | None = None
+        self._reset_inflight = False
+        self._next_task_id = 1
+        self._stop_count = 0
+        self._watch_enabled = False
 
     def _event(self, event: str, payload: dict[str, Any]) -> None:
         if self.storage is not None:
@@ -114,8 +179,6 @@ class LiberoRunner:
             raise RuntimeError("LiberoRunner is closed")
 
         self._ensure_polling()
-        if self.state is not None and self.state.session_active:
-            self._ensure_heartbeat()
 
     def connection_health(self) -> dict[str, Any]:
         now = time.monotonic()
@@ -195,6 +258,186 @@ class LiberoRunner:
             "connection_health": self.wire_connection_health(),
         }
 
+    # ------------------------------------------------------------------
+    # Web `command` (communication-plan §3.2)
+    # ------------------------------------------------------------------
+
+    def _reply(self, command_id: str, reply: dict[str, Any]) -> dict[str, Any]:
+        self._web_replies[command_id] = reply
+        self._web_replies.move_to_end(command_id)
+        while len(self._web_replies) > 1000:
+            self._web_replies.popitem(last=False)
+        return dict(reply)
+
+    def _nack(self, command_id: str, code: str, reason: str) -> dict[str, Any]:
+        return self._reply(
+            command_id,
+            {"type": "nack", "ts": _now_ms(), "id": command_id, "code": code, "reason": reason},
+        )
+
+    def submit_command(
+        self,
+        command_id: str,
+        *,
+        suite: str,
+        task_id: int,
+        init_state: int | None = None,
+        seed: int | None = None,
+        profile_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Check a web `command` and answer at once; the reset runs in the background.
+
+        Synchronous on purpose: no await between the checks and reserving the
+        slot, so two commands cannot both pass "nothing else is running".
+        """
+        cached = self._web_replies.get(command_id)
+        if cached is not None:
+            return dict(cached)
+        if self._closed:
+            return self._nack(command_id, "SIM_OFFLINE", "Backend is shutting down.")
+        if self.wire_connection_health()["sim"] != "online" or self.state is None:
+            return self._nack(command_id, "SIM_OFFLINE", "Simulator state is not fresh.")
+        state = self.state
+        # TODO(Q4): `session_active` is the only Board signal; require it until IoT confirms.
+        if not state.session_active:
+            return self._nack(
+                command_id, "BOARD_NOT_CONNECTED", "Board has no session with the simulator."
+            )
+        if self._reset_inflight:
+            return self._nack(command_id, "busy", "Another command is still preparing.")
+        if state.status == "RUNNING":
+            return self._nack(
+                command_id, "EPISODE_RUNNING", "An episode is running; stop it first."
+            )
+
+        selected_init = self.settings.libero_init_state if init_state is None else init_state
+        selected_seed = 1000 if seed is None else seed  # TODO(Q2): demo seed
+        rejection = validate_libero_task(suite, task_id, selected_init, selected_seed)
+        if rejection is not None:
+            return self._nack(command_id, "bad_schema", f"{rejection.code}: {rejection.reason}")
+
+        episode = _Episode(
+            task_id=self._next_task_id,
+            command_id=command_id,
+            suite=suite,
+            libero_task_id=task_id,
+            init_state=selected_init,
+            seed=selected_seed,
+            profile_id=profile_id,
+            started_ts=_now_ms(),
+            before_run_id=state.run_id,
+            command=f"{suite} #{task_id}",
+        )
+        self._next_task_id += 1
+        self._reset_inflight = True
+        previous = self._episode
+        self._episode = episode
+        if previous is not None and previous.state in {"preparing", "running"}:
+            self._finish_replaced(previous)
+        self._episode_task = asyncio.create_task(self._run_episode(episode))
+        return self._reply(
+            command_id,
+            {"type": "ack", "ts": _now_ms(), "id": command_id, "taskId": episode.task_id},
+        )
+
+    def _emit(self, episode: _Episode) -> None:
+        if self.on_task is not None:
+            self.on_task(episode.wire())
+
+    def _finish(self, episode: _Episode, state: str, **extra: Any) -> None:
+        episode.state = state
+        episode.extra.update(endedTs=_now_ms(), **extra)
+        self._event("libero_task_end", {"task_id": episode.task_id, "state": state, **extra})
+        self._emit(episode)
+
+    def _finish_replaced(self, episode: _Episode) -> None:
+        last = self.state
+        if last is not None and last.hold_latched and last.hold_reason == "OPERATOR_STOP":
+            self._finish(episode, "stopped", outcome=last.status, end_reason="OPERATOR_STOP")
+        else:
+            self._finish(episode, "failed", reason="Replaced by a new command.")
+
+    async def _run_episode(self, episode: _Episode) -> None:
+        self._emit(episode)  # preparing
+        stops_before = self._stop_count
+        try:
+            try:
+                async with self._command_lock:
+                    state = await self._reset(
+                        suite=episode.suite,
+                        task_id=episode.libero_task_id,
+                        init_state=episode.init_state,
+                        seed=episode.seed,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                if self._episode is episode:
+                    await self._reset_failed(
+                        episode, exc, stopped=self._stop_count != stops_before
+                    )
+                return
+            finally:
+                if self._episode is episode:
+                    self._reset_inflight = False
+            if self._episode is not episode:
+                return
+            episode.run_id = state.run_id
+            description = (state.raw.get("task") or {}).get("description")
+            if isinstance(description, str) and description:
+                episode.command = description
+            await self._follow_run(episode)
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001
+            log.exception("LIBERO episode task failed")
+
+    async def _reset_failed(self, episode: _Episode, exc: Exception, *, stopped: bool) -> None:
+        """Reconcile with `/api/state`; never send the reset again (§3.2)."""
+        try:
+            state: LiberoState | None = await self.refresh()
+        except Exception:  # noqa: BLE001
+            state = None
+        if state is not None and state.run_id != episode.before_run_id:
+            episode.run_id = state.run_id
+        if stopped and state is not None and state.hold_reason == "OPERATOR_STOP":
+            self._finish(episode, "stopped", outcome=state.status, end_reason="OPERATOR_STOP")
+            return
+        if isinstance(exc, SimOutcomeUnknown):
+            code = "OUTCOME_UNKNOWN"
+            if state is None:
+                reason = f"{exc} Simulator state could not be read afterwards."
+            elif state.run_id != episode.before_run_id:
+                reason = f"{exc} Simulator now shows run {state.run_id} ({state.status})."
+            else:
+                reason = f"{exc} Simulator still shows the previous run."
+        else:
+            code = nack_code_for(exc)
+            reason = str(exc)
+        self._finish(episode, "failed", reasonCode=code, reason=reason)
+
+    async def _follow_run(self, episode: _Episode) -> None:
+        interval = max(0.01, 1.0 / max(self.settings.sim_poll_hz, 0.1))
+        while not self._closed and self._episode is episode:
+            state = self.state
+            if state is not None:
+                if state.run_id != episode.run_id:
+                    self._finish_replaced(episode)
+                    return
+                if state.terminal:
+                    if state.status == "SUCCESS":
+                        done = "done"
+                    elif "OPERATOR_STOP" in (state.end_reason, state.hold_reason):
+                        done = "stopped"
+                    else:
+                        done = "failed"
+                    self._finish(
+                        episode, done, outcome=state.status, end_reason=state.end_reason
+                    )
+                    return
+                if state.status == "RUNNING" and episode.state == "preparing":
+                    episode.state = "running"
+                    self._emit(episode)
+            await asyncio.sleep(interval)
+
     async def start_episode(
         self,
         *,
@@ -255,17 +498,22 @@ class LiberoRunner:
             return await asyncio.shield(future)
 
         try:
-            async with self._command_lock:
-                if self._closed:
-                    raise RuntimeError("LiberoRunner is closed")
-                if action == "stop":
-                    state = await self._stop()
-                elif action == "resume":
-                    state = await self._resume()
-                elif action == "reset":
-                    state = await self._reset(**args)
-                else:
-                    raise ValueError(f"unsupported LIBERO operator action: {action}")
+            if self._closed:
+                raise RuntimeError("LiberoRunner is closed")
+            if action == "stop":
+                # Stop waits for nothing: not the command lock, not a reset
+                # that is still building the scene (communication-plan §3.2, Q5).
+                state = await self._stop()
+            elif action in {"resume", "reset"}:
+                async with self._command_lock:
+                    if self._closed:
+                        raise RuntimeError("LiberoRunner is closed")
+                    if action == "resume":
+                        state = await self._resume()
+                    else:
+                        state = await self._reset(**args)
+            else:
+                raise ValueError(f"unsupported LIBERO operator action: {action}")
             self._remember_command(command_id, action, state)
             future.set_result(state)
             return state
@@ -308,6 +556,9 @@ class LiberoRunner:
         if rejection is not None:
             raise ValueError(f"{rejection.code}: {rejection.reason}")
 
+        # The BE owns the run from its first reset on: watchdog on first (§3.3).
+        await self._enable_watch()
+
         timeout_s = self.settings.libero_reset_timeout_ms / 1000
         try:
             response = await asyncio.wait_for(
@@ -346,12 +597,11 @@ class LiberoRunner:
             "libero_reset_ack",
             {"run_id": state.run_id, "operator_response": response},
         )
-        if state.session_active:
-            self._ensure_heartbeat()
         self._ensure_polling()
         return state
 
     async def _stop(self) -> LiberoState:
+        self._stop_count += 1
         try:
             response = await asyncio.wait_for(
                 self.sim.stop(), timeout=self.settings.sim_timeout_ms / 1000
@@ -378,13 +628,16 @@ class LiberoRunner:
         return state
 
     async def _resume(self) -> LiberoState:
+        """Ready. Never resets: reset starts the model on the Board (§3.2)."""
         before = await self.refresh()
         if before.terminal:
-            raise SimRejected(
-                f"episode is terminal ({before.status}); RESET is required"
-            )
+            # The run is over; the next `command` starts a new one. No sim call.
+            self._event("libero_ready_terminal", {"run_id": before.run_id})
+            return before
         if before.status not in {"READY", "RUNNING"}:
             raise SimRejected(f"episode state {before.status} cannot be resumed")
+        if not before.hold_latched:
+            return before
 
         try:
             response = await asyncio.wait_for(
@@ -413,6 +666,22 @@ class LiberoRunner:
             },
         )
         return state
+
+    async def _enable_watch(self) -> None:
+        """Send `watch: true` once, then keep it alive every second (§3.3)."""
+        if not self._watch_enabled:
+            try:
+                await self.sim.heartbeat(watch=True)
+                self.heartbeat_status = "healthy"
+                self.last_heartbeat_success_mono = time.monotonic()
+                self.last_heartbeat_error = None
+                self._event("libero_watchdog_enabled", {})
+            except SimError as exc:
+                # The loop below keeps trying; the reset itself may still work.
+                self.heartbeat_status = "degraded"
+                self.last_heartbeat_error = str(exc)
+            self._watch_enabled = True
+        self._ensure_heartbeat()
 
     def _ensure_heartbeat(self) -> None:
         if self._heartbeat_task is None or self._heartbeat_task.done():
@@ -455,9 +724,7 @@ class LiberoRunner:
             poll_hz = max(self.settings.sim_poll_hz, 0.1)
             await asyncio.sleep(max(0.1, 1.0 / poll_hz))
             try:
-                state = await self.refresh()
-                if state.session_active:
-                    self._ensure_heartbeat()
+                await self.refresh()
                 if logged_error is not None:
                     log.info("LIBERO state polling recovered")
                     logged_error = None
@@ -475,7 +742,7 @@ class LiberoRunner:
 
         tasks = [
             task
-            for task in (self._heartbeat_task, self._poll_task)
+            for task in (self._heartbeat_task, self._poll_task, self._episode_task)
             if task is not None
         ]
 

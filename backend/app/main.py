@@ -20,11 +20,12 @@ from typing import Any, AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 
 from .api import Core, build_router
 from .camera import CameraProxy
 from .live import Hub
-from .ports import BoardPort, SimOutcomeUnknown, SimPort, SimRejected
+from .ports import BoardPort, SimPort
 from .runner import Runner
 from .settings import BACKEND_DIR, Settings, get_settings
 from .state import SystemState
@@ -139,7 +140,8 @@ def create_app(
 
             sim = SimClient(settings)
 
-        from .libero_runner import LiberoRunner
+        from .libero_runner import LiberoRunner, nack_code_for
+        from .models_web import CommandIn
 
         libero_runner = LiberoRunner(
             settings=settings,
@@ -159,19 +161,16 @@ def create_app(
                 hub.broadcast({"type": "stop_ack", "ts": now_ms(), "id": stop_id})
             except Exception as exc:  # noqa: BLE001
                 log.exception("LIBERO WebSocket stop failed")
+                # FE keeps showing "stop not confirmed" (communication-plan §3.2).
                 hub.broadcast({
                     "type": "nack",
                     "ts": now_ms(),
                     "id": stop_id,
-                    "code": (
-                        "outcome_unknown"
-                        if isinstance(exc, SimOutcomeUnknown)
-                        else "operator_rejected"
-                        if isinstance(exc, SimRejected)
-                        else "LIBERO_STOP_FAILED"
-                    ),
+                    "code": nack_code_for(exc),
                     "reason": str(exc),
                 })
+
+        libero_runner.on_task = lambda msg: hub.broadcast(msg)
 
         async def handle_libero_message(raw: dict[str, Any]) -> dict[str, Any] | None:
             kind = raw.get("type")
@@ -189,27 +188,30 @@ def create_app(
                         "type": "nack",
                         "ts": now_ms(),
                         "id": message_id,
-                        "code": (
-                            "outcome_unknown"
-                            if isinstance(exc, SimOutcomeUnknown)
-                            else "operator_rejected"
-                            if isinstance(exc, SimRejected)
-                            else "LIBERO_READY_FAILED"
-                        ),
+                        "code": nack_code_for(exc),
                         "reason": str(exc),
                     }
 
-            if kind in {"command", "reconnect_usb"}:
-                return {
-                    "type": "nack",
-                    "ts": now_ms(),
-                    "id": message_id,
-                    "code": "UNSUPPORTED_IN_LIBERO_MODE",
-                    "reason": (
-                        "Prompt commands and USB reconnect are not supported by the "
-                        "current LIBERO Backend integration."
-                    ),
-                }
+            if kind == "command":
+                try:
+                    command = CommandIn.model_validate(raw)
+                except ValidationError as exc:
+                    return {
+                        "type": "nack",
+                        "ts": now_ms(),
+                        "id": message_id,
+                        "code": "bad_schema",
+                        "reason": str(exc.errors()[0].get("msg", "invalid command")),
+                    }
+                # ack goes out now; reset and the `task` messages follow in the background.
+                return libero_runner.submit_command(
+                    command.id,
+                    suite=command.task.suite,
+                    task_id=command.task.task_id,
+                    init_state=command.init_state,
+                    seed=command.seed,
+                    profile_id=command.profile_id,
+                )
 
             return None
 
