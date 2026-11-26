@@ -118,8 +118,6 @@ Chỉ xoá quy tắc 8001. Đừng dùng `netsh interface portproxy reset`: lệ
 Remove-NetFirewallRule -DisplayName "robo-arm-app 8001"
 ```
 
-`netsh interface portproxy reset` xoá mọi portproxy trên máy; nếu máy có portproxy khác thì dùng `netsh interface portproxy delete v4tov4 listenaddress=<IP LAN> listenport=8001`.
-
 Portproxy cần dịch vụ IP Helper (`iphlpsvc`) đang chạy (đã chạy trên laptop này). Trang dùng lại host đã phục vụ nó cho WebSocket `/ws` và camera MJPEG, nên không cần cấu hình gì thêm trên iPad.
 
 **Đã kiểm tra trên laptop (26/11):** trước portproxy, `http://192.168.2.246:8001` không kết nối được, `http://<IP WSL>:8001` trả 200 (đúng như dự đoán với NAT). Giao diện ở khổ iPad trong browser pane (1024×768 ngang, 768×1024 dọc): STOP là nút đầu header và luôn thấy khi cuộn, hai luồng MJPEG `agentview`/`wrist` hiện, không có cuộn ngang.
