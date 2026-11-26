@@ -203,3 +203,22 @@ Bước 1–6 làm được với thông tin hiện có. Bước 7 cần ngườ
 | 7 E2E thật | 6, 8 (Q6), `Docs/codex-runtime-audit.md` mục E | `docs/e2e-results-<ngày>.md` | **Từng thao tác điều khiển phải được người dùng duyệt trong chat trước khi chạy.** Sim LIBERO thật + Board qua `deploy_runner.py` (hoặc X-VLA CUDA trên laptop nếu không có Board). Ghi PASS/FAIL + bằng chứng cho 12 mục checklist E, đo Stop→`hold_latched` (ms) và state→màn hình (ms). Không tuyên bố PASS khi không có bằng chứng |
 
 **Trạng thái:** bước 1 ☑ · bước 2 ☑ · bước 3 ☑ · bước 4 ☑ · bước 5 ☑ · bước 6 ☑ · bước 7 ◐ (12 mục E có kết quả, `docs/e2e-results-2026-11-26.md`; còn episode X-VLA: trên CPU laptop model nạp được nhưng thiếu tokenizer `facebook/bart-large` offline, chờ người dùng cho tải; rút cáp USB-C: cần Board và người làm tay) · Hoàn thiện ☑ (bỏ tin `status`/`pipeline`, profile không bắt buộc, Tutorial LIBERO, vệt `eef_pos` 10 s, `docs/RUN.md`) · A2 ☑ · A3 ◐ · A4 ☑ (chuẩn bị demo: lượt LIBERO web/Board được lưu vào `runs`, còn sau khi BE khởi động lại, zip export và nút Tải log ở Lịch sử task; iPad qua LAN có lệnh portproxy/firewall ở `docs/RUN.md` mục 4, chưa thử trên iPad thật; `docs/DEMO.md`) · bước 8 ☐ (chờ IoT)
+
+## 11. Đối chiếu Team & Project Plan (F/N của SoftDev, 26/11/2026)
+
+Nguồn: `Docs/Team & Project Plan HN_1.pdf` mục 2.4 (Table 7, 8) và Appendix A.2. F1, F2, F4–F7, N2–N4, N6 thuộc AI/IoT.
+
+| Mục | Yêu cầu (tóm tắt) | Trạng thái | Còn thiếu |
+|---|---|---|---|
+| F3 | Chỉ một lệnh cố định + chọn 1/9 profile; BE kiểm tra; request hợp lệ khởi động **đúng một** lượt | ◐ Lệch | Lệnh là task LIBERO, không còn "cube → box"; profile do Board chọn (Q7), web không chọn. Bấm Gửi chỉ reset, chưa khởi động Board (chờ Q1). Cần nhóm/giảng viên chấp nhận lệch |
+| F8 | Stop; huỷ lượt; bỏ queue; không nhận lệnh tới khi recovery; mất link = Stop; 3 bài test (đang chạy, queue đầy, mất link); trần Stop→halt trong contract | ◐ | Đã test: đang chạy, mất link (kill runner/BE). Chưa test: **queue đầy**, rút USB-C. Chưa có **trần Stop→halt** trong contract (đo được 12–14 ms) → IoT ghi vào contract |
+| F9 | Trạng thái kết nối/robot/task; **pipeline có thời gian từng bước**; lịch sử; **biểu đồ action vs observation của khớp**; Tutorial; khớp một lượt board→sim | ◐ | Không có pipeline T0–T3 và không có khớp/action từ sim. Có pose + vệt đầu tay thay thế. Cần T0–T3 và `joint_pos` từ IoT/AI; lượt Board thật |
+| F10 | Mỗi lượt lưu run ID, cấu hình, **phiên bản artifact**, kết quả, **thời gian thô**, lỗi; có lịch sử + export; 1 lượt thành công + 1 lượt thất bại tích hợp | ◐ | Đã lưu/xuất (A2). Thiếu checkpoint/hash model và timing từ Board; chưa có lượt **SUCCESS** tích hợp |
+| N1 | Tái lập được từ manifest | ◐ | Manifest có commit/lock; thiếu checkpoint hash, firmware, phiên bản sim |
+| N5 | Lệnh sai bị từ chối; queue có giới hạn; watchdog | ☑ phía BE | Có test từ chối, queue WS giới hạn, heartbeat/OPERATOR_LOST. Phía queue sim/MCU là IoT |
+| N7 | Người không viết console tự làm checklist A.2 chỉ với Tutorial + tài liệu | ☐ | Cần một thành viên khác chạy thử theo `RUN.md`/`DEMO.md` + Tutorial; A.2 còn yêu cầu ví dụ output mẫu và mục xử lý lỗi |
+| N8 | Export không chứa thông tin đăng nhập; ghi license | ◐ | Export không chứa token (A2). Chưa có bảng license (LIBERO, Franka/URDF nếu dùng, thư viện) |
+
+**Cần xin chấp thuận:** F3 (task LIBERO, không chọn profile), F9 (không có biểu đồ khớp khi sim không gửi khớp), AC-03…06.
+**Cần IoT/AI:** T0–T3 + tên/hash model mỗi lượt (F9, F10, N1), `joint_pos` (F9), trần Stop→halt (F8), chế độ chờ lệnh (F3).
+**SoftDev tự làm được:** test F8 "queue đầy" với sim fake; chạy thử N7 với một bạn khác; ví dụ output mẫu + bảng license (A.2, N8).
