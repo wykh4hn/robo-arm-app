@@ -36,19 +36,33 @@ Thêm `?scenario=robot-error` vào URL để quay lại robot giả trong trình
 
 ## Chạy với MuJoCo thật (cách B, local mode)
 
-Cần repo **Robo-Arm-COS40005** (MuJoCo của IoT) và Python có `mujoco`, `numpy`, `Pillow` (`so101sim/requirements.txt`).
+Cần **hai repo** cạnh nhau: repo nhóm **Robo-Arm-COS40005** (MuJoCo của IoT) và repo web này. Chạy hai terminal.
 
-Terminal 1, MuJoCo thật (cảnh 4 bóng + hộp, cổng 8000):
+**Chạy đúng file.** Repo nhóm có hai file `app.py`, và gốc repo không có file nào. BE chỉ nối được với **`so101sim/board_server/app.py`** (schema v2, có RESET/ABORT/RESUME/evaluation).
+- `so101sim/app.py` là cảnh local cũ, không có các API đó. Chạy nhầm file này thì web báo "MuJoCo chưa chạy", và terminal BE in cảnh báo `/api/state is not schema v2`.
+
+Terminal 1, MuJoCo thật (cảnh 4 bóng + hộp, cổng 8000). Từ gốc repo Robo-Arm-COS40005:
 
 ```bash
-cd Robo-Arm-COS40005/so101sim/board_server
-python app.py --mode local --no-viewer          # thêm --no-cameras nếu máy không vẽ được
+cd so101sim
+python -m pip install -r requirements.txt        # mujoco, numpy, Pillow (một lần)
+cd board_server
+python app.py --mode local --no-viewer
 ```
 
-Terminal 2, BE:
+- **Windows gốc (Git Bash, PowerShell):** server tự đặt `MUJOCO_GL=egl`, mà EGL chỉ có trên Linux, nên MuJoCo báo `invalid value for environment variable MUJOCO_GL: egl`. Đặt trước `glfw`:
+  - Git Bash: `MUJOCO_GL=glfw python app.py --mode local --no-viewer`
+  - PowerShell: `$env:MUJOCO_GL="glfw"; python app.py --mode local --no-viewer`
+- Camera vẫn lỗi thì thêm `--no-cameras` (web hiện "Chưa có hình", phần còn lại vẫn chạy).
+- Nhóm IoT chạy trong **Ubuntu WSL2** (`so101sim/README_VI.md`); cách đó cũng được. Cổng 8000 trong WSL mở được từ Windows qua `localhost`.
+
+Kiểm tra đúng server: mở `http://127.0.0.1:8000/api/state`, phải thấy `"schema_version": 2` và `"mode": "local"`.
+
+Terminal 2, BE. Từ gốc repo web, lấy code mới và build FE trước (`git pull origin claude/festive-dijkstra-ssd666`, rồi `npm ci && npm run build`):
 
 ```bash
 cd backend
+source .venv/Scripts/activate     # Windows Git Bash; Linux/WSL: source .venv/bin/activate
 SO101_SIM_LINK=real SO101_BOARD_LINK=reference \
   uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 1 --timeout-graceful-shutdown 3
 ```

@@ -84,6 +84,7 @@ class Runner:
         self.settings = settings
         self.state = state
         state.driver = {"real": "board"}.get(settings.board_link, settings.board_link)
+        self._warned_bad_state = False
         self.storage = storage
         self.hub = hub
         self.sim = sim
@@ -621,6 +622,14 @@ class Runner:
         except SimBadPayload as exc:
             # T11: kept for investigation, never shown to the web.
             self.storage.quarantine(exc.raw, str(exc))
+            if self.state.sim_ok is None and not self._warned_bad_state:
+                # Never one good read: most likely the wrong server on the port.
+                self._warned_bad_state = True
+                log.warning(
+                    "MuJoCo at %s answers, but /api/state is not schema v2 (%s). Run "
+                    "so101sim/board_server/app.py, not so101sim/app.py.",
+                    self.settings.sim_url, exc,
+                )  # fmt: skip
             self._check_stale(time.monotonic())
             return
         except _IO_ERRORS:
