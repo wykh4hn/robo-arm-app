@@ -51,13 +51,16 @@ describe('App', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Monitoring' }));
     expect(screen.getByTestId('lamp')).toHaveTextContent('Chờ người dùng');
-    expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Bấm Sẵn sàng');
-    // Robot never restarts by itself: Ready is required, then a new command.
-    await user.click(screen.getByRole('button', { name: 'Sẵn sàng' }));
-    await advance(400);
-    expect(screen.getByTestId('lamp')).toHaveTextContent('Hệ thống ổn');
-    // The system no longer blocks Send; only the profile choice is left.
+    expect(screen.getByTestId('run-chip')).toHaveTextContent('Đã dừng · chờ Sẵn sàng hoặc lệnh mới');
+    // The stopped run is over (ABORTED + HOLD): no Ready, a new command starts a new episode.
+    expect(screen.queryByRole('button', { name: 'Sẵn sàng' })).not.toBeInTheDocument();
     expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Chọn profile AI trước khi gửi.');
+    await user.selectOptions(screen.getByLabelText('Profile AI'), 'smolvla-int8');
+    await user.click(screen.getByRole('button', { name: 'Gửi lệnh' }));
+    await advance(1000);
+    expect(screen.getByTestId('lamp')).toHaveTextContent('Hệ thống ổn');
+    expect(stopButton()).toHaveTextContent('STOP');
+    expect(screen.getByTestId('run-chip')).toHaveTextContent('Đang chạy');
   });
 
   it('without a stop ACK it says to use the physical emergency stop', async () => {
@@ -77,16 +80,14 @@ describe('App', () => {
     await advance(1500);
     expect(screen.getByTestId('cmd-reason')).toHaveTextContent('Chọn profile AI trước khi gửi.');
     await user.selectOptions(screen.getByLabelText('Profile AI'), 'smolvla-int8');
-    expect(screen.getByTestId('cmd-preview')).toHaveTextContent(
-      'pick the cube and put it in the box',
-    );
+    expect(screen.getByTestId('cmd-preview')).toHaveTextContent('libero_object #0');
     await user.click(screen.getByRole('button', { name: 'Gửi lệnh' }));
     expect(screen.getByTestId('cmd-lifecycle')).toHaveAttribute('data-phase', 'sent');
     await advance(300);
     const lifecycle = screen.getByTestId('cmd-lifecycle');
     expect(lifecycle).toHaveAttribute('data-phase', 'rejected');
     expect(lifecycle).not.toHaveTextContent('Xong');
-    expect(lifecycle).toHaveTextContent('không thấy vật trong hình camera');
+    expect(lifecycle).toHaveTextContent('task_id không có trong suite');
   });
 
   it('Send stays disabled with a written reason while a task runs', async () => {
@@ -104,19 +105,32 @@ describe('App', () => {
     expect(screen.getByTestId('first-visit-hint')).toBeInTheDocument();
   });
 
-  it('USB lost: critical banner, and no Reconnect USB command (dropped from the contract)', async () => {
-    renderScenario('usb-lost');
-    await advance(4000);
-    expect(screen.getByText('Mất kết nối USB với tay robot')).toBeInTheDocument();
+  it('Board not connected: critical banner, Send locked with the reason, no Reconnect USB', async () => {
+    renderScenario('board-offline');
+    await advance(1500);
+    const banner = screen.getByRole('alert');
+    expect(within(banner).getByText('Board chưa kết nối')).toBeInTheDocument();
+    expect(screen.getByTestId('cmd-reason')).toHaveTextContent(
+      'Board chưa kết nối. Đợi Board kết nối với sim.',
+    );
+    expect(screen.getByRole('button', { name: 'Gửi lệnh' })).toHaveAttribute('aria-disabled', 'true');
     expect(screen.queryByRole('button', { name: /Kết nối lại USB/ })).not.toBeInTheDocument();
   });
 
-  it('runs without the URDF / WebGL and renders the joint table', async () => {
-    renderScenario('no-urdf');
+  it('LIBERO mode hides the SO-101 views with a reason and shows the end-effector pose', async () => {
+    renderScenario('running');
     await advance(1500);
-    const table = screen.getByRole('table');
-    expect(within(table).getAllByRole('row')).toHaveLength(7);
-    expect(screen.getByText(/không hỗ trợ WebGL/)).toBeInTheDocument();
+    expect(screen.getAllByTestId('libero-hidden')[0]).toHaveTextContent(
+      'Sim hiện là tay Franka, không có góc khớp SO-101',
+    );
+    const pose = screen.getByTestId('ee-pose');
+    expect(within(pose).getByText('Đầu tay Franka')).toBeInTheDocument();
+    expect(pose.querySelector('[data-row="x"] td:last-child')).toHaveTextContent(/mm$/);
+    expect(pose.querySelector('[data-row="step"] td:last-child')).toHaveTextContent(/^\d+ \/ 800$/);
+    expect(screen.getByTestId('run-chip')).toHaveTextContent('Đang chạy');
+    expect(screen.getByTestId('cmd-description')).toHaveTextContent(
+      'pick up the alphabet soup and place it in the basket',
+    );
   });
 
   it('switches language', async () => {

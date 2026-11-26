@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { config } from '../config';
 import { detailChipClass, LEVEL_META } from '../config/levels';
 import { liberoSimFresh, type DerivedStatus } from '../state/deriveStatus';
 import { useStore } from '../state/store';
@@ -49,7 +50,9 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
   let web: ReactNode;
   if (c.web === 'disconnected' || c.web === 'failed') web = fmt(t.status.webLost, { n: c.attempt });
   else if (c.web === 'connecting') web = t.status.webConnecting;
-  else if (c.latencyMs === null) web = t.status.webSyncing;
+  else if (!synced) web = t.status.webSyncing;
+  // LIBERO sends no `status` message, so there is no latency to show.
+  else if (c.latencyMs === null) web = t.status.web;
   else
     web = (
       <>
@@ -93,6 +96,24 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
       ? t.status.stoppedReady
       : t.values.robot[robot.value];
 
+  // LIBERO (communication-plan §4): Board and the current run replace Robot / Task / Tracking.
+  const lib = derived.libero;
+  const boardKnown = lib !== null && !lib.stale;
+  const boardLevel: Level = !boardKnown ? 'attention' : lib.boardConnected ? 'ok' : 'action';
+  const boardText = !boardKnown
+    ? t.status.unknown
+    : lib.boardConnected
+      ? t.status.boardConnected
+      : t.status.boardDisconnected;
+  const runText =
+    lib === null
+      ? t.run.views.unknown
+      : lib.view === 'ended'
+        ? t.run.ended[lib.status as keyof typeof t.run.ended]
+        : t.run.views[lib.view];
+  const showStep = lib !== null && (lib.view === 'running' || lib.view === 'ended');
+  const showEndReason = lib !== null && lib.view !== 'unknown' && lib.view !== 'running' && !!lib.endReason;
+
   const seconds = (ms: number) => fmt(t.status.seconds, { n: formatNumber(ms / 1000, 1, lang) });
   const [before, after] = t.status.updated.split('{n}');
 
@@ -113,7 +134,7 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
         tip={t.status.tips.connection}
       >
         {web}
-        {!webDown && (
+        {!webDown && !config.liberoMode && (
           <>
             {' · '}
             {t.status.usb} {t.values.usb[c.usb]}
@@ -129,42 +150,81 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
       >
         {liberoLabel}
       </Chip>
-      <Chip
-        icon="robot"
-        label={t.status.robot}
-        level={robot.level}
-        tip={t.status.tips.robot}
-        stale={stale}
-      >
-        {robotText}
-      </Chip>
-      <Chip
-        icon="task"
-        label={t.status.task}
-        level={task.level}
-        tip={t.status.tips.task}
-        stale={stale}
-      >
-        {task.id !== null && <span className="rb-chip__num">#{task.id}</span>}{' '}
-        {task.id === null && task.state === 'idle' ? t.values.task.idle : taskText(t, task)}
-        {task.elapsedMs !== null && (
-          <>
-            {' '}
-            <span className="rb-chip__num">
-              {fmt(t.status.seconds, { n: Math.floor(task.elapsedMs / 1000) })}
-            </span>
-          </>
-        )}
-      </Chip>
-      <Chip
-        icon="tracking"
-        label={t.status.tracking}
-        level={tracking.level}
-        tip={t.status.tips.tracking}
-        stale={stale}
-      >
-        {tracking.value ? t.values.tracking[tracking.value] : '—'}
-      </Chip>
+      {config.liberoMode ? (
+        <>
+          <Chip
+            icon={boardKnown && !lib.boardConnected ? 'unplug' : 'wifi'}
+            label={t.status.board}
+            level={boardLevel}
+            tip={t.status.tips.board}
+            stale={!boardKnown}
+          >
+            {boardText}
+          </Chip>
+          <Chip
+            icon="task"
+            label={t.status.run}
+            level={lib?.level ?? 'attention'}
+            tip={t.status.tips.run}
+            stale={lib === null || lib.stale}
+          >
+            <span data-testid="run-chip">{runText}</span>
+            {showStep && (
+              <>
+                {' · '}
+                <span className="rb-chip__num">
+                  {fmt(t.status.stepOf, { step: lib.step, max: lib.maxSteps })}
+                </span>
+              </>
+            )}
+            {showEndReason && (
+              <>
+                {' · '}
+                <span className="rb-chip__num">{lib.endReason}</span>
+              </>
+            )}
+          </Chip>
+        </>
+      ) : (
+        <>
+        <Chip
+          icon="robot"
+          label={t.status.robot}
+          level={robot.level}
+          tip={t.status.tips.robot}
+          stale={stale}
+        >
+          {robotText}
+        </Chip>
+        <Chip
+          icon="task"
+          label={t.status.task}
+          level={task.level}
+          tip={t.status.tips.task}
+          stale={stale}
+        >
+          {task.id !== null && <span className="rb-chip__num">#{task.id}</span>}{' '}
+          {task.id === null && task.state === 'idle' ? t.values.task.idle : taskText(t, task)}
+          {task.elapsedMs !== null && (
+            <>
+              {' '}
+              <span className="rb-chip__num">
+                {fmt(t.status.seconds, { n: Math.floor(task.elapsedMs / 1000) })}
+              </span>
+            </>
+          )}
+        </Chip>
+        <Chip
+          icon="tracking"
+          label={t.status.tracking}
+          level={tracking.level}
+          tip={t.status.tips.tracking}
+          stale={stale}
+        >
+          {tracking.value ? t.values.tracking[tracking.value] : '—'}
+        </Chip>
+        </>
+      )}
       <Tooltip content={t.status.tips.updated} align="end">
         {(id) => (
           <span

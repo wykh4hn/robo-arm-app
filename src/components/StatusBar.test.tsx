@@ -20,7 +20,7 @@ describe('StatusBar LIBERO health', () => {
     render(<StatusBar derived={deriveStatus({ ...initialMonitorState(1000), ...useStore.getState() })} />);
 
     expect(screen.getByText('Connection')).toBeInTheDocument();
-    expect(screen.getByText('Connection').parentElement).toHaveTextContent('Web · reloading state');
+    expect(screen.getByText('Connection').parentElement).toHaveTextContent(/^ConnectionWeb$/);
     expect(screen.getByText('LIBERO simulator')).toBeInTheDocument();
     expect(screen.getByText('Simulator disconnected')).toBeInTheDocument();
   });

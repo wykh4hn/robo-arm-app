@@ -30,7 +30,7 @@ function value(s: Sample, j: JointName, tab: ChartTab, which: 'state' | 'action'
 }
 
 /** Two uPlot charts over a sliding 10 s window; hover pauses, "Back to live" resumes. */
-export function TrajectoryCharts() {
+function So101TrajectoryCharts() {
   const t = useT();
   const lang = useStore((s) => s.lang);
   const samples = useStore((s) => s.samples);
@@ -191,4 +191,9 @@ export function TrajectoryCharts() {
       </div>
     </section>
   );
+}
+
+/** Hidden in LIBERO mode; the JointTable notice explains why (no SO-101 joint angles, Q3). */
+export function TrajectoryCharts() {
+  return config.liberoMode ? null : <So101TrajectoryCharts />;
 }

@@ -137,12 +137,12 @@ describe('deriveStatus', () => {
     const d = deriveStatus(
       healthy({
         cameras: {
-          object: { fps: 30, frameTs: 1, lastFrameChangeAt: NOW - 4000 },
-          overview: { fps: 4, frameTs: 2, lastFrameChangeAt: NOW },
+          agentview: { fps: 30, frameTs: 1, lastFrameChangeAt: NOW - 4000 },
+          wrist: { fps: 4, frameTs: 2, lastFrameChangeAt: NOW },
         },
       }),
     );
-    expect(d.problems.map((p) => p.key)).toEqual(['cameraFrozen:object', 'cameraFrozen:overview']);
+    expect(d.problems.map((p) => p.key)).toEqual(['cameraFrozen:agentview', 'cameraFrozen:wrist']);
     expect(d.overall).toBe('attention');
     expect(d.banner).toEqual([]);
   });
@@ -172,7 +172,7 @@ describe('deriveStatus', () => {
     const derived = deriveStatus(state);
     expect(derived.needsReady).toBe(true);
     expect(derived.canReady).toBe(true);
-    expect(derived.sendBlockReason).toBe('unsupported');
+    expect(derived.sendBlockReason).toBe('stopped');
     expect(derived.problems.some((problem) => problem.kind === 'usbUnknown')).toBe(false);
   });
 
@@ -194,5 +194,134 @@ describe('deriveStatus', () => {
       ...base,
       liberoConnectionHealth: { ...liberoHealthFixture, last_state_age_ms: null },
     }).canReady).toBe(false);
+  });
+});
+
+/** One test per row of the status table in communication-plan §4. */
+describe('deriveStatus: LIBERO status table (communication-plan §4)', () => {
+  function lib(
+    state: Partial<typeof liberoStateFixture> = {},
+    health: Partial<typeof liberoHealthFixture> = {},
+    patch: Partial<MonitorState> = {},
+  ) {
+    return deriveStatus(
+      healthy({
+        usb: 'unknown',
+        robot: 'unknown',
+        libero: { ...liberoStateFixture, ...state },
+        liberoConnectionHealth: { ...liberoHealthFixture, ...health },
+        ...patch,
+      }),
+    );
+  }
+
+  it('session_active=false: Board not connected, Send locked with a reason', () => {
+    const d = lib({ status: 'READY', session_active: false }, { board: 'disconnected', heartbeat: 'off' });
+    expect(d.libero?.view).toBe('boardOffline');
+    expect(d.libero?.boardConnected).toBe(false);
+    expect(d.canSend).toBe(false);
+    expect(d.sendBlockReason).toBe('boardOffline');
+    expect(d.banner[0]).toMatchObject({ kind: 'liberoBoardOffline', banner: 'critical' });
+    expect(d.overall).toBe('action');
+  });
+
+  it('status=READY without HOLD: Ready, Send allowed', () => {
+    const d = lib({ status: 'READY', step: 0 });
+    expect(d.libero).toMatchObject({ view: 'ready', level: 'ok' });
+    expect(d.canSend).toBe(true);
+    expect(d.overall).toBe('ok');
+    expect(d.problems).toEqual([]);
+  });
+
+  it('RUNNING: Running with step/max_steps, Send busy', () => {
+    const d = lib({ status: 'RUNNING', step: 120, max_steps: 800 });
+    expect(d.libero).toMatchObject({ view: 'running', level: 'ok', step: 120, maxSteps: 800 });
+    expect(d.sendBlockReason).toBe('busy');
+    expect(d.overall).toBe('ok');
+  });
+
+  it('hold_latched + OPERATOR_STOP: Stopped, waiting for Ready or a new command', () => {
+    const d = lib({
+      status: 'ABORTED',
+      hold_latched: true,
+      hold_reason: 'OPERATOR_STOP',
+      end_reason: 'OPERATOR_STOP',
+    });
+    expect(d.libero).toMatchObject({ view: 'stopped', level: 'waiting' });
+    expect(d.overall).toBe('waiting');
+    expect(d.problems.map((p) => p.kind)).toContain('awaitingReady');
+    // Terminal: a new command starts a new episode.
+    expect(d.canSend).toBe(true);
+  });
+
+  it.each(['CONNECTION_LOST', 'HEARTBEAT_TIMEOUT'])(
+    'hold_reason %s: Board lost, run cancelled',
+    (reason) => {
+      const d = lib(
+        {
+          status: 'ABORTED',
+          hold_latched: true,
+          hold_reason: reason,
+          end_reason: reason,
+          session_active: false,
+        },
+        { board: 'disconnected', heartbeat: 'off' },
+      );
+      expect(d.libero).toMatchObject({ view: 'boardLost', level: 'action' });
+      expect(d.banner[0]).toMatchObject({ kind: 'liberoBoardLost', banner: 'critical' });
+      expect(d.sendBlockReason).toBe('boardOffline');
+    },
+  );
+
+  it('OPERATOR_LOST: backend lost the sim, run cancelled', () => {
+    const d = lib({
+      status: 'ABORTED',
+      hold_latched: true,
+      hold_reason: 'OPERATOR_LOST',
+      end_reason: 'OPERATOR_LOST',
+    });
+    expect(d.libero).toMatchObject({ view: 'operatorLost', level: 'action' });
+    expect(d.banner[0]).toMatchObject({ kind: 'liberoOperatorLost', banner: 'critical' });
+  });
+
+  it.each([
+    ['SUCCESS', 'TASK_SUCCESS', 'ok'],
+    ['TIMEOUT', 'MAX_STEPS', 'attention'],
+    ['ABORTED', 'MODEL', 'attention'],
+  ] as const)('%s: run ended with end_reason', (status, endReason, level) => {
+    const d = lib({ status, end_reason: endReason });
+    expect(d.libero).toMatchObject({ view: 'ended', level, status, endReason });
+    expect(d.overall).toBe(level);
+    expect(d.canSend).toBe(true);
+    if (status !== 'SUCCESS') {
+      expect(d.problems).toContainEqual(
+        expect.objectContaining({ kind: 'liberoRunEnded', params: { status, reason: endReason } }),
+      );
+    }
+  });
+
+  it('sim offline: Unknown, numbers dimmed, Send locked', () => {
+    const d = lib({ status: 'RUNNING' }, { sim: 'offline', last_state_age_ms: null });
+    expect(d.libero).toMatchObject({ view: 'unknown', stale: true });
+    expect(d.sendBlockReason).toBe('simOffline');
+    expect(d.banner[0]).toMatchObject({ kind: 'liberoSimOffline', banner: 'warn' });
+  });
+
+  it('state older than 1.5 s: Unknown, numbers dimmed, Send locked', () => {
+    const d = lib({ status: 'READY' }, { last_state_age_ms: 1501 });
+    expect(d.libero).toMatchObject({ view: 'unknown', stale: true });
+    expect(d.sendBlockReason).toBe('stale');
+    expect(d.banner[0]).toMatchObject({ kind: 'liberoStateOld', banner: 'warn' });
+    expect(lib({ status: 'READY' }, { last_state_age_ms: 1500 }).libero?.view).toBe('ready');
+  });
+
+  it('blocks Send while a task is being prepared (reset before the run)', () => {
+    const d = lib(
+      { status: 'READY' },
+      {},
+      { tasks: [{ id: 14, command: 'x', state: 'preparing', startedTs: NOW - 200 }] },
+    );
+    expect(d.sendBlockReason).toBe('busy');
+    expect(d.task.id).toBe(14);
   });
 });

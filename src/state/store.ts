@@ -6,6 +6,7 @@ import type {
   JointName,
   OutgoingMessage,
   LiberoState,
+  LiberoTaskRef,
   TaskInfo,
   TelemetryMsg,
 } from '../types/messages';
@@ -32,11 +33,8 @@ export interface Actions {
   attachTransport: (t: Transport) => () => void;
   receive: (msg: IncomingMessage, at?: number) => void;
   tick: (now?: number) => void;
-  sendCommand: (
-    templateId: string,
-    params: Record<string, string>,
-    profileId?: string,
-  ) => string | null;
+  /** Starts one LIBERO episode. `label` is what the UI shows (the task description). */
+  sendCommand: (task: LiberoTaskRef, profileId?: string, label?: string) => string;
   requestStop: () => void;
   resetLiberoEpisode: () => Promise<void>;
   sendReady: () => void;
@@ -78,6 +76,7 @@ export function initialMonitorState(now = Date.now()): MonitorState {
     cameras: {},
     pipeline: null,
     libero: null,
+    liberoSeq: null,
     liberoConnectionHealth: null,
     tracking: initialTracking,
     events: [],
@@ -94,7 +93,8 @@ export function initialUi(): UiState {
     layers: { ghost: true, trail: true, plan: true, axes: false, labels: false },
     viewPreset: 'perspective',
     viewResetKey: 0,
-    largeSlot: 'viewer',
+    // LIBERO has no SO-101 model to show, so the scene camera takes the large slot.
+    largeSlot: config.liberoMode ? 'agentview' : 'viewer',
     chartPausedAt: null,
     robotLimits: {},
     robotSource: 'loading',
@@ -167,7 +167,11 @@ export function applyMessage(
       events: logEvent(s, 'connection', { web: msg.web }, at),
     };
     // After any (re)connect, controls stay disabled until fresh state arrives.
-    if (msg.web !== 'connected' || s.web !== 'connected') patch.synced = false;
+    if (msg.web !== 'connected' || s.web !== 'connected') {
+      patch.synced = false;
+      // A restarted BE counts `seq` from the start again.
+      patch.liberoSeq = null;
+    }
     return patch;
   }
 
@@ -202,6 +206,8 @@ export function applyMessage(
       };
     }
     case 'libero_state': {
+      // Drop a late or repeated state (§3.4: `seq` rises by one per message).
+      if (s.liberoSeq !== null && msg.seq <= s.liberoSeq) return {};
       const previous = s.libero;
       const next = msg.state;
       const changed =
@@ -210,9 +216,19 @@ export function applyMessage(
         previous.status !== next.status ||
         previous.step !== next.step ||
         previous.hold_latched !== next.hold_latched;
+      // A new run or a released HOLD ends the stop: the sim no longer waits for the user.
+      const holdCleared =
+        !!previous && !next.hold_latched &&
+        (previous.hold_latched || previous.run_id !== next.run_id);
       return {
         ...base,
+        ...(holdCleared && s.stop.phase === 'stopped'
+          ? { awaitingReady: false, stop: { phase: 'idle' as const, id: null, requestedAt: null } }
+          : holdCleared
+            ? { awaitingReady: false }
+            : {}),
         libero: next,
+        liberoSeq: msg.seq,
         liberoConnectionHealth: msg.connection_health ?? s.liberoConnectionHealth,
         liberoReset:
           s.liberoReset.phase === 'outcome_unknown' &&
@@ -396,25 +412,17 @@ export const useStore = create<StoreState>()((set, get) => {
 
     tick: (now = Date.now()) => set({ now }),
 
-    sendCommand: (templateId, params, profileId) => {
-      const template = config.templates.find((tpl) => tpl.id === templateId);
-      if (!template) return null;
-      const text = template.build(params);
+    sendCommand: (task, profileId, label) => {
       const id = newId('cmd');
-      // Step 1 keeps the old picker; the wire command is the LIBERO task (step 4 reworks the UI).
-      track(
-        'command',
-        text,
-        {
-          type: 'command',
-          id,
-          task: config.liberoTask,
-          init_state: config.liberoInitState,
-          seed: config.liberoSeed,
-          ...(profileId ? { profile_id: profileId } : {}),
-        },
-        { templateId, params },
-      );
+      track('command', label || `${task.suite} #${task.task_id}`, {
+        type: 'command',
+        id,
+        task,
+        // TODO(Q2): init_state / seed are the plan's stand-ins until the demo task is fixed.
+        init_state: config.liberoInitState,
+        seed: config.liberoSeed,
+        ...(profileId ? { profile_id: profileId } : {}),
+      });
       return id;
     },
 

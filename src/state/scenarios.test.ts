@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { config } from '../config';
 import { MockTransport } from '../transport/MockTransport';
 import { SCENARIOS, SCENARIO_NAMES } from '../transport/scenarios';
 import { deriveStatus } from './deriveStatus';
@@ -26,7 +27,7 @@ describe('deriveStatus over the scenario table (mock end-to-end)', () => {
         while (script.length && script[0]!.atMs <= elapsed) {
           const step = script.shift()!;
           if (step.action === 'stop') store.getState().requestStop();
-          else store.getState().sendCommand('pick_into_box', { object: 'red_duck' });
+          else store.getState().sendCommand(config.liberoTasks[0]!, 'smolvla-fp16');
         }
       }
       const d = deriveStatus(store.getState());

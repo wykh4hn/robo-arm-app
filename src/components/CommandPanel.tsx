@@ -1,24 +1,32 @@
 import { useState, type FormEvent } from 'react';
-import { config, type ObjectId, type TemplateId } from '../config';
+import { config } from '../config';
 import type { DerivedStatus } from '../state/deriveStatus';
 import { useStore } from '../state/store';
 import type { CommandRecord } from '../state/types';
 import { fmt, useT, type Strings } from '../strings';
+import { liberoDescription } from '../utils/liberoPose';
 import { formatNumber } from '../utils/units';
 import { Icon, type IconName } from './Icon';
 
-/** Template -> object -> exact preview -> Send, then the lifecycle of the last command. */
+const taskKey = (t: { suite: string; task_id: number }) => `${t.suite}:${t.task_id}`;
+
+/** LIBERO task (suite + task_id) -> description -> Send, then the lifecycle of the last command. */
 export function CommandPanel({ derived }: { derived: DerivedStatus }) {
   const t = useT();
   const sendCommand = useStore((s) => s.sendCommand);
   const commands = useStore((s) => s.commands);
-  const [templateId, setTemplateId] = useState<TemplateId>(config.templates[0]!.id);
-  const [object, setObject] = useState<ObjectId>(config.objects[0]!.id);
+  const libero = useStore((s) => s.libero);
+  // TODO(Q2): the list comes from config until the BE serves `/api/libero/tasks`.
+  const tasks = config.liberoTasks;
+  const [key, setKey] = useState(taskKey(tasks[0]!));
   const [profileId, setProfileId] = useState('');
 
-  const template = config.templates.find((x) => x.id === templateId) ?? config.templates[0]!;
-  const params = { object };
-  const preview = template.build(params);
+  const task = tasks.find((x) => taskKey(x) === key) ?? tasks[0]!;
+  const simTask = libero?.task;
+  const description =
+    simTask && simTask.suite === task.suite && simTask.task_id === task.task_id
+      ? liberoDescription(libero)
+      : null;
   const reason = derived.sendBlockReason
     ? fmt(t.command.blocked[derived.sendBlockReason], { task: derived.task.id ?? '' })
     : !profileId
@@ -30,7 +38,7 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!canSend) return;
-    sendCommand(template.id, params, profileId);
+    sendCommand(task, profileId, description ?? undefined);
   };
 
   return (
@@ -42,33 +50,23 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
       </div>
       <form className="rb-card__body app-stack-4" onSubmit={onSubmit}>
         <label className="rb-field">
-          <span className="rb-field__label">{t.command.template}</span>
-          <select
-            className="rb-select"
-            value={templateId}
-            onChange={(e) => setTemplateId(e.target.value as TemplateId)}
-          >
-            {config.templates.map((x) => (
-              <option key={x.id} value={x.id}>
-                {t.command.templates[x.id]}
+          <span className="rb-field__label">{t.command.task}</span>
+          <select className="rb-select" value={key} onChange={(e) => setKey(e.target.value)}>
+            {tasks.map((x) => (
+              <option key={taskKey(x)} value={taskKey(x)}>
+                {fmt(t.command.taskOption, { suite: x.suite, id: x.task_id })}
               </option>
             ))}
           </select>
         </label>
-        <label className="rb-field">
-          <span className="rb-field__label">{t.command.object}</span>
-          <select
-            className="rb-select"
-            value={object}
-            onChange={(e) => setObject(e.target.value as ObjectId)}
-          >
-            {config.objects.map((o) => (
-              <option key={o.id} value={o.id}>
-                {t.command.objects[o.id]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="rb-field">
+          <span className="rb-field__label" id="cmd-desc-label">
+            {t.command.description}
+          </span>
+          <output aria-labelledby="cmd-desc-label" data-testid="cmd-description">
+            {description ?? t.command.descriptionNone}
+          </output>
+        </div>
         <label className="rb-field">
           <span className="rb-field__label">{t.command.profile}</span>
           <select
@@ -93,7 +91,7 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
             aria-labelledby="cmd-preview-label"
             data-testid="cmd-preview"
           >
-            {preview}
+            {`${task.suite} #${task.task_id}`}
           </output>
         </div>
         <button

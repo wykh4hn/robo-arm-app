@@ -5,6 +5,7 @@ import type { Layers } from '../state/types';
 import { fmt, useT } from '../strings';
 import { formatNumber } from '../utils/units';
 import { Icon } from './Icon';
+import { LiberoHidden } from './LiberoHidden';
 import { Tooltip } from './Tooltip';
 
 const ViewerCanvas = lazy(() => import('../three/ViewerCanvas'));
@@ -29,7 +30,7 @@ interface ViewerProps {
 }
 
 /** "Mô hình 3D · thời gian thực": URDF-driven measured robot, commanded ghost, trail and plan. */
-export function RobotViewer3D({ compact = false, forcePlaceholder = false }: ViewerProps) {
+function So101Viewer({ compact = false, forcePlaceholder = false }: ViewerProps) {
   const t = useT();
   const lang = useStore((s) => s.lang);
   const layers = useStore((s) => s.layers);
@@ -183,4 +184,13 @@ export function RobotViewer3D({ compact = false, forcePlaceholder = false }: Vie
       </div>
     </section>
   );
+}
+
+/** The SO-101 model; hidden in LIBERO mode, where the sim has no SO-101 joint angles (Q3). */
+export function RobotViewer3D(props: ViewerProps) {
+  const t = useT();
+  if (config.liberoMode) {
+    return <LiberoHidden title={t.viewer.title} text={t.liberoHidden.viewer} compact={props.compact} />;
+  }
+  return <So101Viewer {...props} />;
 }

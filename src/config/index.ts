@@ -108,8 +108,17 @@ export const config = {
   ackTimeoutMs: 5_000,
   stopAckTimeoutMs: 4_000,
   liberoResetTimeoutMs: 32_000,
-  // TODO(Q2): the demo suite/task is not decided yet; these are the plan's stand-ins.
-  liberoTask: { suite: 'libero_object', task_id: 0 } as LiberoTaskRef,
+  /**
+   * The sim is LIBERO/Franka (communication-plan §1): no SO-101 joint angles, so the
+   * 3D model, joint table and joint charts are hidden and the end-effector pose is shown.
+   */
+  liberoMode: true,
+  /**
+   * Tasks offered in the command panel.
+   * TODO(Q2): the BE has no `/api/libero/tasks` yet; load the list from it once it exists.
+   * Until then this is the plan's stand-in. The description comes from the sim's state.
+   */
+  liberoTasks: [{ suite: 'libero_object', task_id: 0 }] as LiberoTaskRef[],
   liberoInitState: 0,
   liberoSeed: 1000,
   fpsWarn: 8,
@@ -160,9 +169,8 @@ export const config = {
   } as Record<'position' | 'velocity' | 'error', [number, number]>,
 
   cameras: [
-    // TODO(step 4): rename the ids to the LIBERO names `agentview` / `wrist`.
-    { id: 'object', url: cameraUrl('/api/camera/agentview.mjpg') },
-    { id: 'overview', url: cameraUrl('/api/camera/wrist.mjpg') },
+    { id: 'agentview', url: cameraUrl('/api/camera/agentview.mjpg') },
+    { id: 'wrist', url: cameraUrl('/api/camera/wrist.mjpg') },
   ] as CameraDef[],
 
   objects,

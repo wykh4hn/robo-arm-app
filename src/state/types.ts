@@ -107,7 +107,13 @@ export type ProblemKind =
   | 'cmdRejected'
   | 'cmdNoAck'
   | 'taskFailed'
-  | 'awaitingReady';
+  | 'awaitingReady'
+  | 'liberoSimOffline'
+  | 'liberoStateOld'
+  | 'liberoBoardLost'
+  | 'liberoOperatorLost'
+  | 'liberoBoardOffline'
+  | 'liberoRunEnded';
 
 export interface Problem {
   key: string;
@@ -150,6 +156,8 @@ export interface MonitorState {
   pipeline: PipelineMsg | null;
   /** Native Franka/LIBERO state, separate from SO-101 telemetry. */
   libero: LiberoState | null;
+  /** `seq` of the last applied `libero_state`; reset on every (re)connect. */
+  liberoSeq: number | null;
   /** Backend poll, simulator availability, session, and watchdog health. */
   liberoConnectionHealth: LiberoConnectionHealth | null;
   tracking: TrackingState;

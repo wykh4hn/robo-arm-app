@@ -1,6 +1,8 @@
 import { config } from '../config';
 import type {
   LiberoConnectionHealth,
+  LiberoState,
+  LiberoStatus,
   RobotState,
   StatusTaskState,
   TaskPhase,
@@ -37,7 +39,79 @@ export type SendBlockReason =
   | 'stopped'
   | 'busy'
   | 'pending'
-  | 'unsupported';
+  | 'simOffline'
+  | 'boardOffline';
+
+/** One row of the status table in communication-plan §4. */
+export type LiberoView =
+  | 'unknown'
+  | 'boardLost'
+  | 'operatorLost'
+  | 'boardOffline'
+  | 'stopped'
+  | 'running'
+  | 'ended'
+  | 'ready';
+
+export interface LiberoDerived {
+  view: LiberoView;
+  level: Level;
+  status: LiberoStatus;
+  step: number;
+  maxSteps: number;
+  endReason: string | null;
+  holdReason: string | null;
+  /** Board session as last reported (may be out of date when `view` is 'unknown'). */
+  boardConnected: boolean;
+  /** Numbers on screen may be out of date: dim them. */
+  stale: boolean;
+}
+
+const LIBERO_TERMINAL: ReadonlySet<LiberoStatus> = new Set(['SUCCESS', 'TIMEOUT', 'ABORTED']);
+const BOARD_LOST_REASONS = new Set(['CONNECTION_LOST', 'HEARTBEAT_TIMEOUT']);
+
+/** Maps the LIBERO state to one row of the §4 table, most important first. */
+export function liberoView(
+  st: LiberoState,
+  h: LiberoConnectionHealth | null,
+  live: boolean,
+  staleAfterMs: number = config.staleAfterMs,
+): LiberoDerived {
+  const terminal = LIBERO_TERMINAL.has(st.status);
+  const boardConnected = st.session_active && h?.board !== 'disconnected';
+  const hold = st.hold_latched ? st.hold_reason : null;
+  let view: LiberoView;
+  if (!live || !liberoSimFresh(h, staleAfterMs)) view = 'unknown';
+  else if (hold && BOARD_LOST_REASONS.has(hold)) view = 'boardLost';
+  else if (hold === 'OPERATOR_LOST') view = 'operatorLost';
+  else if (!boardConnected) view = 'boardOffline';
+  else if (st.hold_latched && (hold === 'OPERATOR_STOP' || !terminal)) view = 'stopped';
+  else if (st.status === 'RUNNING') view = 'running';
+  else if (terminal) view = 'ended';
+  else view = 'ready';
+
+  const level: Level =
+    view === 'unknown'
+      ? 'attention'
+      : view === 'boardLost' || view === 'operatorLost' || view === 'boardOffline'
+        ? 'action'
+        : view === 'stopped'
+          ? 'waiting'
+          : view === 'ended' && st.status !== 'SUCCESS'
+            ? 'attention'
+            : 'ok';
+  return {
+    view,
+    level,
+    status: st.status,
+    step: st.step,
+    maxSteps: st.max_steps,
+    endReason: st.end_reason,
+    holdReason: st.hold_reason,
+    boardConnected,
+    stale: view === 'unknown',
+  };
+}
 
 export interface DerivedStatus {
   overall: Level;
@@ -63,6 +137,8 @@ export interface DerivedStatus {
     elapsedMs: number | null;
   };
   tracking: { level: Level; value: TrackingLevel | null; error: number | null };
+  /** LIBERO run view; null before the first `libero_state`. */
+  libero: LiberoDerived | null;
   problems: Problem[];
   /** Problems for the error banner, critical first. */
   banner: Problem[];
@@ -105,7 +181,8 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   const tooOld = live && ageMs !== null && ageMs > cfg.staleAfterMs;
   const usable = live && !tooOld;
   const nativeMode = s.libero !== null;
-  const taskId = s.task.id ?? null;
+  const openTask = s.tasks.findLast((t) => t.state === 'preparing' || t.state === 'running');
+  const taskId = s.task.id ?? openTask?.id ?? null;
 
   // Emergency stop is reported only when the data contains it.
   if (s.estop) add('estop', 'estop', 'critical', { task: taskId ?? '' });
@@ -142,8 +219,7 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
     add('stopRejected', 'action', 'critical', { reason: s.stop.reason ?? '' });
   }
 
-  const nativeTerminal =
-    s.libero?.status === 'SUCCESS' || s.libero?.status === 'TIMEOUT' || s.libero?.status === 'ABORTED';
+  const nativeTerminal = !!s.libero && LIBERO_TERMINAL.has(s.libero.status);
   const nativeRecoverableStatus = s.libero?.status === 'READY' || s.libero?.status === 'RUNNING';
   const stoppedState = nativeMode
     ? !nativeTerminal && (!!s.libero?.hold_latched || s.awaitingReady)
@@ -153,6 +229,39 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
     s.stop.phase !== 'stopping'
   ) {
     add('awaitingReady', 'waiting', null);
+  }
+
+  const lib = s.libero ? liberoView(s.libero, s.liberoConnectionHealth, usable, cfg.staleAfterMs) : null;
+  if (lib && usable) {
+    const run = { task: taskId ?? '' };
+    switch (lib.view) {
+      case 'unknown':
+        add(
+          s.liberoConnectionHealth?.sim === 'offline' ? 'liberoSimOffline' : 'liberoStateOld',
+          'attention',
+          'warn',
+        );
+        break;
+      case 'boardLost':
+        add('liberoBoardLost', 'action', 'critical', { ...run, reason: lib.holdReason ?? '' });
+        break;
+      case 'operatorLost':
+        add('liberoOperatorLost', 'action', 'critical', run);
+        break;
+      case 'boardOffline':
+        add('liberoBoardOffline', 'action', 'critical');
+        break;
+      case 'stopped':
+        if (s.stop.phase !== 'stopping') add('awaitingReady', 'waiting', null);
+        break;
+      case 'ended':
+        if (lib.status !== 'SUCCESS') {
+          add('liberoRunEnded', 'attention', null, { status: lib.status, reason: lib.endReason ?? '' });
+        }
+        break;
+      default:
+        break;
+    }
   }
 
   const trackingActive =
@@ -223,11 +332,14 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   else if (
     s.stop.phase === 'stopping' || s.stop.phase === 'unconfirmed' || s.stop.phase === 'rejected'
   ) reason = 'stopping';
-  else if (nativeMode && s.liberoConnectionHealth?.sim === 'offline') {
-    reason = 'disconnected';
-  } else if (nativeMode && !liberoSimFresh(s.liberoConnectionHealth)) reason = 'stale';
-  else if (nativeMode) reason = 'unsupported';
-  else if (stoppedState) reason = 'stopped';
+  else if (lib) {
+    if (lib.view === 'unknown') {
+      reason = s.liberoConnectionHealth?.sim === 'offline' ? 'simOffline' : 'stale';
+    } else if (!lib.boardConnected) reason = 'boardOffline';
+    else if (stoppedState) reason = 'stopped';
+    else if (lib.status === 'RUNNING' || openTask) reason = 'busy';
+    else if (pending) reason = 'pending';
+  } else if (stoppedState) reason = 'stopped';
   else if (s.task.state === 'running' || s.robot === 'moving') reason = 'busy';
   else if (pending) reason = 'pending';
 
@@ -274,6 +386,7 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
       value: trackingValue,
       error: trackingActive ? s.tracking.error : null,
     },
+    libero: lib,
     problems,
     banner,
     canSend: reason === null,

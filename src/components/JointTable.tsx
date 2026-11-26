@@ -6,6 +6,7 @@ import type { JointName } from '../types/messages';
 import { fmt, useT } from '../strings';
 import { decimalsFor, formatNumber, toDisplay } from '../utils/units';
 import { Icon } from './Icon';
+import { LiberoHidden } from './LiberoHidden';
 import { Tooltip } from './Tooltip';
 
 const UNITS: AngleUnit[] = ['deg', 'rad'];
@@ -50,7 +51,7 @@ function LimitBar({
 }
 
 /** One row per joint: position, velocity, command, error and limit, in the joint's colour. */
-export function JointTable({ derived }: { derived: DerivedStatus }) {
+function So101JointTable({ derived }: { derived: DerivedStatus }) {
   const t = useT();
   const lang = useStore((s) => s.lang);
   const unit = useStore((s) => s.unit);
@@ -207,4 +208,11 @@ export function JointTable({ derived }: { derived: DerivedStatus }) {
       </div>
     </section>
   );
+}
+
+/** Hidden in LIBERO mode: the Franka sim reports no SO-101 joint angles (Q3). */
+export function JointTable({ derived }: { derived: DerivedStatus }) {
+  const t = useT();
+  if (config.liberoMode) return <LiberoHidden title={t.joints.title} text={t.liberoHidden.joints} />;
+  return <So101JointTable derived={derived} />;
 }

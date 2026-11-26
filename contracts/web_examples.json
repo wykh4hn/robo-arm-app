@@ -379,7 +379,7 @@
     "camera": {
       "type": "camera",
       "ts": 1730450000500,
-      "camera": "object",
+      "camera": "agentview",
       "fps": 10,
       "frameTs": 1730450000450
     },

@@ -13,7 +13,8 @@ export type TaskState = 'preparing' | 'running' | 'done' | 'failed' | 'stopped';
 /** Only the legacy `status` message says 'idle' (no run yet). */
 export type StatusTaskState = 'idle' | TaskState;
 export type TaskPhase = 'reach' | 'grasp' | 'carry' | 'release' | 'home';
-export type CameraId = 'object' | 'overview';
+/** LIBERO camera names (communication-plan §5). */
+export type CameraId = 'agentview' | 'wrist';
 export type PipelineStepId = 'camera' | 'ai' | 'gateway' | 'robot' | 'result';
 
 export interface JointSample {

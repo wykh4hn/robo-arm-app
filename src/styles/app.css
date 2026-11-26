@@ -43,6 +43,14 @@ main:focus {
   min-width: 0;
 }
 
+/* EE pose rows are read-only: no row selection affordance. */
+.app-pose tbody tr {
+  cursor: default;
+}
+.app-pose tbody tr:hover {
+  background: transparent;
+}
+
 /* utilities */
 .app-m0 {
   margin: 0;

@@ -68,6 +68,11 @@ export const vi = {
     stale: 'Dữ liệu cũ',
     unknown: 'Không rõ',
     stoppedReady: 'Đã dừng · bấm Sẵn sàng',
+    board: 'Board',
+    boardConnected: 'Đã kết nối',
+    boardDisconnected: 'Chưa kết nối',
+    run: 'Lượt chạy',
+    stepOf: 'step {step}/{max}',
     seconds: '{n} s',
     tips: {
       connection: 'Web: trình duyệt ↔ gateway, kèm độ trễ ms. USB: gateway ↔ tay robot.',
@@ -77,6 +82,8 @@ export const vi = {
       tracking:
         'Robot đi theo lệnh sát tới đâu: trung bình |lệnh − vị trí đo| của 5 khớp tay trong 1 s gần nhất.',
       updated: 'Thời gian từ lúc trình duyệt nhận tin nhắn cuối cùng.',
+      board: 'Board có đang giữ session với sim LIBERO không (session_active). Chưa kết nối thì không gửi được lệnh.',
+      run: 'Trạng thái lượt chạy LIBERO hiện tại, kèm step / max_steps và lý do kết thúc.',
     },
     announce: 'Trạng thái: {level}.',
   },
@@ -132,6 +139,11 @@ export const vi = {
       stopRejected: 'STOP bị từ chối: {reason}',
       stale: 'Dữ liệu cũ: không nhận được tin nhắn trong {s} s',
       trackingStuck: 'Robot có thể bị kẹt: vị trí đo không theo kịp lệnh',
+      liberoSimOffline: 'Không rõ trạng thái: backend không đọc được sim LIBERO',
+      liberoStateOld: 'Không rõ trạng thái: state của sim đã cũ hơn 1,5 s',
+      liberoBoardLost: 'Board mất kết nối, lượt chạy bị huỷ',
+      liberoOperatorLost: 'Backend mất liên lạc với sim, lượt chạy bị huỷ',
+      liberoBoardOffline: 'Board chưa kết nối',
     },
     robot: {
       estop: 'Đã dừng bởi nút dừng khẩn cấp. Robot không tự chạy lại.',
@@ -142,6 +154,11 @@ export const vi = {
       stopRejected: 'Không rõ — STOP bị từ chối nên robot có thể vẫn đang chuyển động.',
       stale: 'Không rõ. Nút Gửi lệnh tạm khoá.',
       trackingStuck: 'Vẫn nhận lệnh nhưng không di chuyển theo.',
+      liberoSimOffline: 'Không rõ. Các số trên màn hình có thể đã cũ; nút Gửi lệnh tạm khoá.',
+      liberoStateOld: 'Không rõ. Các số trên màn hình có thể đã cũ; nút Gửi lệnh tạm khoá.',
+      liberoBoardLost: 'Sim đã giữ HOLD; lượt chạy bị huỷ.',
+      liberoOperatorLost: 'Sim đã giữ HOLD; lượt chạy bị huỷ.',
+      liberoBoardOffline: 'Không có lượt chạy. Sim không nhận lệnh khi Board chưa kết nối.',
     },
     todo: {
       estop: 'Kiểm tra an toàn quanh robot, nhả nút dừng khẩn cấp, rồi bấm Sẵn sàng.',
@@ -154,6 +171,11 @@ export const vi = {
       stopRejected: 'Dùng nút dừng khẩn cấp vật lý nếu cần dừng robot ngay.',
       stale: 'Kiểm tra mạng và gateway. Giao diện tự mở khoá khi dữ liệu mới về.',
       trackingStuck: 'Bấm STOP, kiểm tra vật cản hoặc dây vướng quanh tay robot.',
+      liberoSimOffline: 'Kiểm tra máy chạy sim LIBERO và mạng tới backend. Giao diện tự mở khoá khi state mới về.',
+      liberoStateOld: 'Kiểm tra máy chạy sim LIBERO. Giao diện tự mở khoá khi state mới về.',
+      liberoBoardLost: 'Kiểm tra nguồn và cáp của Board, đợi Board kết nối lại, rồi gửi lệnh mới.',
+      liberoOperatorLost: 'Kiểm tra backend và sim, rồi gửi lệnh mới.',
+      liberoBoardOffline: 'Bật Board và đợi Board kết nối với sim, rồi gửi lệnh.',
     },
   },
 
@@ -180,6 +202,10 @@ export const vi = {
 
   command: {
     title: 'Ra lệnh',
+    task: 'Task LIBERO',
+    taskOption: '{suite} · task {id}',
+    description: 'Mô tả task',
+    descriptionNone: '— (sim chưa báo mô tả cho task này)',
     template: 'Mẫu lệnh',
     templates: { pick_into_box: 'Gắp [vật] bỏ vào hộp' },
     templateVi: { pick_into_box: 'Gắp {object} bỏ vào hộp' },
@@ -206,7 +232,8 @@ export const vi = {
       stopped: 'Robot đã dừng. Bấm Sẵn sàng trước khi gửi lệnh mới.',
       busy: 'Đang có task chạy (#{task}). Đợi task xong hoặc bấm STOP.',
       pending: 'Đang chờ robot xác nhận lệnh trước.',
-      unsupported: 'Board LIBERO hiện chưa có giao diện nhận Start Policy.',
+      simOffline: 'Sim LIBERO không trả lời. Đợi sim chạy lại.',
+      boardOffline: 'Board chưa kết nối. Đợi Board kết nối với sim.',
     },
     stepperLabel: 'Tiến trình lệnh',
     steps: {
@@ -253,6 +280,41 @@ export const vi = {
     resetEpisode: 'RESET episode',
     resetPending: 'Đang RESET episode…',
     resetOutcomeUnknown: 'Chưa rõ kết quả RESET. Kiểm tra state episode trước khi thử lại.',
+  },
+
+  run: {
+    views: {
+      unknown: 'Không rõ',
+      boardLost: 'Board mất kết nối · lượt bị huỷ',
+      operatorLost: 'Backend mất liên lạc với sim · lượt bị huỷ',
+      boardOffline: 'Board chưa kết nối',
+      stopped: 'Đã dừng · chờ Sẵn sàng hoặc lệnh mới',
+      running: 'Đang chạy',
+      ready: 'Sẵn sàng',
+    },
+    ended: { SUCCESS: 'Xong', TIMEOUT: 'Hết giờ', ABORTED: 'Bị huỷ' },
+  },
+
+  pose: {
+    title: 'Đầu tay Franka',
+    sub: 'Pose đầu tay do sim báo; không phải góc khớp SO-101',
+    cols: { name: 'Đại lượng', value: 'Giá trị' },
+    x: 'x',
+    y: 'y',
+    z: 'z',
+    gripper: 'Kẹp · độ mở',
+    step: 'Step',
+    simTime: 'Thời gian sim',
+    runId: 'run_id',
+    mm: '{n} mm',
+    seconds: '{n} s',
+    foot: 'Toạ độ x, y, z của đầu tay theo mm, trong khung gốc của sim.',
+  },
+
+  liberoHidden: {
+    viewer: 'Sim hiện là tay Franka, không có góc khớp SO-101. Mô hình 3D SO-101 được ẩn.',
+    joints:
+      'Sim hiện là tay Franka, không có góc khớp SO-101. Bảng khớp và biểu đồ quỹ đạo khớp được ẩn; xem pose đầu tay ở thẻ Đầu tay Franka.',
   },
 
   viewer: {
@@ -360,7 +422,7 @@ export const vi = {
   },
 
   camera: {
-    names: { object: 'Nhìn vật (trên xuống)', overview: 'Toàn cảnh' },
+    names: { agentview: 'Toàn cảnh (agentview)', wrist: 'Cổ tay (wrist)' },
     meta: '{fps} fps · {age} s',
     metaNone: '— fps · —',
     frozen: 'Hình bị đứng',

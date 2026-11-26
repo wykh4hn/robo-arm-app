@@ -7,7 +7,7 @@ import { useStore } from '../state/store';
 import { useDerived } from '../state/useDerived';
 import { useT } from '../strings';
 import type { Transport } from '../transport';
-import { SCENARIOS, type ScenarioName } from '../transport/scenarios';
+import type { ScenarioName } from '../transport/scenarios';
 import { DevPanel } from './DevPanel';
 import { FirstVisitHint } from './FirstVisitHint';
 import { Header } from './Header';
@@ -57,7 +57,7 @@ export function App({ createTransport, scenario, showDevPanel = false }: AppProp
             <div className="app-hint-slot">
               <FirstVisitHint />
             </div>
-            <MonitoringPage derived={derived} noUrdf={!!SCENARIOS[scenario].noUrdf} />
+            <MonitoringPage derived={derived} />
           </>
         ) : (
           <TutorialPage />

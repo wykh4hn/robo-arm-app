@@ -1,6 +1,7 @@
 import { config } from '../config';
 import { CameraTile } from '../components/CameraTile';
 import { CommandPanel } from '../components/CommandPanel';
+import { EePosePanel } from '../components/EePosePanel';
 import { JointTable } from '../components/JointTable';
 import { RobotViewer3D } from '../components/RobotViewer3D';
 import { TaskHistory } from '../components/TaskHistory';
@@ -8,7 +9,7 @@ import { TrajectoryCharts } from '../components/TrajectoryCharts';
 import type { DerivedStatus } from '../state/deriveStatus';
 import { useStore } from '../state/store';
 
-export function MonitoringPage({ derived, noUrdf }: { derived: DerivedStatus; noUrdf: boolean }) {
+export function MonitoringPage({ derived, noUrdf = false }: { derived: DerivedStatus; noUrdf?: boolean }) {
   const large = useStore((s) => s.largeSlot);
   const bigCamera = config.cameras.find((c) => c.id === large);
   return (
@@ -33,6 +34,7 @@ export function MonitoringPage({ derived, noUrdf }: { derived: DerivedStatus; no
         </div>
       </div>
       <div className="rb-col rb-col--right">
+        {config.liberoMode && <EePosePanel derived={derived} />}
         <JointTable derived={derived} />
         <TrajectoryCharts />
       </div>

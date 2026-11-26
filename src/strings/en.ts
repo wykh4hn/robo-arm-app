@@ -70,6 +70,11 @@ export const en: Strings = {
     stale: 'Stale data',
     unknown: 'Unknown',
     stoppedReady: 'Stopped · press Ready',
+    board: 'Board',
+    boardConnected: 'Connected',
+    boardDisconnected: 'Not connected',
+    run: 'Run',
+    stepOf: 'step {step}/{max}',
     seconds: '{n} s',
     tips: {
       connection: 'Web: browser ↔ gateway, with latency in ms. USB: gateway ↔ robot arm.',
@@ -79,6 +84,8 @@ export const en: Strings = {
       tracking:
         'How closely the robot follows commands: mean |command − measured| of the 5 arm joints over the last 1 s.',
       updated: 'Time since the browser received the last message.',
+      board: 'Whether the Board holds a session with the LIBERO sim (session_active). Commands cannot be sent without it.',
+      run: 'Current LIBERO run: its state, step / max_steps and why it ended.',
     },
     announce: 'Status: {level}.',
   },
@@ -134,6 +141,11 @@ export const en: Strings = {
       stopRejected: 'STOP was rejected: {reason}',
       stale: 'Stale data: no message received for {s} s',
       trackingStuck: 'Robot may be stuck: measured position is not following the command',
+      liberoSimOffline: 'State unknown: the backend cannot read the LIBERO sim',
+      liberoStateOld: 'State unknown: the sim state is older than 1.5 s',
+      liberoBoardLost: 'Board lost its connection, the run was cancelled',
+      liberoOperatorLost: 'Backend lost contact with the sim, the run was cancelled',
+      liberoBoardOffline: 'Board not connected',
     },
     robot: {
       estop: 'Stopped by the emergency stop. It will not restart by itself.',
@@ -144,6 +156,11 @@ export const en: Strings = {
       stopRejected: 'Unknown — STOP was rejected, so the robot may still be moving.',
       stale: 'Unknown. Send is disabled for now.',
       trackingStuck: 'Still receiving commands but not moving with them.',
+      liberoSimOffline: 'Unknown. Numbers on screen may be out of date; Send is locked.',
+      liberoStateOld: 'Unknown. Numbers on screen may be out of date; Send is locked.',
+      liberoBoardLost: 'The sim holds (HOLD); the run was cancelled.',
+      liberoOperatorLost: 'The sim holds (HOLD); the run was cancelled.',
+      liberoBoardOffline: 'No run. The sim takes no command while the Board is not connected.',
     },
     todo: {
       estop: 'Check it is safe around the robot, release the emergency stop, then press Ready.',
@@ -157,6 +174,11 @@ export const en: Strings = {
       stopRejected: 'Use the physical emergency stop if the robot must stop now.',
       stale: 'Check the network and the gateway. Controls unlock when fresh data arrives.',
       trackingStuck: 'Press STOP and check for obstacles or caught cables around the arm.',
+      liberoSimOffline: 'Check the LIBERO sim machine and its network to the backend. The UI unlocks when fresh state arrives.',
+      liberoStateOld: 'Check the LIBERO sim machine. The UI unlocks when fresh state arrives.',
+      liberoBoardLost: 'Check the Board power and cable, wait for it to reconnect, then send a new command.',
+      liberoOperatorLost: 'Check the backend and the sim, then send a new command.',
+      liberoBoardOffline: 'Power the Board and wait for it to connect to the sim, then send.',
     },
   },
 
@@ -183,6 +205,10 @@ export const en: Strings = {
 
   command: {
     title: 'Command',
+    task: 'LIBERO task',
+    taskOption: '{suite} · task {id}',
+    description: 'Task description',
+    descriptionNone: '— (the sim has not reported a description for this task)',
     template: 'Command template',
     templates: { pick_into_box: 'Pick [object] into the box' },
     templateVi: { pick_into_box: 'Pick the {object} into the box' },
@@ -209,7 +235,8 @@ export const en: Strings = {
       stopped: 'The robot is stopped. Press Ready before a new command.',
       busy: 'A task is running (#{task}). Wait for it to finish or press STOP.',
       pending: 'Waiting for the robot to confirm the previous command.',
-      unsupported: 'Start Policy is not supported by the current LIBERO Board interface.',
+      simOffline: 'The LIBERO sim does not answer. Wait for it to come back.',
+      boardOffline: 'Board not connected. Wait for the Board to connect to the sim.',
     },
     stepperLabel: 'Command progress',
     steps: {
@@ -256,6 +283,41 @@ export const en: Strings = {
     resetEpisode: 'Reset episode',
     resetPending: 'Resetting episode…',
     resetOutcomeUnknown: 'RESET outcome unknown. Check the episode state before retrying.',
+  },
+
+  run: {
+    views: {
+      unknown: 'Unknown',
+      boardLost: 'Board lost · run cancelled',
+      operatorLost: 'Backend lost the sim · run cancelled',
+      boardOffline: 'Board not connected',
+      stopped: 'Stopped · waiting for Ready or a new command',
+      running: 'Running',
+      ready: 'Ready',
+    },
+    ended: { SUCCESS: 'Done', TIMEOUT: 'Timed out', ABORTED: 'Cancelled' },
+  },
+
+  pose: {
+    title: 'Franka end effector',
+    sub: 'End-effector pose reported by the sim; not SO-101 joint angles',
+    cols: { name: 'Quantity', value: 'Value' },
+    x: 'x',
+    y: 'y',
+    z: 'z',
+    gripper: 'Gripper · opening',
+    step: 'Step',
+    simTime: 'Sim time',
+    runId: 'run_id',
+    mm: '{n} mm',
+    seconds: '{n} s',
+    foot: 'End-effector x, y, z in mm, in the sim base frame.',
+  },
+
+  liberoHidden: {
+    viewer: 'The sim is now a Franka arm, with no SO-101 joint angles. The SO-101 3D model is hidden.',
+    joints:
+      'The sim is now a Franka arm, with no SO-101 joint angles. The joint table and joint charts are hidden; see the pose on the Franka end effector card.',
   },
 
   viewer: {
@@ -363,7 +425,7 @@ export const en: Strings = {
   },
 
   camera: {
-    names: { object: 'Object view (top-down)', overview: 'Overview' },
+    names: { agentview: 'Scene (agentview)', wrist: 'Wrist' },
     meta: '{fps} fps · {age} s',
     metaNone: '— fps · —',
     frozen: 'Frozen image',

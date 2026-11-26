@@ -1,31 +1,40 @@
-// Scenario table: drives the mock AND serves as test data for deriveStatus.
+// Scenario table: drives the LIBERO mock AND serves as test data for deriveStatus.
+// Each row of the status table in communication-plan §4 has at least one scenario.
 import type { Level, ProblemKind } from '../state/types';
 import type { SendBlockReason } from '../state/deriveStatus';
-import type { CameraId } from '../types/messages';
+import type { CameraId, LiberoStatus } from '../types/messages';
 
 export const SCENARIO_NAMES = [
   'running',
   'idle',
-  'slow-tracking',
-  'joint-stuck',
-  'usb-lost',
-  'robot-error',
+  'board-offline',
   'stop-ok',
   'stop-no-ack',
+  'board-lost',
+  'heartbeat-timeout',
+  'operator-lost',
+  'run-success',
+  'run-timeout',
+  'run-aborted',
+  'sim-offline',
   'stale',
   'camera-frozen',
   'cmd-nack',
   'web-disconnected',
-  'estop',
   'first-run',
   'empty-history',
-  'no-urdf',
 ] as const;
 
 export type ScenarioName = (typeof SCENARIO_NAMES)[number];
 
 export type FaultKind =
-  'freezeState' | 'usbLost' | 'robotError' | 'stale' | 'cameraFrozen' | 'webDrop' | 'estop';
+  | 'boardLost'
+  | 'heartbeatTimeout'
+  | 'operatorLost'
+  | 'simOffline'
+  | 'stateOld'
+  | 'cameraFrozen'
+  | 'webDrop';
 
 export interface Checkpoint {
   atMs: number;
@@ -37,18 +46,17 @@ export interface Checkpoint {
 }
 
 export interface ScenarioDef {
-  /** Start with a running task (otherwise idle). */
+  /** Start with a running episode (otherwise READY). */
   startRunning: boolean;
   /** Seed task history on connect. */
   history: boolean;
-  /** State lags action by this much (ms). */
-  lagMs: number;
-  /** Extra steady error (deg) on loaded joints while a task runs. */
-  loadBiasDeg?: number;
-  /** Telemetry carries servo velocity (otherwise the UI estimates it). */
-  servoVelocity: boolean;
-  /** Pretend the URDF files are missing (placeholder chain). */
-  noUrdf?: boolean;
+  /** Board session at start (`session_active`). */
+  boardConnected: boolean;
+  /** Episode length limit reported by the sim. */
+  maxSteps: number;
+  /** Step at which a run ends by itself, and how. */
+  endAtStep: number;
+  outcome: Exclude<LiberoStatus, 'READY' | 'RUNNING'>;
   fault?: { kind: FaultKind; atMs: number };
   stopAck: boolean;
   nackCommands: boolean;
@@ -63,12 +71,16 @@ export interface ScenarioDef {
 const base: ScenarioDef = {
   startRunning: true,
   history: true,
-  lagMs: 250,
-  servoVelocity: true,
+  boardConnected: true,
+  maxSteps: 800,
+  endAtStep: 600,
+  outcome: 'SUCCESS',
   stopAck: true,
   nackCommands: false,
   expect: [],
 };
+
+const idle = { ...base, startRunning: false };
 
 export const SCENARIOS: Record<ScenarioName, ScenarioDef> = {
   running: {
@@ -76,59 +88,26 @@ export const SCENARIOS: Record<ScenarioName, ScenarioDef> = {
     expect: [{ atMs: 5000, overall: 'ok', canSend: false, sendBlockReason: 'busy', problems: [] }],
   },
   idle: {
-    ...base,
-    startRunning: false,
+    ...idle,
     expect: [{ atMs: 3000, overall: 'ok', canSend: true, problems: [] }],
   },
-  'slow-tracking': {
-    ...base,
-    lagMs: 600,
-    loadBiasDeg: 14,
-    expect: [{ atMs: 6000, overall: 'attention', canSend: false, problems: ['trackingSlow'] }],
-  },
-  'joint-stuck': {
-    ...base,
-    fault: { kind: 'freezeState', atMs: 1000 },
-    expect: [{ atMs: 7000, overall: 'action', canSend: false, problems: ['trackingStuck'] }],
-  },
-  'usb-lost': {
-    ...base,
-    fault: { kind: 'usbLost', atMs: 3000 },
+  'board-offline': {
+    ...idle,
+    boardConnected: false,
     expect: [
       {
-        atMs: 5000,
+        atMs: 3000,
         overall: 'action',
         canSend: false,
-        sendBlockReason: 'usbLost',
-        problems: ['usbLost'],
-      },
-    ],
-  },
-  'robot-error': {
-    ...base,
-    fault: { kind: 'robotError', atMs: 3000 },
-    expect: [
-      {
-        atMs: 5000,
-        overall: 'action',
-        canSend: false,
-        sendBlockReason: 'robotError',
-        problems: ['robotError'],
+        sendBlockReason: 'boardOffline',
+        problems: ['liberoBoardOffline'],
       },
     ],
   },
   'stop-ok': {
     ...base,
     script: [{ atMs: 2000, action: 'stop' }],
-    expect: [
-      {
-        atMs: 3000,
-        overall: 'waiting',
-        canSend: false,
-        sendBlockReason: 'stopped',
-        problems: ['awaitingReady'],
-      },
-    ],
+    expect: [{ atMs: 3000, overall: 'waiting', canSend: true, problems: ['awaitingReady'] }],
   },
   'stop-no-ack': {
     ...base,
@@ -144,36 +123,89 @@ export const SCENARIOS: Record<ScenarioName, ScenarioDef> = {
       },
     ],
   },
+  'board-lost': {
+    ...base,
+    fault: { kind: 'boardLost', atMs: 3000 },
+    expect: [
+      {
+        atMs: 5000,
+        overall: 'action',
+        canSend: false,
+        sendBlockReason: 'boardOffline',
+        problems: ['liberoBoardLost'],
+      },
+    ],
+  },
+  'heartbeat-timeout': {
+    ...base,
+    fault: { kind: 'heartbeatTimeout', atMs: 3000 },
+    expect: [
+      {
+        atMs: 5000,
+        overall: 'action',
+        canSend: false,
+        sendBlockReason: 'boardOffline',
+        problems: ['liberoBoardLost'],
+      },
+    ],
+  },
+  'operator-lost': {
+    ...base,
+    fault: { kind: 'operatorLost', atMs: 3000 },
+    expect: [{ atMs: 5000, overall: 'action', canSend: true, problems: ['liberoOperatorLost'] }],
+  },
+  'run-success': {
+    ...base,
+    endAtStep: 40,
+    expect: [{ atMs: 5000, overall: 'ok', canSend: true, problems: [] }],
+  },
+  'run-timeout': {
+    ...base,
+    maxSteps: 40,
+    endAtStep: 40,
+    outcome: 'TIMEOUT',
+    expect: [{ atMs: 5000, overall: 'attention', canSend: true, problems: ['liberoRunEnded'] }],
+  },
+  'run-aborted': {
+    ...base,
+    endAtStep: 40,
+    outcome: 'ABORTED',
+    expect: [{ atMs: 5000, overall: 'attention', canSend: true, problems: ['liberoRunEnded'] }],
+  },
+  'sim-offline': {
+    ...base,
+    fault: { kind: 'simOffline', atMs: 3000 },
+    expect: [
+      {
+        atMs: 5000,
+        overall: 'attention',
+        canSend: false,
+        sendBlockReason: 'simOffline',
+        problems: ['liberoSimOffline'],
+      },
+    ],
+  },
   stale: {
     ...base,
-    fault: { kind: 'stale', atMs: 3000 },
+    fault: { kind: 'stateOld', atMs: 3000 },
     expect: [
       {
         atMs: 6000,
         overall: 'attention',
         canSend: false,
         sendBlockReason: 'stale',
-        problems: ['stale'],
+        problems: ['liberoStateOld'],
       },
     ],
   },
   'camera-frozen': {
-    ...base,
-    startRunning: false,
-    lowFpsCamera: 'object',
+    ...idle,
+    lowFpsCamera: 'agentview',
     fault: { kind: 'cameraFrozen', atMs: 2000 },
-    expect: [
-      {
-        atMs: 7000,
-        overall: 'attention',
-        canSend: true,
-        problems: ['cameraFrozen'],
-      },
-    ],
+    expect: [{ atMs: 7000, overall: 'attention', canSend: true, problems: ['cameraFrozen'] }],
   },
   'cmd-nack': {
-    ...base,
-    startRunning: false,
+    ...idle,
     nackCommands: true,
     script: [{ atMs: 2000, action: 'send' }],
     expect: [{ atMs: 3000, overall: 'attention', canSend: true, problems: ['cmdRejected'] }],
@@ -199,36 +231,15 @@ export const SCENARIOS: Record<ScenarioName, ScenarioDef> = {
       { atMs: 9500, overall: 'ok', canSend: false, sendBlockReason: 'busy', problems: [] },
     ],
   },
-  estop: {
-    ...base,
-    fault: { kind: 'estop', atMs: 3000 },
-    expect: [
-      {
-        atMs: 5000,
-        overall: 'estop',
-        canSend: false,
-        sendBlockReason: 'estop',
-        problems: ['estop'],
-      },
-    ],
-  },
   'first-run': {
-    ...base,
-    startRunning: false,
+    ...idle,
     clearStorage: true,
     expect: [{ atMs: 3000, overall: 'ok', canSend: true, problems: [] }],
   },
   'empty-history': {
-    ...base,
-    startRunning: false,
+    ...idle,
     history: false,
-    servoVelocity: false,
     expect: [{ atMs: 3000, overall: 'ok', canSend: true, problems: [] }],
-  },
-  'no-urdf': {
-    ...base,
-    noUrdf: true,
-    expect: [{ atMs: 5000, overall: 'ok', canSend: false, sendBlockReason: 'busy', problems: [] }],
   },
 };
 
