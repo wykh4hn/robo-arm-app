@@ -56,5 +56,6 @@ http://localhost:5173/?scenario=robot-error
 - [`design-system/`](./design-system/) — token, kiểu chữ và các thành phần giao diện.
 - [`docs/tutorial/`](./docs/tutorial/00-bat-dau.md) — hướng dẫn tự xây lại dự án từ đầu, từng bước (10 chương).
 - [`docs/backend-spec.md`](./docs/backend-spec.md) — đặc tả backend (Spec v2).
+- [`docs/run-with-demo-bridge.md`](./docs/run-with-demo-bridge.md) — chạy web với `demo_bridge`: LIBERO tay Franka, AI X-VLA chạy thật trên board (`LINK=bridge scripts/demo.sh`).
 - [`docs/run-on-one-machine.md`](./docs/run-on-one-machine.md) — chạy simulator và web trên một máy bằng một lệnh (`scripts/demo.sh`), mở từ iPad.
 - [`backend/`](./backend/README.md) — backend FastAPI: cách chạy với MuJoCo giả, hoặc với MuJoCo thật của repo Robo-Arm-COS40005 (local mode), test, các quyết định khi code.

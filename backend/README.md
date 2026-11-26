@@ -34,6 +34,16 @@ npm run dev        # http://localhost:5173
 
 Thêm `?scenario=robot-error` vào URL để quay lại robot giả trong trình duyệt của FE.
 
+## Chạy với demo_bridge (cách C: AI X-VLA trên board)
+
+`SO101_SIM_LINK=bridge`: BE nói chuyện với `demo_bridge` (LIBERO, tay Franka, X-VLA trên NPU của board), web vẫn chỉ nói chuyện với BE. Xem [`docs/run-with-demo-bridge.md`](../docs/run-with-demo-bridge.md).
+
+- `app/bridge_link.py`: `BridgeSim` (SimPort) và `BridgeDriver` (BoardPort) dùng chung một `BridgeLink`. Runner, kiểm lệnh, log, STOP, Sẵn sàng và export dùng lại nguyên như với MuJoCo.
+- Web nhận `status.arm = "franka"`, tin `ee` (đầu kẹp mm, 7 khớp độ, kẹp) và `plan` (30 điểm kế hoạch của board). Mỗi chunk của board thành một dòng `timings` (T0–T3) và một tin `pipeline`.
+- Lệnh: `templateId = "libero_scene"`, `params.object = "<suite>/<task_id>"`, `text` phải đúng câu của cảnh. Profile duy nhất: `xvla-npu` (`config/profiles.bridge.json`).
+- REST thêm: `GET /api/v1/scenes`, `GET /api/v1/runs/<số>/video` (lấy MP4 từ bridge).
+- Bridge giả: `tools/mock_bridge.py`. Test: `tests/test_bridge.py`.
+
 ## Chạy với MuJoCo thật (cách B, local mode)
 
 Nhanh nhất: `scripts/demo.sh` làm hết các bước dưới đây bằng một lệnh. Xem [`docs/run-on-one-machine.md`](../docs/run-on-one-machine.md).

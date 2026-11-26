@@ -52,6 +52,9 @@ class Protocol:
     dataset: dict[str, Any] = field(default_factory=dict)
     contract: dict[str, Any] = field(default_factory=dict)
     file_hash: str | None = None
+    # template "libero_scene" (demo_bridge): scene key "suite/task_id" -> its fixed instruction.
+    # Filled from the bridge at run time; the model was trained on each scene's own wording.
+    scenes: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, d: dict[str, Any], file_hash: str | None = None) -> "Protocol":
@@ -127,11 +130,19 @@ def parse_command(raw: Any) -> CommandIn | Rejection:
 def validate_command(cmd: CommandIn, ctx: Context) -> Rejection | None:
     """Steps 2-10. Returns None when the command may run."""
     p = ctx.protocol
-    if cmd.templateId != p.template_id:
+    if p.template_id == "libero_scene" and cmd.templateId == p.template_id:
+        scene = cmd.params.get("object")
+        if not p.scenes:
+            return Rejection("sim_offline", "Chưa đọc được danh sách cảnh từ bridge")
+        if scene not in p.scenes:
+            return Rejection("bad_object", f"Không có cảnh {scene}")
+        if cmd.text != p.scenes[scene]:
+            return Rejection("text_mismatch", "Câu lệnh phải đúng câu của cảnh đã chọn")
+    elif cmd.templateId != p.template_id:
         return Rejection("bad_template", f"Chỉ có task: {p.ui_text}")
-    if cmd.params.get("object") != p.object:
+    elif cmd.params.get("object") != p.object:
         return Rejection("bad_object", f"Chỉ có vật: {p.object}")
-    if cmd.text != p.ui_text:
+    elif cmd.text != p.ui_text:
         return Rejection("text_mismatch", "Câu lệnh không đúng mẫu")
 
     profile = ctx.profiles.get(cmd.profileId) if cmd.profileId else None

@@ -467,3 +467,17 @@ main:focus {
     display: none;
   }
 }
+
+/* Franka readout (demo_bridge): label above value, three across. */
+.app-franka-readout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.app-franka-readout dt {
+  color: var(--muted);
+}
+.app-franka-readout dd {
+  margin: var(--space-1) 0 0;
+}

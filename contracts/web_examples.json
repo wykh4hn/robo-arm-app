@@ -262,6 +262,64 @@
     "ping": {
       "type": "ping",
       "id": "p-81"
+    },
+    "ee": {
+      "type": "ee",
+      "ts": 1795675513716,
+      "step": 31,
+      "maxSteps": 800,
+      "simTimeS": 1.55,
+      "pos": [
+        -201.6,
+        12.4,
+        1164.8
+      ],
+      "gripper": "open",
+      "joints": [
+        0.642,
+        11.637,
+        -0.882,
+        -138.238,
+        0.235,
+        150.132,
+        45.338
+      ]
+    },
+    "plan": {
+      "type": "plan",
+      "ts": 1795675513533,
+      "chunk": 2,
+      "step": 30,
+      "points": [
+        [
+          -202.0,
+          -2.3,
+          1187.8
+        ],
+        [
+          -202.4,
+          -2.1,
+          1188.6
+        ]
+      ]
+    },
+    "status_franka": {
+      "type": "status",
+      "ts": 1730450000200,
+      "link": {
+        "web": "connected",
+        "usb": "plugged",
+        "latencyMs": 3,
+        "driver": "reference"
+      },
+      "robot": {
+        "state": "moving"
+      },
+      "task": {
+        "id": 13,
+        "state": "running"
+      },
+      "arm": "franka"
     }
   },
   "nack_codes": [

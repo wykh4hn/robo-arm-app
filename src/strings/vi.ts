@@ -2,6 +2,7 @@ export const vi = {
   appTitle: 'SO-101 Monitor',
   skipToMain: 'Bỏ qua tới nội dung chính',
   projectSub: 'Tay robot SO-101 · gắp vật bỏ vào hộp',
+  projectSubFranka: 'LIBERO · tay Franka · AI X-VLA trên board VENTUNO Q',
   lang: { label: 'Ngôn ngữ', vi: 'VI', en: 'EN' },
 
   stop: {
@@ -180,6 +181,10 @@ export const vi = {
     profile: 'Profile AI',
     profilePick: '— Chọn profile —',
     needProfile: 'Chọn profile AI trước khi gửi.',
+    scene: 'Cảnh LIBERO',
+    sceneRecommended: 'khuyên dùng',
+    sceneHelp:
+      'Mỗi cảnh có câu lệnh cố định: X-VLA được huấn luyện theo đúng câu đó. Hai cảnh "khuyên dùng" đã chạy thành công trên board và khởi động nhanh nhất.',
     profileBlocked: 'bị chặn',
     profileNotOnBoard: 'Chưa kiểm trên board',
     profileBlockedList: '{n} profile bị chặn: xem lý do',
@@ -220,6 +225,29 @@ export const vi = {
       'Không nhận được ACK sau 2 s. Lệnh không được gửi lại tự động; kiểm tra robot trước khi gửi lại.',
   },
 
+  franka: {
+    title: 'Tay Franka · LIBERO',
+    sub: 'Đo trong mô phỏng; AI X-VLA chạy trên board',
+    empty: 'Chưa có dữ liệu. Chọn một cảnh rồi bấm Gửi lệnh.',
+    step: 'Bước',
+    gripper: 'Kẹp',
+    gripperState: { open: 'mở', closed: 'đóng' },
+    ee: 'Đầu kẹp',
+    eeValue: 'x {x} · y {y} · z {z} mm',
+    jointsLabel: '7 khớp của tay Franka, đo được',
+    joint: 'Khớp',
+    jointName: 'Khớp {n}',
+    measured: 'Đo được',
+    chartTitle: 'Vị trí đầu kẹp theo thời gian',
+    chartHelp:
+      'Nét liền: vị trí đo. Nét đứt: 30 điểm board vừa lên kế hoạch. Tay chạy 30 bước (1,5 s) rồi đứng 0,6–1 s chờ board tính tiếp: đó là "board đang tính", không phải kẹt.',
+    axis: 'Trục {axis}',
+    planShort: 'kế hoạch',
+    chartAria: 'Vị trí đầu kẹp trục {axis}, đo được và kế hoạch',
+    keyMeasured: 'Đo được (nét liền)',
+    keyPlanned: 'Board lên kế hoạch (nét đứt)',
+  },
+
   history: {
     title: 'Lịch sử task',
     sub: 'Mới nhất ở trên',
@@ -227,6 +255,8 @@ export const vi = {
     empty1: 'Chưa có task nào trong phiên này.',
     empty2: 'Chọn vật thể ở thẻ Ra lệnh rồi bấm Gửi lệnh.',
     export: 'Tải dữ liệu run',
+    video: 'Xem video',
+    videoLabel: 'Xem video run #{id} (hai camera, do bridge ghi)',
     exportLabel: 'Tải dữ liệu run #{id} (zip: manifest, mẫu, sự kiện)',
   },
 
@@ -339,6 +369,7 @@ export const vi = {
 
   camera: {
     names: { overhead: 'Camera trên cao', wrist: 'Camera cổ tay' },
+    namesFranka: { overhead: 'Camera phía trước (agentview)', wrist: 'Camera cổ tay' },
     meta: '{fps} fps · {age} s',
     metaNone: '— fps · —',
     frozen: 'Hình bị đứng',

@@ -43,6 +43,12 @@ export function runExportUrl(runId: number): string | null {
   return base === null ? null : `${base}/api/v1/runs/${runId}/export`;
 }
 
+/** The MP4 demo_bridge recorded for a run (both cameras), or null on the mock. */
+export function runVideoUrl(runId: number): string | null {
+  const base = apiBase();
+  return base === null ? null : `${base}/api/v1/runs/${runId}/video`;
+}
+
 /**
  * `?scenario=` forces the mock. VITE_BACKEND_URL wins when set (Vite dev on 5173).
  * Vite dev without it keeps the mock, as before. A build served by the BE uses the same host.

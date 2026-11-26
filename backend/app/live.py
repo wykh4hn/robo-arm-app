@@ -74,6 +74,7 @@ class Hub:
         self.hello: Callable[[], list[dict[str, Any]]] = lambda: []
         self.on_message: Handler | None = None
         self.on_stop: Callable[[str], None] | None = None
+        self.pipeline_steps: dict[str, float] = {}  # latest board chunk (demo_bridge)
         self._ping_seq = 0
         self._tasks: list[asyncio.Task] = []
         self._jobs: set[asyncio.Task] = set()
@@ -123,8 +124,8 @@ class Hub:
     def _tick_status(self) -> None:
         # R11: the heartbeat that lets the web tell "quiet" from "dead".
         self.broadcast_status()
-        # T0-T3 do not reach the BE while a run is live (D18): no steps, never zeros (R15).
-        self.broadcast(PipelineOut(ts=now_ms(), steps={}).wire())
+        # T0-T3 reach the BE live only through demo_bridge; otherwise no steps, never zeros (R15).
+        self.broadcast(PipelineOut(ts=now_ms(), steps=self.pipeline_steps).wire())
 
     def _tick_ping(self) -> None:
         for c in self.clients:

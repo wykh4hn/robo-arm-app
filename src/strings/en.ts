@@ -4,6 +4,7 @@ export const en: Strings = {
   appTitle: 'SO-101 Monitor',
   skipToMain: 'Skip to main content',
   projectSub: 'SO-101 arm · pick an object, put it in the box',
+  projectSubFranka: 'LIBERO · Franka arm · X-VLA on the VENTUNO Q board',
   lang: { label: 'Language', vi: 'VI', en: 'EN' },
 
   stop: {
@@ -183,6 +184,10 @@ export const en: Strings = {
     profile: 'AI profile',
     profilePick: '— Choose a profile —',
     needProfile: 'Choose an AI profile before sending.',
+    scene: 'LIBERO scene',
+    sceneRecommended: 'recommended',
+    sceneHelp:
+      'Each scene has a fixed instruction: X-VLA was trained on that exact wording. The two "recommended" scenes have run successfully on the board and start fastest.',
     profileBlocked: 'blocked',
     profileNotOnBoard: 'Not checked on the board',
     profileBlockedList: '{n} blocked profiles: see why',
@@ -223,6 +228,29 @@ export const en: Strings = {
       'No ACK after 2 s. The command is not resent automatically; check the robot before sending again.',
   },
 
+  franka: {
+    title: 'Franka arm · LIBERO',
+    sub: 'Measured in simulation; X-VLA runs on the board',
+    empty: 'No data yet. Choose a scene, then press Send command.',
+    step: 'Step',
+    gripper: 'Gripper',
+    gripperState: { open: 'open', closed: 'closed' },
+    ee: 'End effector',
+    eeValue: 'x {x} · y {y} · z {z} mm',
+    jointsLabel: 'The 7 Franka joints, measured',
+    joint: 'Joint',
+    jointName: 'Joint {n}',
+    measured: 'Measured',
+    chartTitle: 'End-effector position over time',
+    chartHelp:
+      'Solid: measured. Dashed: the 30 points the board just planned. The arm moves 30 steps (1.5 s), then holds 0.6–1 s while the board computes the next ones: "board computing", not a stall.',
+    axis: '{axis} axis',
+    planShort: 'plan',
+    chartAria: 'End-effector {axis} position, measured and planned',
+    keyMeasured: 'Measured (solid)',
+    keyPlanned: 'Planned by the board (dashed)',
+  },
+
   history: {
     title: 'Task history',
     sub: 'Newest first',
@@ -230,6 +258,8 @@ export const en: Strings = {
     empty1: 'No tasks in this session yet.',
     empty2: 'Choose an object in the Command card, then press Send command.',
     export: 'Download run data',
+    video: 'Watch video',
+    videoLabel: 'Watch run #{id} video (both cameras, recorded by the bridge)',
     exportLabel: 'Download run #{id} data (zip: manifest, samples, events)',
   },
 
@@ -342,6 +372,7 @@ export const en: Strings = {
 
   camera: {
     names: { overhead: 'Overhead camera', wrist: 'Wrist camera' },
+    namesFranka: { overhead: 'Front camera (agentview)', wrist: 'Wrist camera' },
     meta: '{fps} fps · {age} s',
     metaNone: '— fps · —',
     frozen: 'Frozen image',

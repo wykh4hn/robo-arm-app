@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { config, type ObjectId, type TemplateId } from '../config';
 import { useProfiles } from '../config/profiles';
+import { useScenes } from '../config/scenes';
 import type { DerivedStatus } from '../state/deriveStatus';
 import { useStore } from '../state/store';
 import type { CommandRecord } from '../state/types';
@@ -20,10 +21,14 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
   const driver = useStore((s) => s.driver);
   const chosen = profiles.find((p) => p.id === profileId);
   const blockedProfiles = profiles.filter((p) => !p.enabled);
+  const franka = useStore((s) => s.arm) === 'franka';
+  const scenes = useScenes(franka);
+  const [sceneKey, setSceneKey] = useState('');
+  const scene = scenes.find((x) => x.key === sceneKey) ?? scenes[0];
 
   const template = config.templates.find((x) => x.id === templateId) ?? config.templates[0]!;
-  const params = { object };
-  const preview = template.build(params);
+  const params = franka && scene ? { object: scene.key } : { object };
+  const preview = franka ? (scene?.instruction ?? '') : template.build(params);
   const reason = derived.sendBlockReason
     ? fmt(t.command.blocked[derived.sendBlockReason], { task: derived.task.id ?? '' })
     : !profileId
@@ -35,7 +40,8 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!canSend) return;
-    sendCommand(template.id, params, profileId);
+    if (franka && scene) sendCommand('libero_scene', params, profileId, scene.instruction);
+    else sendCommand(template.id, params, profileId);
   };
 
   return (
@@ -46,34 +52,63 @@ export function CommandPanel({ derived }: { derived: DerivedStatus }) {
         </h2>
       </div>
       <form className="rb-card__body app-stack-4" onSubmit={onSubmit}>
-        <label className="rb-field">
-          <span className="rb-field__label">{t.command.template}</span>
-          <select
-            className="rb-select"
-            value={templateId}
-            onChange={(e) => setTemplateId(e.target.value as TemplateId)}
-          >
-            {config.templates.map((x) => (
-              <option key={x.id} value={x.id}>
-                {t.command.templates[x.id]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="rb-field">
-          <span className="rb-field__label">{t.command.object}</span>
-          <select
-            className="rb-select"
-            value={object}
-            onChange={(e) => setObject(e.target.value as ObjectId)}
-          >
-            {config.objects.map((o) => (
-              <option key={o.id} value={o.id}>
-                {t.command.objects[o.id]}
-              </option>
-            ))}
-          </select>
-        </label>
+        {franka && (
+          <label className="rb-field">
+            <span className="rb-field__label">{t.command.scene}</span>
+            <select
+              className="rb-select"
+              value={scene?.key ?? ''}
+              onChange={(e) => setSceneKey(e.target.value)}
+              data-testid="scene-select"
+            >
+              {[...new Set(scenes.map((x) => x.suiteLabel))].map((label) => (
+                <optgroup key={label} label={label}>
+                  {scenes
+                    .filter((x) => x.suiteLabel === label)
+                    .map((x) => (
+                      <option key={x.key} value={x.key}>
+                        {label} {x.taskId}
+                        {x.recommended ? ` · ${t.command.sceneRecommended}` : ''}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+            <span className="rb-help app-m0">{t.command.sceneHelp}</span>
+          </label>
+        )}
+        {!franka && (
+          <label className="rb-field">
+            <span className="rb-field__label">{t.command.template}</span>
+            <select
+              className="rb-select"
+              value={templateId}
+              onChange={(e) => setTemplateId(e.target.value as TemplateId)}
+            >
+              {config.templates.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {t.command.templates[x.id]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {!franka && (
+          <label className="rb-field">
+            <span className="rb-field__label">{t.command.object}</span>
+            <select
+              className="rb-select"
+              value={object}
+              onChange={(e) => setObject(e.target.value as ObjectId)}
+            >
+              {config.objects.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {t.command.objects[o.id]}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="rb-field">
           <span className="rb-field__label">{t.command.profile}</span>
           <select

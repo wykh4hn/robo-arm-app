@@ -85,6 +85,7 @@ class SystemState:
     run: ActiveRun | None = None
     last_task: TaskInfoOut | None = None  # most recent run shown to the web
     driver: str | None = None  # SO101_BOARD_LINK, mapped for the web ("real" -> "board")
+    arm: str = "so101"  # "franka" with demo_bridge
 
     # --- derived -------------------------------------------------------------
 
@@ -123,6 +124,7 @@ class SystemState:
             error = RobotErrorOut(code=self.robot_error[0], message=self.robot_error[1])
         return StatusOut(
             ts=ts,
+            arm=self.arm,  # type: ignore[arg-type]
             link=LinkOut(usb=self.usb, latencyMs=latency_ms, driver=self.driver),  # type: ignore[arg-type]
             robot=RobotOut(state=self.robot, error=error),  # type: ignore[arg-type]
             task=task,

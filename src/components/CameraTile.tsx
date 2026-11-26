@@ -18,7 +18,8 @@ export function CameraTile({ camera, stale, large = false }: CameraTileProps) {
   const cam = useStore((s) => s.cameras[camera.id]);
   const now = useStore((s) => s.now);
   const swapLarge = useStore((s) => s.swapLarge);
-  const name = t.camera.names[camera.id];
+  const franka = useStore((s) => s.arm) === 'franka';
+  const name = (franka ? t.camera.namesFranka : t.camera.names)[camera.id];
   const url = camera.url || cameraStreamUrl(camera.id);
 
   const ageMs = cam ? Math.max(0, now - cam.lastFrameChangeAt) : null;

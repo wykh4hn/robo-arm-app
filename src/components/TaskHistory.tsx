@@ -2,7 +2,7 @@ import { TASK_STATUS } from '../config/levels';
 import { useStore } from '../state/store';
 import { sortTasks } from '../state/tasks';
 import { fmt, useT } from '../strings';
-import { runExportUrl } from '../transport';
+import { runExportUrl, runVideoUrl } from '../transport';
 import { commandLabel } from '../utils/commandText';
 import { formatClock, formatDuration } from '../utils/time';
 import { Icon } from './Icon';
@@ -13,6 +13,7 @@ export function TaskHistory() {
   const tasks = useStore((s) => s.tasks);
   const now = useStore((s) => s.now);
   const sorted = sortTasks(tasks);
+  const franka = useStore((s) => s.arm) === 'franka';
 
   return (
     <section className="rb-card" aria-labelledby="hist-title">
@@ -72,6 +73,18 @@ export function TaskHistory() {
                     >
                       <Icon name="download" />
                       {t.history.export}
+                    </a>
+                  )}
+                  {!running && franka && runVideoUrl(task.id) && (
+                    <a
+                      className="rb-btn rb-btn--quiet app-self-start"
+                      href={runVideoUrl(task.id) ?? undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={fmt(t.history.videoLabel, { id: task.id })}
+                    >
+                      <Icon name="camera" />
+                      {t.history.video}
                     </a>
                   )}
                 </li>

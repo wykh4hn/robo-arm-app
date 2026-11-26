@@ -39,9 +39,13 @@ export interface RobotError {
   message?: string;
 }
 
+/** "so101": the 6-joint SO-101. "franka": LIBERO's Franka Panda through demo_bridge. */
+export type Arm = 'so101' | 'franka';
+
 export interface StatusMsg {
   type: 'status';
   ts: number;
+  arm?: Arm;
   link: {
     web: WebLink;
     usb: UsbLink;
@@ -124,6 +128,29 @@ export interface CameraMetaMsg {
   frameTs: number;
 }
 
+/** demo_bridge: the Franka arm, measured (replaces `telemetry` there). */
+export interface EeMsg {
+  type: 'ee';
+  ts: number;
+  step: number;
+  maxSteps?: number;
+  simTimeS: number;
+  /** End-effector x, y, z in mm. */
+  pos?: [number, number, number];
+  gripper?: 'open' | 'closed';
+  /** The 7 Franka joints in degrees. */
+  joints: number[];
+}
+
+/** The 30 end-effector targets (mm) the board planned, for steps `step + 1` onwards. */
+export interface PlanMsg {
+  type: 'plan';
+  ts: number;
+  chunk: number;
+  step: number;
+  points: [number, number, number][];
+}
+
 export interface PipelineMsg {
   type: 'pipeline';
   ts: number;
@@ -148,6 +175,8 @@ export type IncomingMessage =
   | StopAckMsg
   | CameraMetaMsg
   | PipelineMsg
+  | EeMsg
+  | PlanMsg
   | ConnectionMsg;
 
 export type OutgoingMessage =

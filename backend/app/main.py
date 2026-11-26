@@ -70,6 +70,11 @@ def _versions() -> dict[str, Any]:
 
 def build_ports(settings: Settings) -> tuple[SimPort, BoardPort]:
     """Fakes run in-process; MuJoCo is real with SO101_SIM_LINK=real; the board link is Phase 3."""
+    if settings.sim_link == "bridge":
+        from .bridge_link import BridgeDriver, BridgeLink, BridgeSim
+
+        link = BridgeLink(settings)
+        return BridgeSim(link), BridgeDriver(link)
     if settings.sim_link == "mock":
         from tools.mock_sim import FakeSim
 
@@ -108,7 +113,7 @@ def create_app(
     hub = Hub(settings, state)
     runner = Runner(
         settings, state, storage, hub, sim, board,
-        load_profiles(settings.profiles_file), load_protocol(settings.protocol_file),
+        load_profiles(settings.link_profiles_file), load_protocol(settings.link_protocol_file),
     )  # fmt: skip
     camera = CameraProxy(settings, sim, hub)
     core = Core(settings, state, storage, hub, runner, camera)

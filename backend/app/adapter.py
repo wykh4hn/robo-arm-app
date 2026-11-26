@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 
-from .models_web import JointSampleOut, TelemetryOut
+from .models_web import EeOut, JointSampleOut, PlanOut, TelemetryOut
 from .ports import SimState
 from .settings import JOINT_ORDER
 
@@ -57,3 +57,66 @@ def to_telemetry(state: SimState, ts_ms: int, gripper_range: tuple[float, float]
         for i, name in enumerate(JOINT_ORDER)
     }
     return TelemetryOut(ts=ts_ms, joints=joints)
+
+
+# --- demo_bridge (Franka Panda) ------------------------------------------------
+
+
+def _mm(v: object) -> list[float] | None:
+    if isinstance(v, list) and len(v) == 3 and all(isinstance(x, (int, float)) and math.isfinite(x) for x in v):
+        return [round(float(x) * 1000.0, 2) for x in v]
+    return None
+
+
+def to_ee(state: SimState, ts_ms: int) -> EeOut:
+    """One bridge state -> `ee`: 7 joints rad -> deg, end-effector m -> mm."""
+    ee = state.ee or {}
+    gripper = ee.get("gripper")
+    return EeOut(
+        ts=ts_ms,
+        step=int(ee.get("step") or 0),
+        maxSteps=ee.get("max_steps"),
+        simTimeS=round(state.sim_time, 3),
+        pos=_mm(ee.get("pos_m")),
+        gripper=gripper if gripper in ("open", "closed") else None,
+        joints=[round(rad_to_deg(v), 3) for v in state.joint_positions],
+    )
+
+
+def to_plan(chunk: dict, ts_ms: int) -> PlanOut | None:
+    points = [p for p in (_mm(x) for x in chunk.get("planned_eef_pos_m") or []) if p is not None]
+    if not points:
+        return None
+    return PlanOut(ts=ts_ms, chunk=int(chunk.get("chunk") or 0), step=int(chunk.get("step") or 0), points=points)
+
+
+def chunk_timing(chunk: dict) -> dict:
+    """A bridge `chunk` -> one `timings` row (seconds on the board clock, from 0).
+
+    T0 observation in, T1 preprocessed (pre_ms), T2 model done (+ vision, language, projector,
+    action generator), T3 = total_ms. The Wi-Fi part of the round trip goes to `mcu_gateway_ms`.
+    """
+    b = chunk.get("board") or {}
+
+    def ms(key: str) -> float:
+        v = b.get(key)
+        return float(v) if isinstance(v, (int, float)) and math.isfinite(v) else 0.0
+
+    pre = ms("pre_ms")
+    model = pre + ms("vision_2v_ms") + ms("bart_ms") + ms("proj_ms") + ms("core10_ms")
+    total = ms("total_ms") or model
+    rtt = chunk.get("rtt_ms")
+    return {
+        "chunk_id": int(chunk.get("chunk") or 0),
+        "observation_id": f"step-{chunk.get('step')}",
+        "t0": 0.0,
+        "t1": round(pre / 1000.0, 6),
+        "t2": round(model / 1000.0, 6),
+        "t3": round(total / 1000.0, 6),
+        "warmup": 1 if int(chunk.get("chunk") or 0) == 1 else 0,
+        "horizon": 30,
+        "obs_fetch_ms": None,
+        "mcu_gateway_ms": round(float(rtt) - total, 1) if isinstance(rtt, (int, float)) and rtt >= total else None,
+        "sim_rtt_ms": None,
+        "queue_ms": None,
+    }
