@@ -47,6 +47,44 @@ export interface StatusMsg {
   estop?: boolean;
 }
 
+export type LiberoStatus = 'READY' | 'RUNNING' | 'SUCCESS' | 'TIMEOUT' | 'ABORTED';
+
+export interface LiberoConnectionHealth {
+  simulator_connection: 'connected' | 'disconnected' | 'unknown';
+  state_freshness: 'fresh' | 'stale' | 'unavailable';
+  session_status: 'active' | 'inactive' | 'unknown';
+  last_poll_attempt_age_s: number | null;
+  last_poll_success_age_s: number | null;
+  stale_after_s: number;
+  poll_error: string | null;
+  heartbeat_status: 'not_started' | 'starting' | 'healthy' | 'degraded' | 'stopped';
+  last_heartbeat_success_age_s: number | null;
+  heartbeat_error: string | null;
+}
+
+export interface LiberoState {
+  contract: 'franka_ee_v1';
+  run_id: string;
+  status: LiberoStatus;
+  hold_latched: boolean;
+  session_active: boolean;
+  step: number;
+  max_steps: number;
+  sim_time: number;
+  end_reason: string | null;
+  hold_reason: string | null;
+  task: Record<string, unknown>;
+  pose: Record<string, unknown>;
+  metrics: Record<string, unknown>;
+}
+
+export interface LiberoStateMsg {
+  type: 'libero_state';
+  ts: number;
+  state: LiberoState;
+  connection_health?: LiberoConnectionHealth;
+}
+
 export interface TaskInfo {
   id: number;
   /** Exact English string sent to the AI model. */
@@ -133,6 +171,7 @@ export interface ConnectionMsg {
 export type IncomingMessage =
   | TelemetryMsg
   | StatusMsg
+  | LiberoStateMsg
   | TaskEventMsg
   | TaskListMsg
   | AckMsg

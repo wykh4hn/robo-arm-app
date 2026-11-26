@@ -1,7 +1,9 @@
 import type { AngleUnit, ViewPreset } from '../config';
 import type {
   CameraId,
+  LiberoConnectionHealth,
   JointName,
+  LiberoState,
   PipelineMsg,
   RobotError,
   RobotState,
@@ -62,7 +64,14 @@ export interface CommandRecord {
   endedAt?: number;
 }
 
-export type StopPhase = 'idle' | 'stopping' | 'stopped' | 'unconfirmed';
+export type StopPhase = 'idle' | 'stopping' | 'stopped' | 'unconfirmed' | 'rejected';
+
+export interface LiberoResetState {
+  id: string | null;
+  phase: 'idle' | 'pending' | 'done' | 'rejected' | 'outcome_unknown';
+  previousRunId: string | null;
+  reason: string | null;
+}
 
 export interface CameraRuntime {
   fps: number;
@@ -90,6 +99,7 @@ export type ProblemKind =
   | 'usbUnknown'
   | 'robotError'
   | 'stopUnconfirmed'
+  | 'stopRejected'
   | 'stale'
   | 'trackingStuck'
   | 'trackingSlow'
@@ -131,12 +141,17 @@ export interface MonitorState {
   task: { id: number | null; state: TaskState };
   tasks: TaskInfo[];
   commands: CommandRecord[];
-  stop: { phase: StopPhase; id: string | null; requestedAt: number | null };
+  stop: { phase: StopPhase; id: string | null; requestedAt: number | null; reason?: string };
+  liberoReset: LiberoResetState;
   /** Set by a confirmed stop; cleared only by an acknowledged "Ready". */
   awaitingReady: boolean;
   samples: Sample[];
   cameras: Partial<Record<CameraId, CameraRuntime>>;
   pipeline: PipelineMsg | null;
+  /** Native Franka/LIBERO state, separate from SO-101 telemetry. */
+  libero: LiberoState | null;
+  /** Backend poll, simulator availability, session, and watchdog health. */
+  liberoConnectionHealth: LiberoConnectionHealth | null;
   tracking: TrackingState;
   events: LogEvent[];
 }

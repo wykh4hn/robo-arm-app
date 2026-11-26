@@ -112,3 +112,26 @@ def parse_board_log_line(line: str) -> BoardRecord | None:
     if kind == "resource":
         return BoardRecord("resource", {k: obj.get(k) for k in RESOURCE_FIELDS})
     return BoardRecord("event", obj)
+
+
+def libero_episode_summary(state: dict[str, Any]) -> dict[str, Any]:
+    """Normalize documented LIBERO terminal fields without inventing robot metrics."""
+    if not isinstance(state, dict) or state.get("contract") != "franka_ee_v1":
+        raise ValueError("expected franka_ee_v1 state")
+    status = state.get("status")
+    if status not in {"READY", "RUNNING", "SUCCESS", "TIMEOUT", "ABORTED"}:
+        raise ValueError("invalid LIBERO status")
+    task = state.get("task") if isinstance(state.get("task"), dict) else {}
+    metrics = state.get("metrics") if isinstance(state.get("metrics"), dict) else {}
+    return {
+        "run_id": state.get("run_id"),
+        "status": status,
+        "outcome": {"SUCCESS": "success", "TIMEOUT": "timeout", "ABORTED": "aborted"}.get(status),
+        "end_reason": state.get("end_reason"),
+        "step": state.get("step"),
+        "max_steps": state.get("max_steps"),
+        "sim_time": state.get("sim_time"),
+        "suite": task.get("suite"),
+        "task_id": task.get("task_id"),
+        "metrics": metrics,
+    }

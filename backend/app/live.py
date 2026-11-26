@@ -5,13 +5,13 @@ A slow client loses old telemetry, never `task`, `status`, `ack`, `nack` or
 """
 
 from __future__ import annotations
+from urllib.parse import urlsplit
 
 import asyncio
 import json
 import logging
 import time
 from collections import deque
-from urllib.parse import urlsplit
 from typing import Any, Awaitable, Callable
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -24,6 +24,7 @@ from .storage import now_ms
 log = logging.getLogger("so101.live")
 
 Handler = Callable[[dict[str, Any]], Awaitable[dict[str, Any] | None]]
+StopHandler = Callable[[str], Awaitable[None] | None]
 
 
 class Client:
@@ -40,7 +41,10 @@ class Client:
         self.pings: dict[str, float] = {}
 
     def push(self, msg: dict[str, Any]) -> None:
-        self.push_text(json.dumps(msg, ensure_ascii=False), msg.get("type") in DROPPABLE)
+        self.push_text(
+            json.dumps(msg, ensure_ascii=False),
+            msg.get("type") in DROPPABLE or msg.get("type") == "libero_state",
+        )
 
     def push_text(self, text: str, droppable: bool) -> None:
         if self.closed:
@@ -73,7 +77,9 @@ class Hub:
         # Set by main: what a new connection receives first, and who handles messages.
         self.hello: Callable[[], list[dict[str, Any]]] = lambda: []
         self.on_message: Handler | None = None
-        self.on_stop: Callable[[str], None] | None = None
+        self.on_stop: StopHandler | None = None
+        # Cached native state is sent on connect and with periodic status ticks.
+        self.snapshot: Callable[[], dict[str, Any] | None] | None = None
         self._ping_seq = 0
         self._tasks: list[asyncio.Task] = []
         self._jobs: set[asyncio.Task] = set()
@@ -84,7 +90,7 @@ class Hub:
         if not self.clients:
             return
         text = json.dumps(msg, ensure_ascii=False)
-        droppable = msg.get("type") in DROPPABLE
+        droppable = msg.get("type") in DROPPABLE or msg.get("type") == "libero_state"
         for c in self.clients:
             c.push_text(text, droppable)
 
@@ -125,6 +131,9 @@ class Hub:
         self.broadcast_status()
         # T0-T3 do not reach the BE while a run is live (D18): no steps, never zeros (R15).
         self.broadcast(PipelineOut(ts=now_ms(), steps={}).wire())
+        snapshot = self.snapshot() if self.snapshot is not None else None
+        if snapshot is not None:
+            self.broadcast(snapshot)
 
     def _tick_ping(self) -> None:
         for c in self.clients:
@@ -138,22 +147,32 @@ class Hub:
     # --- one connection ------------------------------------------------------
 
     def origin_allowed(self, origin: str | None, host: str | None = None) -> bool:
-        """A foreign page in the same browser must not be able to press Start or Stop.
-
-        Allowed: no Origin (scripts, spec 5.1); the page the BE served itself, whatever
-        address it was opened with (localhost, 127.0.0.1, the laptop's LAN IP); and the
-        origins in SO101_ALLOWED_ORIGINS (Vite on 5173).
-        """
-        if origin is None or origin.rstrip("/") in self.settings.origins:
+        """Reject foreign browser origins; allow configured origins and same-host origin."""
+        if origin is None:
             return True
+
+        normalized = origin.rstrip("/")
+
+        if normalized in self.settings.origins:
+            return True
+
+        if not host:
+            return False
+
         try:
-            netloc = urlsplit(origin).netloc
+            parsed = urlsplit(normalized)
+            return (
+                parsed.scheme in ("http", "https")
+                and parsed.netloc == host
+            )
         except ValueError:
             return False
-        return bool(host) and netloc.lower() == host.lower()
 
     async def serve(self, ws: WebSocket) -> None:
-        if not self.origin_allowed(ws.headers.get("origin"), ws.headers.get("host")):
+        if not self.origin_allowed(
+            ws.headers.get("origin"),
+            ws.headers.get("host"),
+            ):
             await ws.close(code=1008)
             return
         await ws.accept()
@@ -162,6 +181,9 @@ class Hub:
         for msg in self.hello():
             client.push(msg)
         client.push(self.status_for(client))
+        snapshot = self.snapshot() if self.snapshot is not None else None
+        if snapshot is not None:
+            client.push(snapshot)
         self.clients.add(client)
         writer = asyncio.create_task(self._writer(client))
         try:
@@ -209,12 +231,20 @@ class Hub:
             elif kind == "stop":
                 # Rule 3: Stop is handled inline. No queue, no DB wait, nothing in front of it.
                 if isinstance(raw.get("id"), str) and raw["id"] and self.on_stop is not None:
-                    self.on_stop(raw["id"])
+                    job = asyncio.create_task(self._invoke_stop(raw["id"]))
+                    self._jobs.add(job)
+                    job.add_done_callback(self._jobs.discard)
             elif self.on_message is not None:
                 # Its own task, so a slow disk during Start cannot delay a Stop behind it.
                 job = asyncio.create_task(self._handle(client, raw))
                 self._jobs.add(job)
                 job.add_done_callback(self._jobs.discard)
+
+    async def _invoke_stop(self, stop_id: str) -> None:
+        assert self.on_stop is not None
+        result = self.on_stop(stop_id)
+        if result is not None:
+            await result
 
     async def _handle(self, client: Client, raw: dict[str, Any]) -> None:
         assert self.on_message is not None

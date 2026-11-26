@@ -18,6 +18,7 @@ from .models_web import (
     TaskInfoOut,
 )
 from .ports import SimState
+from .libero_state import LiberoState
 
 REASON_TEXT = {
     "no_grasp": "không gắp được vật",
@@ -64,7 +65,8 @@ class ActiveRun:
 @dataclass
 class SystemState:
     sim_ok: bool | None = None  # None until the first poll
-    sim: SimState | None = None  # last good read
+    sim: SimState | None = None  # last good legacy SO-101 read
+    libero: LiberoState | None = None  # native franka_ee_v1 state; never coerce to SO-101 joints
     last_sample_mono: float | None = None
     board_connected: bool | None = None
     board_ever_connected: bool = False

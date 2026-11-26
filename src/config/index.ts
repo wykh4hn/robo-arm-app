@@ -85,12 +85,29 @@ export function objectCommandName(id: string | undefined): string {
   return (id && commandNames[id as ObjectId]) || '';
 }
 
+const backendWsUrl = import.meta.env.VITE_BACKEND_URL ?? '';
+
+function backendHttpOrigin(wsUrl: string): string {
+  const url = new URL(wsUrl);
+  if (url.protocol === 'ws:') url.protocol = 'http:';
+  else if (url.protocol === 'wss:') url.protocol = 'https:';
+  else throw new Error('VITE_BACKEND_URL must use ws:// or wss://');
+  return url.origin;
+}
+
+const cameraOrigin = backendWsUrl ? backendHttpOrigin(backendWsUrl) : '';
+const cameraUrlsEnabled = Boolean(backendWsUrl) || import.meta.env.PROD;
+const cameraUrl = (path: string): string =>
+  cameraUrlsEnabled ? `${cameraOrigin}${path}` : '';
+
 export const config = {
   projectName: 'SuperUltimatePowerfulPromaxVIPAura5000',
-  backendUrl: import.meta.env.VITE_BACKEND_URL ?? '',
+  backendUrl: backendWsUrl,
 
   staleAfterMs: 1500,
-  ackTimeoutMs: 2000,
+  ackTimeoutMs: 5_000,
+  stopAckTimeoutMs: 4_000,
+  liberoResetTimeoutMs: 32_000,
   fpsWarn: 8,
   cameraFrozenAfterMs: 3000,
   trackingWindowMs: 1000,
@@ -139,8 +156,8 @@ export const config = {
   } as Record<'position' | 'velocity' | 'error', [number, number]>,
 
   cameras: [
-    { id: 'object', url: '' },
-    { id: 'overview', url: '' },
+    { id: 'object', url: cameraUrl('/api/camera/overhead/stream') },
+    { id: 'overview', url: cameraUrl('/api/camera/wrist/stream') },
   ] as CameraDef[],
 
   objects,

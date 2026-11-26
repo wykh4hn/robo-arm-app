@@ -19,6 +19,30 @@ main:focus {
   outline: none;
 }
 
+.rb-libero-episode {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.rb-libero-episode[data-stale='true'] {
+  border-color: var(--warn-line);
+}
+.rb-libero-episode__health {
+  color: var(--warn-text);
+}
+.rb-libero-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.rb-libero-progress progress {
+  flex: 1;
+  min-width: 0;
+}
+
 /* utilities */
 .app-m0 {
   margin: 0;

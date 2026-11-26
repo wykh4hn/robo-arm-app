@@ -11,13 +11,16 @@ export const en: Strings = {
     stopping: 'Stopping…',
     stopped: 'Stopped',
     unconfirmed: 'Stop not confirmed',
+    rejected: 'STOP rejected',
     note: 'Use the physical emergency stop on the robot.',
     ready: 'Ready',
+    readyFailed: 'RESUME was not confirmed',
     announce: {
       idle: '',
       stopping: 'Stop sent, waiting for confirmation.',
       stopped: 'Robot stopped. Press Ready before sending a new command.',
       unconfirmed: 'Stop not confirmed. Use the physical emergency stop.',
+      rejected: 'STOP was rejected: {reason}.',
     },
   },
   tabs: { label: 'Pages', monitoring: 'Monitoring', tutorial: 'Tutorial' },
@@ -47,6 +50,13 @@ export const en: Strings = {
   status: {
     label: 'System status',
     connection: 'Connection',
+    libero: 'LIBERO simulator',
+    liberoConnected: 'Connected · fresh',
+    liberoDisconnected: 'Simulator disconnected',
+    liberoStale: 'State stale',
+    liberoUnavailable: 'State unavailable',
+    liberoSessionInactive: 'Session inactive',
+    liberoUnknown: 'Unknown',
     robot: 'Robot',
     task: 'Task',
     tracking: 'Tracking',
@@ -63,6 +73,7 @@ export const en: Strings = {
     seconds: '{n} s',
     tips: {
       connection: 'Web: browser ↔ gateway, with latency in ms. USB: gateway ↔ robot arm.',
+      libero: 'LIBERO simulator polling and state freshness. This is separate from the browser WebSocket connection.',
       robot: 'State reported by the robot: ready, moving, stopped or error.',
       task: 'Running task: number, current step and elapsed time.',
       tracking:
@@ -118,6 +129,8 @@ export const en: Strings = {
       usbLost: 'Lost USB connection to the robot arm',
       robotError: 'Robot error: {detail}',
       stopUnconfirmed: 'Stop not confirmed after {s} s',
+      stopOutcomeUnknown: 'STOP outcome unknown: {reason}',
+      stopRejected: 'STOP was rejected: {reason}',
       stale: 'Stale data: no message received for {s} s',
       trackingStuck: 'Robot may be stuck: measured position is not following the command',
     },
@@ -127,6 +140,7 @@ export const en: Strings = {
       usbLost: 'Unknown — the gateway can no longer control the arm.',
       robotError: 'Stopped — task cancelled.',
       stopUnconfirmed: 'Unknown — the robot may still be moving.',
+      stopRejected: 'Unknown — STOP was rejected, so the robot may still be moving.',
       stale: 'Unknown. Send is disabled for now.',
       trackingStuck: 'Still receiving commands but not moving with them.',
     },
@@ -139,6 +153,7 @@ export const en: Strings = {
       robotError:
         'Remove any obstacle, check the servo cables, then press Ready and send a new command.',
       stopUnconfirmed: 'Press the physical emergency stop on the robot now.',
+      stopRejected: 'Use the physical emergency stop if the robot must stop now.',
       stale: 'Check the network and the gateway. Controls unlock when fresh data arrives.',
       trackingStuck: 'Press STOP and check for obstacles or caught cables around the arm.',
     },
@@ -193,6 +208,7 @@ export const en: Strings = {
       stopped: 'The robot is stopped. Press Ready before a new command.',
       busy: 'A task is running (#{task}). Wait for it to finish or press STOP.',
       pending: 'Waiting for the robot to confirm the previous command.',
+      unsupported: 'Start Policy is not supported by the current LIBERO Board interface.',
     },
     stepperLabel: 'Command progress',
     steps: {
@@ -212,7 +228,7 @@ export const en: Strings = {
     nackTitle: 'The robot rejected the command:',
     nackTail: 'It was not executed; fix the cause and send again.',
     noAckText:
-      'No ACK after 2 s. The command is not resent automatically; check the robot before sending again.',
+      'No ACK after 5 s. The command is not resent automatically; check the state before trying again.',
   },
 
   history: {
@@ -221,6 +237,24 @@ export const en: Strings = {
     started: 'Started',
     empty1: 'No tasks in this session yet.',
     empty2: 'Choose an object in the Command card, then press Send command.',
+    liberoEpisode: 'Current LIBERO episode',
+    lastReported: 'Last reported state',
+    simulatorDisconnected: 'Simulator disconnected · displayed state may be outdated',
+    stateStale: 'State stale · displayed state may be outdated',
+    sessionActive: 'Session active',
+    sessionInactive: 'Session inactive',
+    hold: 'HOLD',
+    holdLatched: 'Latched',
+    holdClear: 'Clear',
+    step: 'Step',
+    progress: 'Episode progress',
+    outcome: 'Confirmed outcome',
+    outcomePending: 'Terminal outcome not confirmed while state is stale or disconnected',
+    endReason: 'End reason',
+    status: { READY: 'Ready', RUNNING: 'Running', SUCCESS: 'Success', TIMEOUT: 'Timeout', ABORTED: 'Aborted' },
+    resetEpisode: 'Reset episode',
+    resetPending: 'Resetting episode…',
+    resetOutcomeUnknown: 'RESET outcome unknown. Check the episode state before retrying.',
   },
 
   viewer: {
@@ -376,7 +410,7 @@ export const en: Strings = {
     ],
     stopSoft: {
       title: 'On-screen STOP',
-      body: 'The first red button in the top bar, on every page. One press sends a software stop, no confirmation; works by keyboard (Tab then Enter). Shows "Stopped" only once the robot confirms. With no confirmation after 2 s, use the physical button.',
+      body: 'The first red button in the top bar, on every page. One press sends a software stop, no confirmation; works by keyboard (Tab then Enter). Shows "Stopped" only once the robot confirms. With no confirmation after 4 s, use the physical button.',
     },
     stopHard: {
       title: 'Physical emergency stop',

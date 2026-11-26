@@ -40,6 +40,9 @@ function Chip({ icon, label, level, tip, stale, children }: ChipProps) {
 export function StatusBar({ derived }: { derived: DerivedStatus }) {
   const t = useT();
   const lang = useStore((s) => s.lang);
+  const liberoHealth = useStore((s) => s.liberoConnectionHealth);
+  const webLink = useStore((s) => s.web);
+  const synced = useStore((s) => s.synced);
   const { connection: c, robot, task, tracking, stale, ageMs } = derived;
   const lamp = LEVEL_META[derived.overall];
 
@@ -56,6 +59,48 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
     );
   const webDown = c.web !== 'connected';
   const connIcon: IconName = webDown ? 'wifiOff' : c.usb === 'lost' ? 'unplug' : 'wifi';
+
+  // A health snapshot is only current while the browser is receiving fresh
+  // backend state. Keep transport health separate, but do not present a cached
+  // simulator snapshot as live after a WebSocket drop or during resync.
+  const liberoSnapshotStale = webLink !== 'connected' || !synced;
+  const liberoLabel = !liberoHealth
+    ? t.status.liberoUnknown
+    : liberoSnapshotStale
+      ? t.status.liberoStale
+    : liberoHealth.poll_error !== null
+      ? t.status.liberoStale
+      : liberoHealth.simulator_connection === 'disconnected'
+      ? t.status.liberoDisconnected
+      : liberoHealth.state_freshness === 'stale'
+        ? t.status.liberoStale
+        : liberoHealth.state_freshness === 'unavailable'
+          ? t.status.liberoUnavailable
+          : liberoHealth.session_status === 'inactive'
+            ? t.status.liberoSessionInactive
+            : liberoHealth.simulator_connection === 'connected'
+              ? t.status.liberoConnected
+              : t.status.liberoUnknown;
+  const liberoLevel: Level =
+    liberoSnapshotStale
+      ? 'attention'
+      : liberoHealth?.simulator_connection === 'disconnected'
+      ? 'action'
+      : liberoHealth?.poll_error !== null
+        ? 'attention'
+      : liberoHealth?.state_freshness === 'stale' || liberoHealth?.state_freshness === 'unavailable'
+        ? 'attention'
+        : liberoHealth?.session_status === 'inactive'
+          ? 'waiting'
+          : liberoHealth?.simulator_connection === 'connected'
+            ? 'ok'
+            : 'attention';
+  const liberoIsStale =
+    liberoSnapshotStale ||
+    liberoHealth?.poll_error !== null ||
+    liberoHealth?.simulator_connection === 'disconnected' ||
+    liberoHealth?.state_freshness === 'stale' ||
+    liberoHealth?.state_freshness === 'unavailable';
 
   const robotText =
     robot.value === 'stopped' && robot.level === 'waiting'
@@ -88,6 +133,15 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
             {t.status.usb} {t.values.usb[c.usb]}
           </>
         )}
+      </Chip>
+      <Chip
+        icon={liberoIsStale ? 'wifiOff' : 'robot'}
+        label={t.status.libero}
+        level={liberoLevel}
+        tip={t.status.tips.libero}
+        stale={liberoIsStale}
+      >
+        {liberoLabel}
       </Chip>
       <Chip
         icon="robot"

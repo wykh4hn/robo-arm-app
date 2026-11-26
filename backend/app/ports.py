@@ -15,6 +15,14 @@ class SimError(Exception):
     """MuJoCo did not answer, or answered with an error."""
 
 
+class SimConnectionError(SimError):
+    """The simulator HTTP endpoint could not be reached or timed out."""
+
+
+class SimOutcomeUnknown(SimConnectionError):
+    """A mutating operator request may have completed but was not confirmed."""
+
+
 class SimRejected(SimError):
     """MuJoCo answered and refused (for example: leaving HOLD not allowed)."""
 

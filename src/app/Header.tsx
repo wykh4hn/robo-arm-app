@@ -17,6 +17,7 @@ export function Header({ derived }: { derived: DerivedStatus }) {
   const lang = useStore((s) => s.lang);
   const setLang = useStore((s) => s.setLang);
   const sendReady = useStore((s) => s.sendReady);
+  const lastReady = useStore((s) => s.commands.findLast((command) => command.kind === 'ready'));
 
   const onTabKey = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
@@ -39,6 +40,13 @@ export function Header({ derived }: { derived: DerivedStatus }) {
           <Icon name="play" />
           {t.stop.ready}
         </button>
+      )}
+      {lastReady && (lastReady.phase === 'rejected' || lastReady.phase === 'noAck') && (
+        <span className="rb-stop-note" role="alert" data-testid="ready-error">
+          {lastReady.phase === 'rejected'
+            ? `${t.stop.readyFailed}: ${lastReady.reason ?? t.command.steps.rejected}`
+            : t.command.noAckText}
+        </span>
       )}
       <nav className="rb-header__tabs" role="tablist" aria-label={t.tabs.label}>
         {TABS.map((id) => (

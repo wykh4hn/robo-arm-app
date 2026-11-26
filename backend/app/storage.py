@@ -294,6 +294,12 @@ class Storage:
     def append_raw(self, run_id: int, obj: dict[str, Any]) -> None:
         self._put(_Item("raw", run_id, json.dumps(obj, ensure_ascii=False)))
 
+    def append_libero_state(self, run_id: int, state: dict[str, Any]) -> None:
+        """Persist an unmodified native franka_ee_v1 snapshot in the run evidence log."""
+        if not isinstance(state, dict) or state.get("contract") != "franka_ee_v1":
+            raise ValueError("append_libero_state requires a franka_ee_v1 state object")
+        self.append_raw(run_id, {"source": "libero", "type": "state", "state": state})
+
     def close_raw(self, run_id: int) -> None:
         self._put(_Item("close_raw", run_id))
 

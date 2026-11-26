@@ -1,56 +1,160 @@
-"""SimPort over HTTP to the real MuJoCo `app.py` (path 5, port 8000). PHASE 2, NOT WRITTEN YET.
+"""HTTP client for the LIBERO/Franka Operator API (franka_ee_v1).
 
-Owner: SoftDev (Trieu) with IoT (Chung). Until then run with `SO101_SIM_LINK=mock`.
+The Backend talks to LIBERO over localhost HTTP. It does NOT send robot motion
+commands; those travel between the Board runner and LIBERO over TCP 5050.
 
-What to implement (spec 7): one `httpx.AsyncClient(base_url=settings.sim_url)`,
-never `requests` (rule 2). The runner already wraps every call in a timeout.
-
-| Method          | Call (provisional names, Q4, Q7)            | Returns                      |
-|-----------------|---------------------------------------------|------------------------------|
-| get_state       | GET  /api/state                             | ports.parse_sim_state(json)  |
-| reset           | POST /api/reset  {"seed", "run_id"}         | ResetResult                  |
-| stop            | POST /api/stop                              | None                         |
-| release_hold    | POST /api/release                           | None; SimRejected on refusal |
-| get_evaluation  | GET  /api/evaluation                        | ports.parse_evaluation(json) |
-| get_frame       | GET  /api/camera/{overhead|wrist}           | JPEG bytes                   |
-
-Errors: connection or HTTP 5xx -> SimError; a refusal (4xx) -> SimRejected;
-a malformed `/api/state` is raised by `parse_sim_state` as SimBadPayload.
-
-`tools/mock_sim.py` serves this same API (`uvicorn tools.mock_sim:app --port 8000`),
-and `tests/test_ports_contract.py` holds the checks a real client must also pass.
+This module intentionally exposes the LIBERO payloads as dictionaries. The old
+SO-101 SimState (six joint angles + /api/evaluation) is not a valid representation
+of Franka's LIBERO state and must not be fabricated here.
 """
-
 from __future__ import annotations
 
-from .ports import Evaluation, ResetResult, SimState
-from .settings import Settings
+import json
+from pathlib import Path
+from typing import Any
 
-_TODO = "sim_client.py is Phase 2 (spec 7). Use SO101_SIM_LINK=mock for now."
+import httpx
+
+from .ports import SimConnectionError, SimError, SimOutcomeUnknown, SimRejected
+from .settings import Settings
 
 
 class SimClient:
-    def __init__(self, settings: Settings) -> None:
+    """Authenticated asynchronous client for LIBERO's local Operator API."""
+
+    def __init__(self, settings: Settings, *, transport: httpx.AsyncBaseTransport | None = None) -> None:
         self.settings = settings
-        raise NotImplementedError(_TODO)
+        self.base_url = settings.sim_url.rstrip("/")
+        self.token_path = Path(settings.operator_token_file).expanduser()
+        self._client = httpx.AsyncClient(
+            base_url=self.base_url,
+            timeout=httpx.Timeout(settings.sim_timeout_ms / 1000),
+            transport=transport,
+            # Do not add Origin: the server deliberately rejects browser requests.
+            headers={"Accept": "application/json"},
+        )
+        self._token: str | None = None
 
-    async def get_state(self) -> SimState:
-        raise NotImplementedError(_TODO)
+    def _read_token(self) -> str:
+        try:
+            token = self.token_path.read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            raise SimError(f"Cannot read LIBERO operator token at {self.token_path}: {exc}") from exc
+        if not token:
+            raise SimError(f"LIBERO operator token file is empty: {self.token_path}")
+        return token
 
-    async def reset(self, seed: int, run_id: int) -> ResetResult:
-        raise NotImplementedError(_TODO)
+    def _auth_headers(self) -> dict[str, str]:
+        # Read at request time so token rotation does not require restarting BE.
+        self._token = self._read_token()
+        return {"Authorization": f"Bearer {self._token}", "Content-Type": "application/json"}
 
-    async def stop(self) -> None:
-        raise NotImplementedError(_TODO)
+    @staticmethod
+    def _json_object(response: httpx.Response) -> dict[str, Any]:
+        try:
+            value = response.json()
+        except (ValueError, json.JSONDecodeError) as exc:
+            raise SimError(f"LIBERO returned non-JSON response (HTTP {response.status_code})") from exc
+        if not isinstance(value, dict):
+            raise SimError("LIBERO returned a JSON value that is not an object")
+        return value
 
-    async def release_hold(self) -> None:
-        raise NotImplementedError(_TODO)
+    async def _request(self, method: str, path: str, *, body: dict[str, Any] | None = None,
+                       authenticated: bool = False,
+                       timeout_ms: int | None = None) -> dict[str, Any]:
+        headers = self._auth_headers() if authenticated else None
+        request_options: dict[str, Any] = {"json": body, "headers": headers}
+        if timeout_ms is not None:
+            request_options["timeout"] = timeout_ms / 1000
+        mutating_operator = method == "POST" and path.startswith("/api/operator/")
+        try:
+            response = await self._client.request(method, path, **request_options)
+        except (httpx.ConnectTimeout, httpx.PoolTimeout) as exc:
+            raise SimConnectionError(
+                f"LIBERO connection unavailable before request: {method} {path}"
+            ) from exc
+        except httpx.TimeoutException as exc:
+            if mutating_operator:
+                raise SimOutcomeUnknown(
+                    f"LIBERO command outcome unknown after timeout: {method} {path}"
+                ) from exc
+            raise SimConnectionError(f"LIBERO request timed out: {method} {path}") from exc
+        except httpx.HTTPError as exc:
+            if mutating_operator and not isinstance(exc, (httpx.ConnectError, httpx.ConnectTimeout)):
+                raise SimOutcomeUnknown(
+                    f"LIBERO command outcome unknown after transport error: {method} {path}"
+                ) from exc
+            raise SimConnectionError(f"Cannot connect to LIBERO at {self.base_url}: {exc}") from exc
 
-    async def get_evaluation(self) -> Evaluation | None:
-        raise NotImplementedError(_TODO)
+        payload = self._json_object(response)
+        if response.status_code == 409:
+            raise SimRejected(str(payload.get("reason") or payload.get("code") or "LIBERO rejected request"))
+        if response.status_code in (401, 403):
+            raise SimError(f"LIBERO authentication/access error (HTTP {response.status_code}): "
+                           f"{payload.get('reason') or payload.get('error') or 'check token and localhost binding'}")
+        if response.status_code >= 500:
+            if mutating_operator:
+                raise SimOutcomeUnknown(
+                    f"LIBERO command outcome unknown (HTTP {response.status_code}): {method} {path}"
+                )
+            raise SimError(f"LIBERO server error (HTTP {response.status_code})")
+        if response.status_code >= 400:
+            raise SimError(f"LIBERO request failed (HTTP {response.status_code}): {payload}")
+        if payload.get("ok") is False:
+            raise SimRejected(str(payload.get("reason") or payload.get("code") or "LIBERO rejected request"))
+        return payload
+
+    async def get_state(self) -> dict[str, Any]:
+        """Return the native `/api/state` payload; status is READY/RUNNING/etc."""
+        return await self._request(
+            "GET", "/api/state", timeout_ms=self.settings.sim_poll_timeout_ms
+        )
+
+    async def reset(self, *, suite: str | None = None, task_id: int | None = None,
+                    init_state: int | None = None, seed: int | None = None) -> dict[str, Any]:
+        body: dict[str, Any] = {}
+        if suite is not None:
+            body["suite"] = suite
+        if task_id is not None:
+            body["task_id"] = task_id
+        if init_state is not None:
+            body["init_state"] = init_state
+        if seed is not None:
+            body["seed"] = seed
+        return await self._request(
+            "POST", "/api/operator/reset", body=body, authenticated=True,
+            timeout_ms=self.settings.libero_reset_timeout_ms,
+        )
+
+    async def stop(self) -> dict[str, Any]:
+        return await self._request("POST", "/api/operator/stop", body={}, authenticated=True)
+
+    async def resume(self) -> dict[str, Any]:
+        return await self._request("POST", "/api/operator/resume", body={}, authenticated=True)
+
+    async def heartbeat(self, *, watch: bool = True) -> dict[str, Any]:
+        return await self._request("POST", "/api/operator/heartbeat",
+                                   body={"watch": watch}, authenticated=True,
+                                   timeout_ms=self.settings.sim_poll_timeout_ms)
 
     async def get_frame(self, camera: str) -> bytes:
-        raise NotImplementedError(_TODO)
+        """Fetch a JPEG frame. Public camera names map to LIBERO camera endpoints."""
+        camera_map = {"overhead": "agentview", "object": "agentview",
+                      "wrist": "wrist", "overview": "wrist"}
+        endpoint = camera_map.get(camera)
+        if endpoint is None:
+            raise SimError(f"Unsupported LIBERO camera: {camera}")
+        try:
+            response = await self._client.get(f"/api/camera/{endpoint}")
+        except httpx.TimeoutException as exc:
+            raise SimError(f"LIBERO camera request timed out: {endpoint}") from exc
+        except httpx.HTTPError as exc:
+            raise SimError(f"Cannot fetch LIBERO camera {endpoint}: {exc}") from exc
+        if response.status_code >= 400:
+            raise SimError(f"LIBERO camera {endpoint} returned HTTP {response.status_code}")
+        if not response.content.startswith(b"\xff\xd8"):
+            raise SimError(f"LIBERO camera {endpoint} did not return JPEG data")
+        return response.content
 
     async def aclose(self) -> None:
-        return None
+        await self._client.aclose()

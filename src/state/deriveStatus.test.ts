@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { deriveStatus, worst } from './deriveStatus';
 import { initialMonitorState } from './store';
 import type { MonitorState } from './types';
+import { liberoHealthFixture, liberoStateFixture } from '../test/fixtures/libero';
 
 const NOW = 1_000_000;
 
@@ -159,5 +160,39 @@ describe('deriveStatus', () => {
   it('worst() picks the most severe level', () => {
     expect(worst(['ok', 'attention', 'waiting'])).toBe('waiting');
     expect(worst([])).toBe('ok');
+  });
+
+  it('allows native RESUME from confirmed HOLD without depending on legacy USB', () => {
+    const state = healthy({
+      usb: 'unknown',
+      robot: 'unknown',
+      libero: { ...liberoStateFixture, status: 'READY', hold_latched: true },
+      liberoConnectionHealth: liberoHealthFixture,
+    });
+    const derived = deriveStatus(state);
+    expect(derived.needsReady).toBe(true);
+    expect(derived.canReady).toBe(true);
+    expect(derived.sendBlockReason).toBe('unsupported');
+    expect(derived.problems.some((problem) => problem.kind === 'usbUnknown')).toBe(false);
+  });
+
+  it('blocks native RESUME with stale or disconnected LIBERO state', () => {
+    const base = {
+      ...healthy(),
+      libero: { ...liberoStateFixture, status: 'READY' as const, hold_latched: true },
+      liberoConnectionHealth: liberoHealthFixture,
+    };
+    expect(deriveStatus({
+      ...base,
+      liberoConnectionHealth: { ...liberoHealthFixture, state_freshness: 'stale' },
+    }).canReady).toBe(false);
+    expect(deriveStatus({
+      ...base,
+      liberoConnectionHealth: { ...liberoHealthFixture, simulator_connection: 'disconnected' },
+    }).canReady).toBe(false);
+    expect(deriveStatus({
+      ...base,
+      liberoConnectionHealth: { ...liberoHealthFixture, poll_error: 'invalid state response' },
+    }).canReady).toBe(false);
   });
 });

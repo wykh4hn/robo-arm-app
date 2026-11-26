@@ -6,7 +6,7 @@ import { fmt, useT, type Strings } from '../strings';
 import { formatNumber } from '../utils/units';
 import { Icon } from './Icon';
 
-type BannerKind = keyof Strings['banner']['titles'];
+type BannerKind = keyof Strings['banner']['robot'];
 
 function title(t: Strings, p: Problem, lang: 'vi' | 'en'): string {
   const kind = p.kind as BannerKind;
@@ -19,7 +19,10 @@ function title(t: Strings, p: Problem, lang: 'vi' | 'en'): string {
     return fmt(t.banner.titles.stale, { s: formatNumber(Number(p.params.seconds), 1, lang) });
   }
   if (kind === 'stopUnconfirmed') {
-    return fmt(t.banner.titles.stopUnconfirmed, { s: config.ackTimeoutMs / 1000 });
+    if (typeof p.params.reason === 'string') {
+      return fmt(t.banner.titles.stopOutcomeUnknown, { reason: p.params.reason });
+    }
+    return fmt(t.banner.titles.stopUnconfirmed, { s: config.stopAckTimeoutMs / 1000 });
   }
   return t.banner.titles[kind];
 }

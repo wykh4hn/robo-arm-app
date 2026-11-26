@@ -21,7 +21,8 @@ export type SendBlockReason =
   | 'stopping'
   | 'stopped'
   | 'busy'
-  | 'pending';
+  | 'pending'
+  | 'unsupported';
 
 export interface DerivedStatus {
   overall: Level;
@@ -88,6 +89,7 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   const live = webUp && s.synced;
   const tooOld = live && ageMs !== null && ageMs > cfg.staleAfterMs;
   const usable = live && !tooOld;
+  const nativeMode = s.libero !== null;
   const taskId = s.task.id ?? null;
 
   // Emergency stop is reported only when the data contains it.
@@ -103,10 +105,12 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
     add('stale', 'attention', 'warn', { seconds: (ageMs ?? 0) / 1000 });
   }
 
-  if (usable && s.usb === 'lost') add('usbLost', 'action', 'critical', { task: taskId ?? '' });
-  if (usable && s.usb === 'unknown') add('usbUnknown', 'attention', null);
+  if (!nativeMode && usable && s.usb === 'lost') {
+    add('usbLost', 'action', 'critical', { task: taskId ?? '' });
+  }
+  if (!nativeMode && usable && s.usb === 'unknown') add('usbUnknown', 'attention', null);
 
-  if (usable && s.robot === 'error') {
+  if (!nativeMode && usable && s.robot === 'error') {
     const e = s.robotError;
     add(
       'robotError',
@@ -117,15 +121,27 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
     );
   }
 
-  if (s.stop.phase === 'unconfirmed') add('stopUnconfirmed', 'action', 'critical');
+  if (s.stop.phase === 'unconfirmed') {
+    add('stopUnconfirmed', 'action', 'critical', s.stop.reason ? { reason: s.stop.reason } : {});
+  } else if (s.stop.phase === 'rejected') {
+    add('stopRejected', 'action', 'critical', { reason: s.stop.reason ?? '' });
+  }
 
-  const stoppedState = s.robot === 'stopped' || s.awaitingReady;
-  if (usable && !s.estop && s.robot !== 'error' && stoppedState && s.stop.phase !== 'stopping') {
+  const nativeTerminal =
+    s.libero?.status === 'SUCCESS' || s.libero?.status === 'TIMEOUT' || s.libero?.status === 'ABORTED';
+  const nativeRecoverableStatus = s.libero?.status === 'READY' || s.libero?.status === 'RUNNING';
+  const stoppedState = nativeMode
+    ? !nativeTerminal && (!!s.libero?.hold_latched || s.awaitingReady)
+    : s.robot === 'stopped' || s.awaitingReady;
+  if (
+    !nativeMode && usable && !s.estop && s.robot !== 'error' && stoppedState &&
+    s.stop.phase !== 'stopping'
+  ) {
     add('awaitingReady', 'waiting', null);
   }
 
   const trackingActive =
-    usable && s.usb === 'plugged' && s.tracking.error !== null && s.robot === 'moving';
+    !nativeMode && usable && s.usb === 'plugged' && s.tracking.error !== null && s.robot === 'moving';
   if (trackingActive && s.tracking.level === 'stuck') {
     add('trackingStuck', 'action', 'critical', { error: s.tracking.error ?? 0 });
   } else if (trackingActive && s.tracking.level === 'slow') {
@@ -149,7 +165,7 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   const lastAny = s.commands[s.commands.length - 1];
   if (lastAny?.phase === 'noAck') add('cmdNoAck', 'attention', null, {}, ':' + lastAny.id);
 
-  if (s.task.state === 'failed' && s.robot !== 'error' && s.usb !== 'lost') {
+  if (!nativeMode && s.task.state === 'failed' && s.robot !== 'error' && s.usb !== 'lost') {
     add('taskFailed', 'attention', null);
   }
 
@@ -187,17 +203,40 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   else if (!webUp) reason = 'disconnected';
   else if (!s.synced) reason = 'syncing';
   else if (tooOld) reason = 'stale';
-  else if (s.usb !== 'plugged') reason = 'usbLost';
-  else if (s.robot === 'error') reason = 'robotError';
-  else if (s.stop.phase === 'stopping' || s.stop.phase === 'unconfirmed') reason = 'stopping';
+  else if (!nativeMode && s.usb !== 'plugged') reason = 'usbLost';
+  else if (!nativeMode && s.robot === 'error') reason = 'robotError';
+  else if (
+    s.stop.phase === 'stopping' || s.stop.phase === 'unconfirmed' || s.stop.phase === 'rejected'
+  ) reason = 'stopping';
+  else if (nativeMode && s.liberoConnectionHealth?.simulator_connection === 'disconnected') {
+    reason = 'disconnected';
+  } else if (
+    nativeMode && (
+      s.liberoConnectionHealth?.state_freshness !== 'fresh' ||
+      s.liberoConnectionHealth.poll_error !== null
+    )
+  ) reason = 'stale';
+  else if (nativeMode) reason = 'unsupported';
   else if (stoppedState) reason = 'stopped';
   else if (s.task.state === 'running' || s.robot === 'moving') reason = 'busy';
   else if (pending) reason = 'pending';
 
-  const needsReady = !s.estop && (s.robot === 'error' || stoppedState);
+  const needsReady = nativeMode
+    ? !s.estop && stoppedState && nativeRecoverableStatus
+    : !s.estop && (s.robot === 'error' || stoppedState);
   const readyPending = s.commands.some((c) => c.kind === 'ready' && c.phase === 'sent');
-  const canReady =
-    needsReady && usable && s.usb === 'plugged' && s.stop.phase !== 'stopping' && !readyPending;
+  const readyAckAwaitingState =
+    nativeMode && s.libero?.hold_latched === true &&
+    s.commands.some((c) => c.kind === 'ready' && c.phase === 'done');
+  const nativeHealthFresh =
+    s.liberoConnectionHealth?.simulator_connection === 'connected' &&
+    s.liberoConnectionHealth.state_freshness === 'fresh' &&
+    s.liberoConnectionHealth.poll_error === null;
+  const canReady = nativeMode
+    ? needsReady && nativeHealthFresh && s.web === 'connected' && s.synced &&
+      s.stop.phase !== 'stopping' && s.stop.phase !== 'unconfirmed' &&
+      s.stop.phase !== 'rejected' && !readyPending && !readyAckAwaitingState
+    : needsReady && usable && s.usb === 'plugged' && s.stop.phase !== 'stopping' && !readyPending;
 
   const banner = problems
     .filter((p) => p.banner !== null)

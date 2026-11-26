@@ -136,7 +136,7 @@ export const SCENARIOS: Record<ScenarioName, ScenarioDef> = {
     script: [{ atMs: 2000, action: 'stop' }],
     expect: [
       {
-        atMs: 5000,
+        atMs: 6500,
         overall: 'action',
         canSend: false,
         sendBlockReason: 'stopping',

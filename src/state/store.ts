@@ -5,6 +5,7 @@ import type {
   IncomingMessage,
   JointName,
   OutgoingMessage,
+  LiberoState,
   TaskInfo,
   TelemetryMsg,
 } from '../types/messages';
@@ -37,6 +38,7 @@ export interface Actions {
     profileId?: string,
   ) => string | null;
   requestStop: () => void;
+  resetLiberoEpisode: () => Promise<void>;
   sendReady: () => void;
   reconnectUsb: () => void;
   setLang: (lang: Lang) => void;
@@ -71,10 +73,13 @@ export function initialMonitorState(now = Date.now()): MonitorState {
     tasks: [],
     commands: [],
     stop: { phase: 'idle', id: null, requestedAt: null },
+    liberoReset: { id: null, phase: 'idle', previousRunId: null, reason: null },
     awaitingReady: false,
     samples: [],
     cameras: {},
     pipeline: null,
+    libero: null,
+    liberoConnectionHealth: null,
     tracking: initialTracking,
     events: [],
   };
@@ -197,6 +202,43 @@ export function applyMessage(
         events,
       };
     }
+    case 'libero_state': {
+      const previous = s.libero;
+      const next = msg.state;
+      const changed =
+        !previous ||
+        previous.run_id !== next.run_id ||
+        previous.status !== next.status ||
+        previous.step !== next.step ||
+        previous.hold_latched !== next.hold_latched;
+      return {
+        ...base,
+        libero: next,
+        liberoConnectionHealth: msg.connection_health ?? s.liberoConnectionHealth,
+        liberoReset:
+          s.liberoReset.phase === 'outcome_unknown' &&
+          next.run_id !== s.liberoReset.previousRunId &&
+          next.status === 'READY' &&
+          !next.hold_latched
+            ? { ...s.liberoReset, phase: 'done', reason: null }
+            : s.liberoReset,
+        synced: s.web === 'connected' ? true : s.synced,
+        events: changed
+          ? logEvent(
+              s,
+              'libero_state',
+              {
+                run_id: next.run_id,
+                status: next.status,
+                step: next.step,
+                max_steps: next.max_steps,
+                hold_latched: next.hold_latched,
+              },
+              at,
+            )
+          : s.events,
+      };
+    }
     case 'tasks': {
       let tasks = s.tasks;
       for (const t of msg.tasks) tasks = mergeTask(tasks, t);
@@ -228,6 +270,7 @@ export function applyMessage(
     }
     case 'ack': {
       const cmd = s.commands.find((c) => c.id === msg.id);
+      const pending = cmd?.phase === 'sent' || cmd?.phase === 'noAck';
       const patch: Partial<MonitorState> = {
         ...base,
         events: logEvent(s, 'ack', msg, at),
@@ -239,26 +282,44 @@ export function applyMessage(
             : { phase: 'done' },
         ),
       };
-      if (cmd?.kind === 'ready') {
+      if (cmd?.kind === 'ready' && pending) {
         patch.awaitingReady = false;
         patch.stop = { phase: 'idle', id: null, requestedAt: null };
       }
       return patch;
     }
-    case 'nack':
-      return {
-        ...base,
-        events: logEvent(s, 'nack', msg, at),
-        commands: updateCommand(s.commands, (c) => c.id === msg.id, {
-          phase: 'rejected',
-          reason: msg.reason,
-        }),
-      };
+    case 'nack': {
+        const stopMatches = msg.id === s.stop.id &&
+          (s.stop.phase === 'stopping' || s.stop.phase === 'unconfirmed');
+        const command = s.commands.find((c) => c.id === msg.id);
+        const commandPending = command?.phase === 'sent' || command?.phase === 'noAck';
+        return {
+          ...base,
+          events: logEvent(s, 'nack', msg, at),
+          commands: updateCommand(s.commands, (c) => c.id === msg.id && commandPending, {
+            phase: 'rejected',
+            reason: msg.reason,
+          }),
+          ...(stopMatches
+            ? {
+                stop: {
+                  ...s.stop,
+                  phase: msg.code === 'outcome_unknown' ? 'unconfirmed' as const : 'rejected' as const,
+                  reason: msg.reason,
+                },
+              }
+            : {}),
+          ...(command?.kind === 'ready' && commandPending ? { awaitingReady: true } : {}),
+        };
+      }
     case 'stop_ack':
-      if (msg.id !== s.stop.id) return base;
+      if (
+        msg.id !== s.stop.id ||
+        (s.stop.phase !== 'stopping' && s.stop.phase !== 'unconfirmed')
+      ) return base;
       return {
         ...base,
-        stop: { ...s.stop, phase: 'stopped' },
+        stop: { ...s.stop, phase: 'stopped', reason: undefined },
         awaitingReady: true,
         events: logEvent(s, 'stop_ack', msg, at),
       };
@@ -351,7 +412,7 @@ export const useStore = create<StoreState>()((set, get) => {
       const id = newId('stop');
       const now = Date.now();
       set((s) => ({
-        stop: { phase: 'stopping', id, requestedAt: now },
+        stop: { phase: 'stopping', id, requestedAt: now, reason: undefined },
         events: logEvent(s, 'stop', { id }, now),
       }));
       // Sent even when the link is down: the click is always logged.
@@ -362,7 +423,90 @@ export const useStore = create<StoreState>()((set, get) => {
             ? { stop: { ...s.stop, phase: 'unconfirmed' } }
             : {},
         );
-      }, config.ackTimeoutMs);
+      }, config.stopAckTimeoutMs);
+    },
+
+    resetLiberoEpisode: async () => {
+      const current = get();
+      if (
+        current.liberoReset.phase === 'pending' ||
+        current.liberoReset.phase === 'outcome_unknown'
+      ) return;
+
+      const id = newId('reset');
+      const previousRunId = current.libero?.run_id ?? null;
+      set({ liberoReset: { id, phase: 'pending', previousRunId, reason: null } });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), config.liberoResetTimeoutMs);
+      try {
+        const backendOrigin = config.backendUrl
+          ? new URL(config.backendUrl).origin.replace(/^ws/, 'http')
+          : window.location.origin;
+        const response = await fetch(`${backendOrigin}/api/libero/reset`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id }),
+          signal: controller.signal,
+        });
+        const body: unknown = await response.json();
+        if (!response.ok) {
+          const detail =
+            body && typeof body === 'object' && 'detail' in body ? body.detail : undefined;
+          const code =
+            detail && typeof detail === 'object' && 'code' in detail ? detail.code : undefined;
+          const reason =
+            detail && typeof detail === 'object' && 'reason' in detail
+              ? String(detail.reason)
+              : `HTTP ${response.status}`;
+          set({
+            liberoReset: {
+              id,
+              phase: code === 'outcome_unknown' ? 'outcome_unknown' : 'rejected',
+              previousRunId,
+              reason,
+            },
+          });
+          return;
+        }
+
+        const state = body as LiberoState;
+        const confirmed =
+          state?.contract === 'franka_ee_v1' &&
+          typeof state.run_id === 'string' &&
+          state.run_id !== previousRunId &&
+          state.status === 'READY' &&
+          state.hold_latched === false;
+        if (!confirmed) {
+          set({
+            liberoReset: {
+              id,
+              phase: 'outcome_unknown',
+              previousRunId,
+              reason: 'RESET response did not confirm a new READY episode with HOLD released.',
+            },
+          });
+          return;
+        }
+        set({
+          libero: state,
+          lastMessageAt: Date.now(),
+          liberoReset: { id, phase: 'done', previousRunId, reason: null },
+        });
+      } catch (error) {
+        set({
+          liberoReset: {
+            id,
+            phase: 'outcome_unknown',
+            previousRunId,
+            reason:
+              error instanceof DOMException && error.name === 'AbortError'
+                ? 'RESET timed out; the Board may have received the request. Check state before retrying.'
+                : 'RESET response was lost; the Board may have received the request. Check state before retrying.',
+          },
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
     },
 
     sendReady: () => {

@@ -154,3 +154,22 @@ def validate_command(cmd: CommandIn, ctx: Context) -> Rejection | None:
         if ctx.trials_left is not None and ctx.trials_left <= 0:
             return Rejection("no_trials_left", "Profile này đã chạy hết số lần trong protocol")
     return None
+
+
+# LIBERO task selector validation (separate from legacy FE prompt/profile validation).
+LIBERO_SUITE_LIMITS = {
+    "libero_spatial": 10, "libero_object": 10, "libero_goal": 10,
+    "libero_10": 10, "libero_90": 90,
+}
+
+def validate_libero_task(suite: str, task_id: int, init_state: int, seed: int) -> Rejection | None:
+    """Validate the task selector before issuing an Operator RESET request."""
+    if suite not in LIBERO_SUITE_LIMITS:
+        return Rejection("invalid_suite", f"Unsupported LIBERO suite: {suite}")
+    if isinstance(task_id, bool) or not isinstance(task_id, int) or not 0 <= task_id < LIBERO_SUITE_LIMITS[suite]:
+        return Rejection("invalid_task_id", f"task_id out of range for {suite}")
+    if isinstance(init_state, bool) or not isinstance(init_state, int) or init_state < 0:
+        return Rejection("invalid_init_state", "init_state must be a non-negative integer")
+    if isinstance(seed, bool) or not isinstance(seed, int) or seed < 0:
+        return Rejection("invalid_seed", "seed must be a non-negative integer")
+    return None

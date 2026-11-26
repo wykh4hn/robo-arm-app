@@ -73,6 +73,21 @@ def _build_zip(
         raw = run_dir / "sim_raw.jsonl"
         if raw.is_file():
             z.write(raw, "sim_raw.jsonl")
+            # Preserve native LIBERO evidence separately; never reinterpret Franka pose
+            # as the legacy six-joint CSV schema.
+            libero_rows = []
+            for line in raw.read_text(encoding="utf-8").splitlines():
+                try:
+                    item = json.loads(line)
+                except ValueError:
+                    continue
+                if item.get("source") == "libero" and item.get("type") == "state":
+                    libero_rows.append(item.get("state"))
+            if libero_rows:
+                z.writestr(
+                    "libero_states.json",
+                    json.dumps(libero_rows, ensure_ascii=False, indent=2) + "\n",
+                )
         board = run_dir / "board"
         if board.is_dir():
             for path in sorted(p for p in board.rglob("*") if p.is_file()):

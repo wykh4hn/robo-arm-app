@@ -64,11 +64,11 @@ describe('App', () => {
     renderScenario('stop-no-ack');
     await advance(1500);
     await act(async () => stopButton().click());
-    await advance(2100);
+    await advance(4600);
     expect(stopButton()).toHaveTextContent('Chưa xác nhận dừng');
     expect(screen.getByText('Dùng nút dừng khẩn cấp vật lý trên robot.')).toBeInTheDocument();
     const banner = screen.getByRole('alert');
-    expect(within(banner).getByText(/Chưa xác nhận lệnh dừng sau 2 s/)).toBeInTheDocument();
+    expect(within(banner).getByText(/Chưa xác nhận lệnh dừng sau 4 s/)).toBeInTheDocument();
   });
 
   it('shows the exact command, the NACK reason, and never a success state', async () => {
