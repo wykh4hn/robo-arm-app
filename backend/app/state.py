@@ -43,7 +43,7 @@ REASON_TEXT = {
     "stale_action": "không hoàn chỉnh: action đến quá hạn",
     "execution_timeout": "không hoàn chỉnh: action chạy quá thời gian",
     "nonfinite_physics": "không hoàn chỉnh: mô phỏng lỗi số học",
-    "reset": "không hoàn chỉnh: MuJoCo bị RESET giữa chừng",
+    "reset": "không hoàn chỉnh: MuJoCo bị đặt lại từ nơi khác giữa chừng",
 }
 
 

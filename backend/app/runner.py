@@ -695,6 +695,22 @@ class Runner:
         self._check_stop(s, now)
 
         run = st.run
+        if (
+            run is not None
+            and run.phase in ("running", "stopping")
+            and run.sim_run_id
+            and s.sim_run_id
+            and s.sim_run_id != run.sim_run_id
+        ):
+            # Someone RESET MuJoCo from elsewhere (its own page has buttons too). This run's
+            # episode is gone: end it now instead of waiting for a result that never comes.
+            self.storage.add_event(
+                run.run_id, "sim_reset_elsewhere", {"expected": run.sim_run_id, "seen": s.sim_run_id}
+            )
+            st.awaiting_ready = True
+            self._finish("finished", "error", "reset", incomplete=True)
+            changed = False
+            run = None
         if run is not None and run.phase in ("preparing", "running") and not s.board_connected:
             self._on_board_lost(run)
             changed = False  # _finish already sent status

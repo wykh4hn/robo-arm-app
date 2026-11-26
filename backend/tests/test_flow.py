@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
 import json
 import time
@@ -699,4 +700,17 @@ def test_status_says_who_drives_the_arm(be):
     ws = be.ws()
     st = ws.status(lambda m: True)
     assert st["link"]["driver"] == "mock"
+    ws.close()
+
+
+def test_reset_from_elsewhere_ends_the_run(make_be):
+    """MuJoCo's own page can RESET it. The run's episode is gone: end it at once."""
+    be = make_be("no_result")
+    ws = be.ws()
+    ws.send(cmd("c1"))
+    ws.task("running")
+    asyncio.run(be.sim.reset(99, 99))  # another client presses "Đặt lại"
+    t = ws.task("failed", timeout=2)["task"]
+    assert t["reasonCode"] == "reset" and t["incomplete"]
+    ws.status(lambda m: m["robot"]["state"] == "stopped")  # Ready is required
     ws.close()

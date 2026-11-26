@@ -36,6 +36,8 @@ Thêm `?scenario=robot-error` vào URL để quay lại robot giả trong trình
 
 ## Chạy với MuJoCo thật (cách B, local mode)
 
+Nhanh nhất: `scripts/demo.sh` làm hết các bước dưới đây bằng một lệnh. Xem [`docs/run-on-one-machine.md`](../docs/run-on-one-machine.md).
+
 Cần **hai repo** cạnh nhau: repo nhóm **Robo-Arm-COS40005** (MuJoCo của IoT) và repo web này. Chạy hai terminal.
 
 **Chạy đúng file.** Repo nhóm có hai file `app.py`, và gốc repo không có file nào. BE chỉ nối được với **`so101sim/board_server/app.py`** (schema v2, có RESET/ABORT/RESUME/evaluation).
@@ -178,6 +180,7 @@ Mỗi điểm dưới đây nằm gọn trong một chỗ, đổi được khi n
 - **Stop lúc rảnh mà MuJoCo không trả lời:** trả `stop_ack` ngay, robot `unknown` (spec 8.2).
 - **HOLD chỉ là "đã dừng" khi BE đã gửi STOP và nguyên nhân HOLD là `USER_ABORT`** (xem bảng ở cách B).
 - **MuJoCo không có kết quả quá `SO101_RUN_WALL_TIMEOUT_S`:** BE gửi STOP để episode không chạy tiếp, ghi `error` + `incomplete` (`no_result`), cần Sẵn sàng. Không ghi `timeout` thay MuJoCo.
+- **MuJoCo bị đặt lại từ nơi khác giữa run** (ví dụ nút "Đặt lại" trên trang 8000): `run_id` của MuJoCo đổi, run `error` + `incomplete` (`reset`), cần Sẵn sàng.
 - **Kết quả của episode trước:** nếu `run_id` của `/api/evaluation` khác `run_id` MuJoCo trả lúc RESET thì bỏ qua.
 - **Mất MuJoCo giữa run:** run `error` + `incomplete`, robot `error` (`SIM_OFFLINE`), và cần Sẵn sàng.
 - **Board nối lại:** luôn cần Sẵn sàng, kể cả khi lúc mất không có run.

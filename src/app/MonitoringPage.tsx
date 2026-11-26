@@ -12,7 +12,9 @@ import { useStore } from '../state/store';
 type TabletTab = 'control' | 'joints' | 'charts';
 
 function useTabletLayout() {
-  const [tablet, setTablet] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1100px)').matches);
+  const [tablet, setTablet] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1100px)').matches,
+  );
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 1100px)');
@@ -33,7 +35,10 @@ export function MonitoringPage({ derived, noUrdf }: { derived: DerivedStatus; no
   const [tabletTab, setTabletTab] = useState<TabletTab>('control');
 
   const visual = (
-    <section className="rb-tablet-visual" aria-label={lang === 'vi' ? 'Khu vực quan sát robot' : 'Robot visual monitoring'}>
+    <section
+      className="rb-tablet-visual"
+      aria-label={lang === 'vi' ? 'Khu vực quan sát robot' : 'Robot visual monitoring'}
+    >
       <div className="rb-tablet-visual__main">
         {bigCamera ? (
           <CameraTile camera={bigCamera} stale={derived.stale} large />
@@ -82,23 +87,31 @@ export function MonitoringPage({ derived, noUrdf }: { derived: DerivedStatus; no
     );
   }
 
-  const tabs: { id: TabletTab; label: string }[] = lang === 'vi'
-    ? [
-        { id: 'control', label: 'Điều khiển' },
-        { id: 'joints', label: 'Trạng thái khớp' },
-        { id: 'charts', label: 'Biểu đồ' },
-      ]
-    : [
-        { id: 'control', label: 'Control' },
-        { id: 'joints', label: 'Joint status' },
-        { id: 'charts', label: 'Charts' },
-      ];
+  const tabs: { id: TabletTab; label: string }[] =
+    lang === 'vi'
+      ? [
+          { id: 'control', label: 'Điều khiển' },
+          { id: 'joints', label: 'Trạng thái khớp' },
+          { id: 'charts', label: 'Biểu đồ' },
+        ]
+      : [
+          { id: 'control', label: 'Control' },
+          { id: 'joints', label: 'Joint status' },
+          { id: 'charts', label: 'Charts' },
+        ];
 
   return (
     <div className="rb-tablet-layout">
       {visual}
-      <section className="rb-tablet-panel" aria-label={lang === 'vi' ? 'Bảng điều khiển' : 'Control panel'}>
-        <div className="rb-tablet-tabs" role="tablist" aria-label={lang === 'vi' ? 'Các khu vực điều khiển' : 'Control sections'}>
+      <section
+        className="rb-tablet-panel"
+        aria-label={lang === 'vi' ? 'Bảng điều khiển' : 'Control panel'}
+      >
+        <div
+          className="rb-tablet-tabs"
+          role="tablist"
+          aria-label={lang === 'vi' ? 'Các khu vực điều khiển' : 'Control sections'}
+        >
           {tabs.map((tab) => (
             <button
               className="rb-tablet-tabs__button"
