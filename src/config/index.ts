@@ -160,8 +160,9 @@ export const config = {
   } as Record<'position' | 'velocity' | 'error', [number, number]>,
 
   cameras: [
-    { id: 'object', url: cameraUrl('/api/camera/overhead/stream') },
-    { id: 'overview', url: cameraUrl('/api/camera/wrist/stream') },
+    // TODO(step 4): rename the ids to the LIBERO names `agentview` / `wrist`.
+    { id: 'object', url: cameraUrl('/api/camera/agentview.mjpg') },
+    { id: 'overview', url: cameraUrl('/api/camera/wrist.mjpg') },
   ] as CameraDef[],
 
   objects,

@@ -181,7 +181,7 @@ Bước 1–5 làm được ngay. Bước 6 cần Q1/Q4. Bước 7 cần Q1, Q2,
 **Lệnh kiểm tra** (từ gốc repo, PowerShell):
 - FE: `npm run typecheck`, `npm test`, `npm run lint`
 - BE (venv là Linux, phải chạy qua WSL):
-  `wsl -e bash -lc 'cd "/mnt/c/studies/Project A/robo-arm-app/backend" && .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_libero_communication.py tests/test_libero_native.py tests/test_libero_commands.py tests/test_libero_reliability.py tests/test_units.py tests/test_contracts.py'`
+  `wsl -e bash -lc 'cd "/mnt/c/studies/Project A/robo-arm-app/backend" && .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_libero_live.py tests/test_libero_communication.py tests/test_libero_native.py tests/test_libero_commands.py tests/test_libero_reliability.py tests/test_units.py tests/test_contracts.py'`
 
 **Mốc 26/11:** FE 91/91 pass, typecheck sạch. BE nhóm test trên 102/102 pass (≈1 s). `tests/test_flow.py` (đường SO-101 cũ) 21 failed + 26 errors, chạy 4 phút → **bỏ qua ở bước 1–4, xoá ở bước 5.**
 
@@ -195,4 +195,4 @@ Bước 1–5 làm được ngay. Bước 6 cần Q1/Q4. Bước 7 cần Q1, Q2,
 | 4 FE | 4, 5 (+ README design-system và README component nào sửa) | `src/state/store.ts`, `deriveStatus.ts`, `src/components/CommandPanel.tsx`, `CameraTile.tsx`, `StatusBar.tsx`, `RobotViewer3D.tsx`/`JointTable.tsx`/`TrajectoryCharts.tsx` (ẩn ở chế độ LIBERO), panel pose mới, `src/strings/*.ts`, `src/transport/MockTransport.ts`, `scenarios.ts` | typecheck/test/lint xanh; mỗi dòng bảng trạng thái mục 4 có test deriveStatus; mock phát `libero_state` đủ các tình huống |
 | 5 Dọn | 3.1, 7 | xoá `runner.py`, `board_link.py`, `tools/mock_sim.py`, `tools/mock_board.py`, `tests/test_flow.py`, phần khớp trong `adapter.py`, nhánh `sim_link=mock`; sửa `ports.py`, `settings.py`, `state.py`, `storage.py`, `main.py`; `CLAUDE.md`, `backend/README.md`, `.env.example` | Grep `SimState\|FakeSim\|FakeBoard\|BoardPort\|evaluation\|send_prompt` trong `backend/app` rỗng; toàn bộ `pytest` xanh; FE xanh |
 
-**Trạng thái:** bước 1 ☑ · bước 2 ☑ · bước 3 ☐ · bước 4 ☐ · bước 5 ☐
+**Trạng thái:** bước 1 ☑ · bước 2 ☑ · bước 3 ☑ · bước 4 ☐ · bước 5 ☐

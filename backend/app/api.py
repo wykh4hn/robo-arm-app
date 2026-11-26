@@ -526,7 +526,8 @@ def build_router(core: Core) -> APIRouter:
     # Camera
     # ------------------------------------------------------------------
 
-    @r.get("/api/camera/{camera}/stream")
+    # communication-plan §3.4: `/api/camera/agentview.mjpg`, `/api/camera/wrist.mjpg`.
+    @r.get("/api/camera/{camera}.mjpg")
     async def camera_stream(camera: str) -> StreamingResponse:
         if camera not in CAMERAS:
             raise HTTPException(404, "unknown camera")

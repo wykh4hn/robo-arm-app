@@ -16,7 +16,7 @@ from typing import Any
 import httpx
 
 from .ports import SimConnectionError, SimError, SimOutcomeUnknown, SimRejected
-from .settings import Settings
+from .settings import CAMERAS, Settings
 
 
 class SimClient:
@@ -138,12 +138,10 @@ class SimClient:
                                    timeout_ms=self.settings.sim_poll_timeout_ms)
 
     async def get_frame(self, camera: str) -> bytes:
-        """Fetch a JPEG frame. Public camera names map to LIBERO camera endpoints."""
-        camera_map = {"overhead": "agentview", "object": "agentview",
-                      "wrist": "wrist", "overview": "wrist"}
-        endpoint = camera_map.get(camera)
-        if endpoint is None:
+        """Fetch one JPEG from `/api/camera/{agentview,wrist}` (LIBERO names, no aliases)."""
+        if camera not in CAMERAS:
             raise SimError(f"Unsupported LIBERO camera: {camera}")
+        endpoint = camera
         try:
             response = await self._client.get(f"/api/camera/{endpoint}")
         except httpx.TimeoutException as exc:

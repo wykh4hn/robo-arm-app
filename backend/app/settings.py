@@ -22,7 +22,8 @@ JOINT_ORDER = (
     "wrist_roll",
     "gripper",
 )
-CAMERAS = ("overhead", "wrist")
+# LIBERO camera names, used as-is end to end (communication-plan §3.4).
+CAMERAS = ("agentview", "wrist")
 
 
 class Settings(BaseSettings):
@@ -76,8 +77,6 @@ class Settings(BaseSettings):
     camera_preview: bool = True
     camera_fps: float = 10.0
     camera_meta_ms: int = 250
-    # MuJoCo camera name -> camera id in the FE `camera` message (spec 9.4, FE task 10).
-    camera_web_names: str = "overhead:object,wrist:overview"
 
     # Gripper range in rad (Q6). Empty falls back to the FE gripperMap, so the 3D model matches.
     gripper_closed_rad: float | None = None
@@ -103,11 +102,6 @@ class Settings(BaseSettings):
         closed = -0.17 if self.gripper_closed_rad is None else self.gripper_closed_rad
         opened = 1.6 if self.gripper_open_rad is None else self.gripper_open_rad
         return closed, opened
-
-    @property
-    def camera_names(self) -> dict[str, str]:
-        pairs = (p.split(":", 1) for p in self.camera_web_names.split(",") if ":" in p)
-        return {a.strip(): b.strip() for a, b in pairs}
 
     @property
     def db_path(self) -> Path:

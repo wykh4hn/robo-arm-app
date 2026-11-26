@@ -24,6 +24,10 @@ from .settings import Settings
 log = logging.getLogger("so101.libero_runner")
 
 
+# communication-plan §3.3/§3.4: failures must last this long before the web is told.
+OFFLINE_AFTER_S = 2.0
+
+
 def _now_ms() -> int:
     return int(time.time() * 1000)
 
@@ -100,10 +104,15 @@ class LiberoRunner:
         self.last_heartbeat_success_mono: float | None = None
         self.last_heartbeat_error: str | None = None
 
+        # Start of the current run of failed polls / heartbeats (None after a success).
+        self.poll_error_since_mono: float | None = None
+        self.heartbeat_error_since_mono: float | None = None
+        # Called after every valid state (communication-plan §3.4: live feed).
+        self.on_state: Callable[[LiberoState], None] | None = None
+
         self._heartbeat_task: asyncio.Task | None = None
         self._poll_task: asyncio.Task | None = None
         self.heartbeat_interval_s = 1.0
-        self._snapshot_seq = 0
         self._closed = False
         self._command_lock = asyncio.Lock()
         self._command_guard = asyncio.Lock()
@@ -132,10 +141,10 @@ class LiberoRunner:
             payload = await self.sim.get_state()
         except SimConnectionError as exc:
             self.simulator_connection = "disconnected"
-            self.last_poll_error = str(exc)
+            self._poll_failed(exc)
             raise
         except Exception as exc:
-            self.last_poll_error = str(exc)
+            self._poll_failed(exc)
             raise
 
         # A response proves the HTTP service is reachable even if its payload
@@ -144,12 +153,13 @@ class LiberoRunner:
         try:
             state = LiberoState.from_payload(payload)
         except Exception as exc:
-            self.last_poll_error = str(exc)
+            self._poll_failed(exc)
             raise
 
         self.state = state
         self.last_poll_success_mono = time.monotonic()
         self.last_poll_error = None
+        self.poll_error_since_mono = None
 
         self._event(
             "libero_state",
@@ -171,7 +181,18 @@ class LiberoRunner:
                 state.raw,
             )
 
+        if self.on_state is not None:
+            try:
+                self.on_state(state)
+            except Exception:  # noqa: BLE001 - the live feed must not break polling
+                log.exception("LIBERO on_state callback failed")
+
         return state
+
+    def _poll_failed(self, exc: Exception) -> None:
+        self.last_poll_error = str(exc)
+        if self.poll_error_since_mono is None:
+            self.poll_error_since_mono = time.monotonic()
 
     def start_background(self) -> None:
         """Start polling and supervise the operator watchdog for an active session."""
@@ -226,14 +247,39 @@ class LiberoRunner:
         }
 
     def wire_connection_health(self) -> dict[str, Any]:
-        """The web's `connection_health` (communication-plan §4), from the detailed one."""
-        health = self.connection_health()
-        age_s = health["last_poll_success_age_s"]
-        online = (
-            health["simulator_connection"] == "connected"
-            and health["state_freshness"] == "fresh"
+        """The web's `connection_health` (communication-plan §3.3, §3.4, §4).
+
+        sim is offline before the first valid state, after polls have failed
+        for >= 2 s in a row, or when the poller has stalled (no success and no
+        error for longer than that). Heartbeat is degraded only after its
+        failures have lasted >= 2 s; a single blip still reads healthy.
+        """
+        now = time.monotonic()
+        age_s = (
+            None
+            if self.last_poll_success_mono is None
+            else max(0.0, now - self.last_poll_success_mono)
         )
-        heartbeat = health["heartbeat_status"]
+        stalled_after_s = (
+            OFFLINE_AFTER_S
+            + self.settings.sim_poll_timeout_ms / 1000
+            + 1.0 / max(self.settings.sim_poll_hz, 0.1)
+        )
+        failing_s = (
+            0.0 if self.poll_error_since_mono is None
+            else now - self.poll_error_since_mono
+        )
+        online = (
+            self.state is not None
+            and age_s is not None
+            and failing_s < OFFLINE_AFTER_S
+            and age_s < stalled_after_s
+        )
+        heartbeat = self.heartbeat_status
+        if heartbeat == "degraded" and self.last_heartbeat_success_mono is not None:
+            since = self.heartbeat_error_since_mono
+            if since is not None and now - since < OFFLINE_AFTER_S:
+                heartbeat = "healthy"
         return {
             "sim": "online" if online else "offline",
             # TODO(Q4): `session_active` is the only Board signal the sim gives us.
@@ -244,18 +290,6 @@ class LiberoRunner:
             ),
             "heartbeat": heartbeat if heartbeat in ("healthy", "degraded") else "off",
             "last_state_age_ms": None if age_s is None else int(age_s * 1000),
-        }
-
-    def websocket_snapshot(self, timestamp_ms: int) -> dict[str, Any] | None:
-        if self.state is None:
-            return None
-        self._snapshot_seq += 1
-        return {
-            "type": "libero_state",
-            "seq": self._snapshot_seq,
-            "ts": timestamp_ms,
-            "state": self.state.raw,
-            "connection_health": self.wire_connection_health(),
         }
 
     # ------------------------------------------------------------------
@@ -675,11 +709,14 @@ class LiberoRunner:
                 self.heartbeat_status = "healthy"
                 self.last_heartbeat_success_mono = time.monotonic()
                 self.last_heartbeat_error = None
+                self.heartbeat_error_since_mono = None
                 self._event("libero_watchdog_enabled", {})
             except SimError as exc:
                 # The loop below keeps trying; the reset itself may still work.
                 self.heartbeat_status = "degraded"
                 self.last_heartbeat_error = str(exc)
+                if self.heartbeat_error_since_mono is None:
+                    self.heartbeat_error_since_mono = time.monotonic()
             self._watch_enabled = True
         self._ensure_heartbeat()
 
@@ -705,6 +742,7 @@ class LiberoRunner:
                 self.heartbeat_status = "healthy"
                 self.last_heartbeat_success_mono = time.monotonic()
                 self.last_heartbeat_error = None
+                self.heartbeat_error_since_mono = None
                 if recovered:
                     self._event("libero_heartbeat_recovered", {})
                 elif not had_success:
@@ -714,6 +752,8 @@ class LiberoRunner:
             except Exception as exc:  # noqa: BLE001
                 self.heartbeat_status = "degraded"
                 self.last_heartbeat_error = str(exc)
+                if self.heartbeat_error_since_mono is None:
+                    self.heartbeat_error_since_mono = time.monotonic()
                 self._event("libero_heartbeat_failed", {"error": str(exc)})
                 log.exception("LIBERO heartbeat loop failed")
             await asyncio.sleep(self.heartbeat_interval_s)

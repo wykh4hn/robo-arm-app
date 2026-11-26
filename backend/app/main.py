@@ -24,7 +24,7 @@ from pydantic import ValidationError
 
 from .api import Core, build_router
 from .camera import CameraProxy
-from .live import Hub
+from .live import Hub, LiberoFeed
 from .ports import BoardPort, SimPort
 from .runner import Runner
 from .settings import BACKEND_DIR, Settings, get_settings
@@ -150,10 +150,17 @@ def create_app(
         )
 
         # Publish the native Franka contract separately; never fabricate SO-101 joints.
-        def libero_snapshot() -> dict[str, Any] | None:
-            return libero_runner.websocket_snapshot(now_ms())
+        # communication-plan §3.4: paced `libero_state` + snapshot on connect.
+        def libero_source() -> tuple[dict[str, Any], dict[str, Any]] | None:
+            if libero_runner.state is None:
+                return None
+            return libero_runner.state.raw, libero_runner.wire_connection_health()
 
-        hub.snapshot = libero_snapshot
+        feed = LiberoFeed(hub, libero_source, max_hz=10.0)
+        hub.feed = feed
+        hub.snapshot = feed.snapshot
+        hub.hello = feed.hello
+        libero_runner.on_state = lambda _state: feed.on_state()
 
         async def handle_libero_stop(stop_id: str) -> None:
             try:
@@ -170,7 +177,11 @@ def create_app(
                     "reason": str(exc),
                 })
 
-        libero_runner.on_task = lambda msg: hub.broadcast(msg)
+        def publish_task(msg: dict[str, Any]) -> None:
+            feed.record_task(msg)
+            hub.broadcast(msg)
+
+        libero_runner.on_task = publish_task
 
         async def handle_libero_message(raw: dict[str, Any]) -> dict[str, Any] | None:
             kind = raw.get("type")
