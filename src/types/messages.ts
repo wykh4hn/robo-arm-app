@@ -8,7 +8,10 @@ export type JointName =
 export type WebLink = 'connecting' | 'connected' | 'disconnected' | 'failed';
 export type UsbLink = 'plugged' | 'lost' | 'unknown';
 export type RobotState = 'ready' | 'moving' | 'stopped' | 'error' | 'unknown';
-export type TaskState = 'idle' | 'running' | 'done' | 'failed' | 'stopped';
+/** Run lifecycle (communication-plan §4). */
+export type TaskState = 'preparing' | 'running' | 'done' | 'failed' | 'stopped';
+/** Only the legacy `status` message says 'idle' (no run yet). */
+export type StatusTaskState = 'idle' | TaskState;
 export type TaskPhase = 'reach' | 'grasp' | 'carry' | 'release' | 'home';
 export type CameraId = 'object' | 'overview';
 export type PipelineStepId = 'camera' | 'ai' | 'gateway' | 'robot' | 'result';
@@ -42,24 +45,32 @@ export interface StatusMsg {
   ts: number;
   link: { web: WebLink; usb: UsbLink; latencyMs?: number };
   robot: { state: RobotState; error?: RobotError };
-  task: { id: number | null; state: TaskState };
+  task: { id: number | null; state: StatusTaskState };
   /** Present only when the hardware reports the physical emergency stop. */
   estop?: boolean;
 }
 
 export type LiberoStatus = 'READY' | 'RUNNING' | 'SUCCESS' | 'TIMEOUT' | 'ABORTED';
 
+export type LiberoSuite =
+  | 'libero_spatial'
+  | 'libero_object'
+  | 'libero_goal'
+  | 'libero_10'
+  | 'libero_90';
+
+export interface LiberoTaskRef {
+  suite: LiberoSuite;
+  task_id: number;
+}
+
+/** What the BE knows about its links (communication-plan §4). */
 export interface LiberoConnectionHealth {
-  simulator_connection: 'connected' | 'disconnected' | 'unknown';
-  state_freshness: 'fresh' | 'stale' | 'unavailable';
-  session_status: 'active' | 'inactive' | 'unknown';
-  last_poll_attempt_age_s: number | null;
-  last_poll_success_age_s: number | null;
-  stale_after_s: number;
-  poll_error: string | null;
-  heartbeat_status: 'not_started' | 'starting' | 'healthy' | 'degraded' | 'stopped';
-  last_heartbeat_success_age_s: number | null;
-  heartbeat_error: string | null;
+  sim: 'online' | 'offline';
+  board: 'connected' | 'disconnected';
+  heartbeat: 'healthy' | 'degraded' | 'off';
+  /** Age of the last good `/api/state` read; null when there has been none. */
+  last_state_age_ms: number | null;
 }
 
 export interface LiberoState {
@@ -80,9 +91,11 @@ export interface LiberoState {
 
 export interface LiberoStateMsg {
   type: 'libero_state';
+  /** Rises by one per message from the BE. */
+  seq: number;
   ts: number;
   state: LiberoState;
-  connection_health?: LiberoConnectionHealth;
+  connection_health: LiberoConnectionHealth;
 }
 
 export interface TaskInfo {
@@ -108,6 +121,9 @@ export interface TaskInfo {
   outcome?: string;
   reasonCode?: string;
   incomplete?: boolean;
+  /** LIBERO: the sim's run and how it ended (communication-plan §4). */
+  run_id?: string;
+  end_reason?: string;
 }
 
 export interface TaskEventMsg {
@@ -130,12 +146,36 @@ export interface AckMsg {
   taskId?: number;
 }
 
+/** Refusal codes: spec 5.5 plus the LIBERO ones (communication-plan §3.2). */
+export const NACK_CODES = [
+  'bad_schema',
+  'bad_template',
+  'bad_object',
+  'text_mismatch',
+  'unknown_profile',
+  'profile_blocked',
+  'busy',
+  'needs_ready',
+  'board_offline',
+  'robot_error',
+  'sim_offline',
+  'logger_not_ready',
+  'config_invalid',
+  'no_trials_left',
+  'BOARD_NOT_CONNECTED',
+  'SIM_OFFLINE',
+  'EPISODE_RUNNING',
+  'EPISODE_ENDED',
+  'OUTCOME_UNKNOWN',
+] as const;
+export type NackCode = (typeof NACK_CODES)[number];
+
 export interface NackMsg {
   type: 'nack';
   ts: number;
   id: string;
-  /** Machine-readable refusal code (spec 5.5). */
-  code?: string;
+  /** Machine-readable refusal code; an unknown one is shown by its reason. */
+  code?: NackCode | (string & {});
   reason: string;
 }
 
@@ -183,14 +223,13 @@ export type IncomingMessage =
 
 export type OutgoingMessage =
   | {
+      /** Start one LIBERO episode. No free text, no object name. */
       type: 'command';
       id: string;
-      text: string;
-      templateId: string;
-      params: Record<string, string>;
-      /** 1 of the 9 profiles (spec 5.2). */
-      profileId?: string;
+      task: LiberoTaskRef;
+      init_state?: number;
+      seed?: number;
+      profile_id?: string;
     }
   | { type: 'stop'; id: string }
-  | { type: 'ready'; id: string }
-  | { type: 'reconnect_usb'; id: string };
+  | { type: 'ready'; id: string };

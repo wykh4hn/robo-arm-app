@@ -17,14 +17,8 @@ export const liberoStateFixture: LiberoState = {
 };
 
 export const liberoHealthFixture: LiberoConnectionHealth = {
-  simulator_connection: 'connected',
-  state_freshness: 'fresh',
-  session_status: 'active',
-  last_poll_attempt_age_s: 0.01,
-  last_poll_success_age_s: 0.02,
-  stale_after_s: 1.5,
-  poll_error: null,
-  heartbeat_status: 'healthy',
-  last_heartbeat_success_age_s: 0.03,
-  heartbeat_error: null,
+  sim: 'online',
+  board: 'connected',
+  heartbeat: 'healthy',
+  last_state_age_ms: 20,
 };

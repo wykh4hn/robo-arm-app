@@ -8,7 +8,7 @@ import type {
   RobotError,
   RobotState,
   TaskInfo,
-  TaskState,
+  StatusTaskState,
   UsbLink,
   WebLink,
 } from '../types/messages';
@@ -47,7 +47,7 @@ export interface Sample {
   velocityEstimated: boolean;
 }
 
-export type CommandKind = 'command' | 'ready' | 'reconnect_usb';
+export type CommandKind = 'command' | 'ready';
 export type CommandPhase =
   'sent' | 'accepted' | 'running' | 'done' | 'failed' | 'stopped' | 'rejected' | 'noAck';
 
@@ -138,7 +138,7 @@ export interface MonitorState {
   robot: RobotState;
   robotError: RobotError | null;
   estop: boolean;
-  task: { id: number | null; state: TaskState };
+  task: { id: number | null; state: StatusTaskState };
   tasks: TaskInfo[];
   commands: CommandRecord[];
   stop: { phase: StopPhase; id: string | null; requestedAt: number | null; reason?: string };

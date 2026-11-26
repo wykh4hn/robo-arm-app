@@ -219,6 +219,7 @@ def test_heartbeat_retries_and_reports_recovery() -> None:
 
 def test_websocket_snapshot_publishes_connection_health() -> None:
     from app.main import create_app
+    from app.models_web import outgoing_adapter
 
     settings = Settings(
         _env_file=None,
@@ -232,9 +233,12 @@ def test_websocket_snapshot_publishes_connection_health() -> None:
         await runner.refresh()
         native = app.state.core.hub.snapshot()
         assert native["type"] == "libero_state"
-        assert native["connection_health"]["simulator_connection"] == "connected"
-        assert native["connection_health"]["state_freshness"] == "fresh"
-        assert native["connection_health"]["session_status"] == "inactive"
+        assert native["seq"] >= 1
+        assert native["connection_health"]["sim"] == "online"
+        assert native["connection_health"]["board"] == "disconnected"
+        assert native["connection_health"]["heartbeat"] == "off"
+        assert isinstance(native["connection_health"]["last_state_age_ms"], int)
+        outgoing_adapter.validate_python(native)
 
     asyncio.run(run())
 

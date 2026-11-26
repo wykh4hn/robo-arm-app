@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { detailChipClass, LEVEL_META } from '../config/levels';
-import type { DerivedStatus } from '../state/deriveStatus';
+import { liberoSimFresh, type DerivedStatus } from '../state/deriveStatus';
 import { useStore } from '../state/store';
 import type { Level } from '../state/types';
 import { fmt, useT } from '../strings';
@@ -64,43 +64,29 @@ export function StatusBar({ derived }: { derived: DerivedStatus }) {
   // backend state. Keep transport health separate, but do not present a cached
   // simulator snapshot as live after a WebSocket drop or during resync.
   const liberoSnapshotStale = webLink !== 'connected' || !synced;
+  const liberoFresh = liberoSimFresh(liberoHealth);
   const liberoLabel = !liberoHealth
     ? t.status.liberoUnknown
     : liberoSnapshotStale
       ? t.status.liberoStale
-    : liberoHealth.poll_error !== null
-      ? t.status.liberoStale
-      : liberoHealth.simulator_connection === 'disconnected'
-      ? t.status.liberoDisconnected
-      : liberoHealth.state_freshness === 'stale'
-        ? t.status.liberoStale
-        : liberoHealth.state_freshness === 'unavailable'
-          ? t.status.liberoUnavailable
-          : liberoHealth.session_status === 'inactive'
+      : liberoHealth.sim === 'offline'
+        ? t.status.liberoDisconnected
+        : !liberoFresh
+          ? t.status.liberoStale
+          : liberoHealth.board === 'disconnected'
             ? t.status.liberoSessionInactive
-            : liberoHealth.simulator_connection === 'connected'
-              ? t.status.liberoConnected
-              : t.status.liberoUnknown;
+            : t.status.liberoConnected;
   const liberoLevel: Level =
     liberoSnapshotStale
       ? 'attention'
-      : liberoHealth?.simulator_connection === 'disconnected'
-      ? 'action'
-      : liberoHealth?.poll_error !== null
-        ? 'attention'
-      : liberoHealth?.state_freshness === 'stale' || liberoHealth?.state_freshness === 'unavailable'
-        ? 'attention'
-        : liberoHealth?.session_status === 'inactive'
-          ? 'waiting'
-          : liberoHealth?.simulator_connection === 'connected'
-            ? 'ok'
-            : 'attention';
-  const liberoIsStale =
-    liberoSnapshotStale ||
-    liberoHealth?.poll_error !== null ||
-    liberoHealth?.simulator_connection === 'disconnected' ||
-    liberoHealth?.state_freshness === 'stale' ||
-    liberoHealth?.state_freshness === 'unavailable';
+      : liberoHealth?.sim === 'offline'
+        ? 'action'
+        : !liberoFresh
+          ? 'attention'
+          : liberoHealth?.board === 'disconnected'
+            ? 'waiting'
+            : 'ok';
+  const liberoIsStale = liberoSnapshotStale || !liberoFresh;
 
   const robotText =
     robot.value === 'stopped' && robot.level === 'waiting'

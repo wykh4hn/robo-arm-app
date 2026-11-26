@@ -1,16 +1,25 @@
 {
-  "_note": "Mẫu mọi tin web <-> BE (spec v2 mục 5). pytest (backend/tests/test_contracts.py) và vitest (src/transport/contract.test.ts) cùng đọc file này. Sửa khuôn tin thì sửa ở đây trước.",
-  "contract_version": 2,
+  "_note": "Mẫu mọi tin web <-> BE (spec v2 mục 5 + docs/communication-plan.md mục 3.2, 4). pytest (backend/tests/test_contracts.py) và vitest (src/transport/contract.test.ts) cùng đọc file này. Sửa khuôn tin thì sửa ở đây trước.",
+  "contract_version": 3,
   "web_to_be": {
     "command": {
       "type": "command",
       "id": "cmd-m1a2-1",
-      "text": "pick the cube and put it in the box",
-      "templateId": "pick_into_box",
-      "params": {
-        "object": "cube"
+      "task": {
+        "suite": "libero_object",
+        "task_id": 0
       },
-      "profileId": "smolvla-int8"
+      "init_state": 0,
+      "seed": 1000,
+      "profile_id": "xvla-fp16"
+    },
+    "command_minimal": {
+      "type": "command",
+      "id": "cmd-m1a2-5",
+      "task": {
+        "suite": "libero_object",
+        "task_id": 0
+      }
     },
     "stop": {
       "type": "stop",
@@ -20,16 +29,125 @@
       "type": "ready",
       "id": "ready-m1a4-3"
     },
-    "reconnect_usb": {
-      "type": "reconnect_usb",
-      "id": "usb-m1a5-4"
-    },
     "pong": {
       "type": "pong",
       "id": "p-81"
     }
   },
   "be_to_web": {
+    "libero_state": {
+      "type": "libero_state",
+      "seq": 42,
+      "ts": 1730450000150,
+      "state": {
+        "contract": "franka_ee_v1",
+        "run_id": "run-7f3a",
+        "status": "RUNNING",
+        "hold_latched": false,
+        "session_active": true,
+        "step": 120,
+        "max_steps": 800,
+        "sim_time": 6.0,
+        "end_reason": null,
+        "hold_reason": null,
+        "task": {},
+        "pose": {},
+        "metrics": {}
+      },
+      "connection_health": {
+        "sim": "online",
+        "board": "connected",
+        "heartbeat": "healthy",
+        "last_state_age_ms": 40
+      }
+    },
+    "libero_state_offline": {
+      "type": "libero_state",
+      "seq": 43,
+      "ts": 1730450002150,
+      "state": {
+        "contract": "franka_ee_v1",
+        "run_id": "run-7f3a",
+        "status": "ABORTED",
+        "hold_latched": true,
+        "session_active": false,
+        "step": 120,
+        "max_steps": 800,
+        "sim_time": 6.0,
+        "end_reason": "CONNECTION_LOST",
+        "hold_reason": "CONNECTION_LOST",
+        "task": {},
+        "pose": {},
+        "metrics": {}
+      },
+      "connection_health": {
+        "sim": "offline",
+        "board": "disconnected",
+        "heartbeat": "off",
+        "last_state_age_ms": null
+      }
+    },
+    "task_preparing": {
+      "type": "task",
+      "ts": 1730450000060,
+      "task": {
+        "id": 14,
+        "command": "pick up the alphabet soup and place it in the basket",
+        "state": "preparing",
+        "startedTs": 1730450000060,
+        "commandId": "cmd-m1a2-1",
+        "profileId": "xvla-fp16",
+        "seed": 1000
+      }
+    },
+    "task_running": {
+      "type": "task",
+      "ts": 1730450003000,
+      "task": {
+        "id": 14,
+        "command": "pick up the alphabet soup and place it in the basket",
+        "state": "running",
+        "startedTs": 1730450000060,
+        "commandId": "cmd-m1a2-1",
+        "profileId": "xvla-fp16",
+        "seed": 1000,
+        "run_id": "run-7f3a"
+      }
+    },
+    "task_libero_failed": {
+      "type": "task",
+      "ts": 1730450040000,
+      "task": {
+        "id": 14,
+        "command": "pick up the alphabet soup and place it in the basket",
+        "state": "failed",
+        "startedTs": 1730450000060,
+        "commandId": "cmd-m1a2-1",
+        "profileId": "xvla-fp16",
+        "seed": 1000,
+        "run_id": "run-7f3a",
+        "endedTs": 1730450040000,
+        "outcome": "TIMEOUT",
+        "end_reason": "MAX_STEPS"
+      }
+    },
+    "task_libero_stopped": {
+      "type": "task",
+      "ts": 1730450040000,
+      "task": {
+        "id": 14,
+        "command": "pick up the alphabet soup and place it in the basket",
+        "state": "stopped",
+        "startedTs": 1730450000060,
+        "commandId": "cmd-m1a2-1",
+        "profileId": "xvla-fp16",
+        "seed": 1000,
+        "run_id": "run-7f3a",
+        "endedTs": 1730450040000,
+        "outcome": "ABORTED",
+        "end_reason": "OPERATOR_STOP"
+      }
+    },
     "telemetry_no_action": {
       "type": "telemetry",
       "ts": 1730450000123,
@@ -231,6 +349,13 @@
       "code": "busy",
       "reason": "Đang có lần chạy khác"
     },
+    "nack_board_not_connected": {
+      "type": "nack",
+      "ts": 1730450000050,
+      "id": "cmd-m1a2-1",
+      "code": "BOARD_NOT_CONNECTED",
+      "reason": "Board chưa kết nối"
+    },
     "stop_ack": {
       "type": "stop_ack",
       "ts": 1730450000400,
@@ -277,6 +402,11 @@
     "sim_offline",
     "logger_not_ready",
     "config_invalid",
-    "no_trials_left"
+    "no_trials_left",
+    "BOARD_NOT_CONNECTED",
+    "SIM_OFFLINE",
+    "EPISODE_RUNNING",
+    "EPISODE_ENDED",
+    "OUTCOME_UNKNOWN"
   ]
 }

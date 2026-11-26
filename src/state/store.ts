@@ -40,7 +40,6 @@ export interface Actions {
   requestStop: () => void;
   resetLiberoEpisode: () => Promise<void>;
   sendReady: () => void;
-  reconnectUsb: () => void;
   setLang: (lang: Lang) => void;
   setTab: (tab: Tab) => void;
   setUnit: (unit: AngleUnit) => void;
@@ -69,7 +68,7 @@ export function initialMonitorState(now = Date.now()): MonitorState {
     robot: 'unknown',
     robotError: null,
     estop: false,
-    task: { id: null, state: 'idle' },
+    task: { id: null, state: 'idle' as const },
     tasks: [],
     commands: [],
     stop: { phase: 'idle', id: null, requestedAt: null },
@@ -348,7 +347,12 @@ let seq = 0;
 const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${++seq}`;
 
 export const useStore = create<StoreState>()((set, get) => {
-  const track = (kind: CommandKind, text: string, msg: OutgoingMessage) => {
+  const track = (
+    kind: CommandKind,
+    text: string,
+    msg: OutgoingMessage,
+    extra: Pick<CommandRecord, 'templateId' | 'params'> = {},
+  ) => {
     const now = Date.now();
     const record: CommandRecord = {
       id: msg.id,
@@ -356,7 +360,7 @@ export const useStore = create<StoreState>()((set, get) => {
       text,
       sentAt: now,
       phase: 'sent',
-      ...(msg.type === 'command' ? { templateId: msg.templateId, params: msg.params } : {}),
+      ...extra,
     };
     set((s) => ({
       commands: cap([...s.commands, record], 200),
@@ -397,14 +401,20 @@ export const useStore = create<StoreState>()((set, get) => {
       if (!template) return null;
       const text = template.build(params);
       const id = newId('cmd');
-      track('command', text, {
-        type: 'command',
-        id,
+      // Step 1 keeps the old picker; the wire command is the LIBERO task (step 4 reworks the UI).
+      track(
+        'command',
         text,
-        templateId,
-        params,
-        ...(profileId ? { profileId } : {}),
-      });
+        {
+          type: 'command',
+          id,
+          task: config.liberoTask,
+          init_state: config.liberoInitState,
+          seed: config.liberoSeed,
+          ...(profileId ? { profile_id: profileId } : {}),
+        },
+        { templateId, params },
+      );
       return id;
     },
 
@@ -512,11 +522,6 @@ export const useStore = create<StoreState>()((set, get) => {
     sendReady: () => {
       const id = newId('ready');
       track('ready', 'ready', { type: 'ready', id });
-    },
-
-    reconnectUsb: () => {
-      const id = newId('usb');
-      track('reconnect_usb', 'reconnect_usb', { type: 'reconnect_usb', id });
     },
 
     setLang: (lang) => {

@@ -11,6 +11,7 @@ import type {
   RobotState,
   TaskInfo,
   TaskPhase,
+  StatusTaskState,
   TaskState,
   UsbLink,
 } from '../types/messages';
@@ -47,7 +48,7 @@ export class MockTransport implements Transport {
   private robot: RobotState = 'ready';
   private robotError: RobotError | undefined;
   private estop = false;
-  private taskStatus: { id: number | null; state: TaskState } = { id: null, state: 'idle' };
+  private taskStatus: { id: number | null; state: StatusTaskState } = { id: null, state: 'idle' };
   private current: TaskInfo | null = null;
   private tasks: TaskInfo[] = [];
   private nextTaskId = 13;
@@ -153,7 +154,9 @@ export class MockTransport implements Transport {
             return this.nack(msg.id, busy ? 'robot đang bận' : 'robot chưa sẵn sàng');
           }
           this.emit({ type: 'ack', ts: Date.now(), id: msg.id, taskId: this.nextTaskId });
-          this.later(300, () => this.startTask(msg.text, msg.params, msg.id));
+          // The mock still plays the SO-101 cube cycle; step 4 replaces it with libero_state.
+          const text = `${msg.task.suite} #${msg.task.task_id}`;
+          this.later(300, () => this.startTask(text, {}, msg.id));
         });
         break;
       case 'ready':
@@ -170,16 +173,6 @@ export class MockTransport implements Transport {
           this.pipelineFail = undefined;
           this.frozenState = null;
           this.motionT = 0;
-          this.emitStatus();
-          this.emit({ type: 'ack', ts: Date.now(), id: msg.id });
-        });
-        break;
-      case 'reconnect_usb':
-        this.later(1000, () => {
-          this.usb = 'plugged';
-          // Never resume by itself: the user must press Ready.
-          this.robot = 'stopped';
-          this.pipelineFail = undefined;
           this.emitStatus();
           this.emit({ type: 'ack', ts: Date.now(), id: msg.id });
         });

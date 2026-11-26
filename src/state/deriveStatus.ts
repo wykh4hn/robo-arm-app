@@ -1,5 +1,12 @@
 import { config } from '../config';
-import type { RobotState, TaskPhase, TaskState, UsbLink, WebLink } from '../types/messages';
+import type {
+  LiberoConnectionHealth,
+  RobotState,
+  StatusTaskState,
+  TaskPhase,
+  UsbLink,
+  WebLink,
+} from '../types/messages';
 import {
   LEVELS,
   type Level,
@@ -8,6 +15,14 @@ import {
   type ProblemKind,
   type TrackingLevel,
 } from './types';
+
+/** The BE reads the sim and its last good state is recent (communication-plan §4). */
+export function liberoSimFresh(
+  h: LiberoConnectionHealth | null | undefined,
+  staleAfterMs: number = config.staleAfterMs,
+): boolean {
+  return h?.sim === 'online' && h.last_state_age_ms !== null && h.last_state_age_ms <= staleAfterMs;
+}
 
 type StatusConfig = Pick<typeof config, 'staleAfterMs' | 'cameraFrozenAfterMs' | 'fpsWarn'>;
 
@@ -42,7 +57,7 @@ export interface DerivedStatus {
     level: Level;
     id: number | null;
     /** null = unknown (stale / disconnected). */
-    state: TaskState | null;
+    state: StatusTaskState | null;
     phase: TaskPhase | null;
     object: string | null;
     elapsedMs: number | null;
@@ -208,14 +223,9 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   else if (
     s.stop.phase === 'stopping' || s.stop.phase === 'unconfirmed' || s.stop.phase === 'rejected'
   ) reason = 'stopping';
-  else if (nativeMode && s.liberoConnectionHealth?.simulator_connection === 'disconnected') {
+  else if (nativeMode && s.liberoConnectionHealth?.sim === 'offline') {
     reason = 'disconnected';
-  } else if (
-    nativeMode && (
-      s.liberoConnectionHealth?.state_freshness !== 'fresh' ||
-      s.liberoConnectionHealth.poll_error !== null
-    )
-  ) reason = 'stale';
+  } else if (nativeMode && !liberoSimFresh(s.liberoConnectionHealth)) reason = 'stale';
   else if (nativeMode) reason = 'unsupported';
   else if (stoppedState) reason = 'stopped';
   else if (s.task.state === 'running' || s.robot === 'moving') reason = 'busy';
@@ -228,10 +238,7 @@ export function deriveStatus(s: MonitorState, cfg: StatusConfig = config): Deriv
   const readyAckAwaitingState =
     nativeMode && s.libero?.hold_latched === true &&
     s.commands.some((c) => c.kind === 'ready' && c.phase === 'done');
-  const nativeHealthFresh =
-    s.liberoConnectionHealth?.simulator_connection === 'connected' &&
-    s.liberoConnectionHealth.state_freshness === 'fresh' &&
-    s.liberoConnectionHealth.poll_error === null;
+  const nativeHealthFresh = liberoSimFresh(s.liberoConnectionHealth);
   const canReady = nativeMode
     ? needsReady && nativeHealthFresh && s.web === 'connected' && s.synced &&
       s.stop.phase !== 'stopping' && s.stop.phase !== 'unconfirmed' &&

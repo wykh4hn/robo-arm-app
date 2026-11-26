@@ -15,7 +15,7 @@ describe('StatusBar LIBERO health', () => {
     useStore.setState({
       web: 'connected',
       synced: true,
-      liberoConnectionHealth: { ...liberoHealthFixture, simulator_connection: 'disconnected' },
+      liberoConnectionHealth: { ...liberoHealthFixture, sim: 'offline' },
     });
     render(<StatusBar derived={deriveStatus({ ...initialMonitorState(1000), ...useStore.getState() })} />);
 
@@ -27,7 +27,7 @@ describe('StatusBar LIBERO health', () => {
 
   it('marks stale LIBERO state visibly', () => {
     useStore.setState({
-      liberoConnectionHealth: { ...liberoHealthFixture, state_freshness: 'stale' },
+      liberoConnectionHealth: { ...liberoHealthFixture, last_state_age_ms: 5000 },
     });
     render(<StatusBar derived={deriveStatus({ ...initialMonitorState(1000), ...useStore.getState() })} />);
 

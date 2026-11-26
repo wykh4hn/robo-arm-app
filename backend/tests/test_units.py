@@ -9,7 +9,7 @@ import pytest
 
 from app import adapter, pipeline
 from app.live import Client
-from app.models_web import CommandIn
+from app.models_web import LegacyCommandIn as CommandIn
 from app.ports import SimBadPayload, parse_evaluation, parse_sim_state
 from app.state import SystemState, task_info, task_state
 from app.validation import Context, Profile, Protocol, parse_command, validate_command

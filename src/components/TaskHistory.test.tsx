@@ -42,7 +42,7 @@ describe('TaskHistory LIBERO episode', () => {
 
     act(() => {
       useStore.setState({
-        liberoConnectionHealth: { ...liberoHealthFixture, state_freshness: 'stale' },
+        liberoConnectionHealth: { ...liberoHealthFixture, last_state_age_ms: 5000 },
       });
     });
     rerender(<TaskHistory />);
@@ -66,7 +66,7 @@ describe('TaskHistory LIBERO episode', () => {
   it('withholds terminal outcome while the latest simulator poll has failed', () => {
     useStore.setState({
       libero: { ...liberoStateFixture, status: 'SUCCESS', end_reason: 'TASK_SUCCESS' },
-      liberoConnectionHealth: { ...liberoHealthFixture, poll_error: 'invalid state response' },
+      liberoConnectionHealth: { ...liberoHealthFixture, sim: 'offline', last_state_age_ms: null },
     });
     render(<TaskHistory />);
 

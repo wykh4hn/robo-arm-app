@@ -92,6 +92,7 @@ export const vi = {
     },
     task: {
       idle: 'Rảnh',
+      preparing: 'Đang chuẩn bị',
       running: 'Đang chạy',
       done: 'Xong',
       failed: 'Thất bại',

@@ -1,5 +1,6 @@
 import { TASK_STATUS } from '../config/levels';
 import { config } from '../config';
+import { liberoSimFresh } from '../state/deriveStatus';
 import { useStore } from '../state/store';
 import { sortTasks } from '../state/tasks';
 import { useT } from '../strings';
@@ -28,10 +29,7 @@ export function TaskHistory() {
   const terminal = libero?.status === 'SUCCESS' || libero?.status === 'TIMEOUT' || libero?.status === 'ABORTED';
   const webStateFresh =
     web === 'connected' && synced && lastMessageAt !== null && now - lastMessageAt <= config.staleAfterMs;
-  const simulatorStateFresh =
-    liberoHealth?.simulator_connection === 'connected' &&
-    liberoHealth.state_freshness === 'fresh' &&
-    liberoHealth.poll_error === null;
+  const simulatorStateFresh = liberoSimFresh(liberoHealth);
   const healthUncertain = !webStateFresh || !simulatorStateFresh;
   const confirmedOutcome = terminal && !healthUncertain;
   const canReset =
@@ -59,7 +57,7 @@ export function TaskHistory() {
             </div>
             {healthUncertain && (
               <div className="rb-task__meta rb-libero-episode__health" role="alert">
-                {liberoHealth?.simulator_connection === 'disconnected'
+                {liberoHealth?.sim === 'offline'
                   ? t.history.simulatorDisconnected
                   : t.history.stateStale}
               </div>

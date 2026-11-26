@@ -48,6 +48,7 @@ class LiberoRunner:
         self._heartbeat_task: asyncio.Task | None = None
         self._poll_task: asyncio.Task | None = None
         self.heartbeat_interval_s = 1.0
+        self._snapshot_seq = 0
         self._closed = False
         self._command_lock = asyncio.Lock()
         self._command_guard = asyncio.Lock()
@@ -161,14 +162,37 @@ class LiberoRunner:
             "heartbeat_error": self.last_heartbeat_error,
         }
 
+    def wire_connection_health(self) -> dict[str, Any]:
+        """The web's `connection_health` (communication-plan §4), from the detailed one."""
+        health = self.connection_health()
+        age_s = health["last_poll_success_age_s"]
+        online = (
+            health["simulator_connection"] == "connected"
+            and health["state_freshness"] == "fresh"
+        )
+        heartbeat = health["heartbeat_status"]
+        return {
+            "sim": "online" if online else "offline",
+            # TODO(Q4): `session_active` is the only Board signal the sim gives us.
+            "board": (
+                "connected"
+                if self.state is not None and self.state.session_active
+                else "disconnected"
+            ),
+            "heartbeat": heartbeat if heartbeat in ("healthy", "degraded") else "off",
+            "last_state_age_ms": None if age_s is None else int(age_s * 1000),
+        }
+
     def websocket_snapshot(self, timestamp_ms: int) -> dict[str, Any] | None:
         if self.state is None:
             return None
+        self._snapshot_seq += 1
         return {
             "type": "libero_state",
+            "seq": self._snapshot_seq,
             "ts": timestamp_ms,
             "state": self.state.raw,
-            "connection_health": self.connection_health(),
+            "connection_health": self.wire_connection_health(),
         }
 
     async def start_episode(

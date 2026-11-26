@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from .models_web import CommandIn
+from .models_web import LegacyCommandIn as CommandIn  # SO-101 path, gone in step 5
 
 
 @dataclass(frozen=True)

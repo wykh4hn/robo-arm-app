@@ -5,7 +5,7 @@ New fields are optional so an older FE ignores them.
 
 from __future__ import annotations
 
-from typing import Annotated, Literal, Union
+from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
@@ -14,8 +14,38 @@ JointName = Literal[
 ]
 UsbLink = Literal["plugged", "lost", "unknown"]
 RobotStateName = Literal["ready", "moving", "stopped", "error", "unknown"]
-# R4: never "preparing".
-TaskStateName = Literal["idle", "running", "done", "failed", "stopped"]
+# communication-plan §4: a run goes preparing -> running -> done | failed | stopped.
+TaskStateName = Literal["preparing", "running", "done", "failed", "stopped"]
+# Only the legacy `status` message says "idle" (no run yet).
+StatusTaskStateName = Literal["idle", "preparing", "running", "done", "failed", "stopped"]
+LiberoSuite = Literal["libero_spatial", "libero_object", "libero_goal", "libero_10", "libero_90"]
+
+# communication-plan §3.2: spec 5.5 codes plus the LIBERO ones. Keep in step with
+# `nack_codes` in contracts/web_examples.json.
+LIBERO_NACK_CODES = (
+    "BOARD_NOT_CONNECTED",
+    "SIM_OFFLINE",
+    "EPISODE_RUNNING",
+    "EPISODE_ENDED",
+    "OUTCOME_UNKNOWN",
+)
+NACK_CODES = (
+    "bad_schema",
+    "bad_template",
+    "bad_object",
+    "text_mismatch",
+    "unknown_profile",
+    "profile_blocked",
+    "busy",
+    "needs_ready",
+    "board_offline",
+    "robot_error",
+    "sim_offline",
+    "logger_not_ready",
+    "config_invalid",
+    "no_trials_left",
+    *LIBERO_NACK_CODES,
+)
 PipelineStep = Literal["camera", "ai", "gateway", "robot", "result"]
 
 
@@ -34,7 +64,25 @@ class _Out(BaseModel):
 # --- web -> BE (5.2) ---------------------------------------------------------
 
 
+class TaskRef(_In):
+    suite: LiberoSuite
+    task_id: int = Field(ge=0)
+
+
 class CommandIn(_In):
+    """Start one LIBERO episode (communication-plan §4). No free text, no object name."""
+
+    type: Literal["command"]
+    id: str = Field(min_length=1, max_length=128)
+    task: TaskRef
+    init_state: int | None = Field(default=None, ge=0)
+    seed: int | None = None
+    profile_id: str | None = None
+
+
+class LegacyCommandIn(_In):
+    """SO-101 prompt command. Only the old runner path uses it; removed in step 5."""
+
     type: Literal["command"]
     id: str = Field(min_length=1, max_length=128)
     text: str
@@ -53,18 +101,13 @@ class ReadyIn(_In):
     id: str = Field(min_length=1, max_length=128)
 
 
-class ReconnectUsbIn(_In):
-    type: Literal["reconnect_usb"]
-    id: str = Field(min_length=1, max_length=128)
-
-
 class PongIn(_In):
     type: Literal["pong"]
     id: str
 
 
 Incoming = Annotated[
-    Union[CommandIn, StopIn, ReadyIn, ReconnectUsbIn, PongIn], Field(discriminator="type")
+    Union[CommandIn, StopIn, ReadyIn, PongIn], Field(discriminator="type")
 ]
 incoming_adapter: TypeAdapter[Incoming] = TypeAdapter(Incoming)
 
@@ -104,7 +147,7 @@ class RobotOut(_Out):
 
 class StatusTaskOut(_Out):
     id: int | None
-    state: TaskStateName
+    state: StatusTaskStateName
 
     def wire(self) -> dict:  # `id: null` is meaningful here
         return {"id": self.id, "state": self.state}
@@ -139,6 +182,9 @@ class TaskInfoOut(_Out):
     outcome: str | None = None
     reasonCode: str | None = None
     incomplete: bool | None = None
+    # LIBERO (communication-plan §4): the sim's run and how it ended.
+    run_id: str | None = None
+    end_reason: str | None = None
 
 
 class TaskOut(_Out):
@@ -194,6 +240,25 @@ class CameraOut(_Out):
     frameTs: int
 
 
+class ConnectionHealthOut(_Out):
+    sim: Literal["online", "offline"]
+    board: Literal["connected", "disconnected"]
+    heartbeat: Literal["healthy", "degraded", "off"]
+    last_state_age_ms: int | None
+
+
+class LiberoStateOut(_Out):
+    type: Literal["libero_state"] = "libero_state"
+    seq: int = Field(ge=0)
+    ts: int
+    # Native `franka_ee_v1` object, checked by app.libero_state; passed through untouched.
+    state: dict[str, Any]
+    connection_health: ConnectionHealthOut
+
+    def wire(self) -> dict:  # nulls inside `state` and the age are meaningful
+        return self.model_dump()
+
+
 class PingOut(_Out):
     type: Literal["ping"] = "ping"
     id: str
@@ -203,6 +268,7 @@ Outgoing = Annotated[
     Union[
         TelemetryOut,
         StatusOut,
+        LiberoStateOut,
         TaskOut,
         TasksOut,
         AckOut,

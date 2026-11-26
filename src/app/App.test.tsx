@@ -104,15 +104,11 @@ describe('App', () => {
     expect(screen.getByTestId('first-visit-hint')).toBeInTheDocument();
   });
 
-  it('USB lost: critical banner with Reconnect; it clears only when the condition clears', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+  it('USB lost: critical banner, and no Reconnect USB command (dropped from the contract)', async () => {
     renderScenario('usb-lost');
     await advance(4000);
     expect(screen.getByText('Mất kết nối USB với tay robot')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Kết nối lại USB/ }));
-    await advance(1500);
-    expect(screen.queryByText('Mất kết nối USB với tay robot')).not.toBeInTheDocument();
-    expect(screen.getByTestId('lamp')).toHaveTextContent('Chờ người dùng');
+    expect(screen.queryByRole('button', { name: /Kết nối lại USB/ })).not.toBeInTheDocument();
   });
 
   it('runs without the URDF / WebGL and renders the joint table', async () => {

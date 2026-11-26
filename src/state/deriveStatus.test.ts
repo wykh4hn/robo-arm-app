@@ -184,15 +184,15 @@ describe('deriveStatus', () => {
     };
     expect(deriveStatus({
       ...base,
-      liberoConnectionHealth: { ...liberoHealthFixture, state_freshness: 'stale' },
+      liberoConnectionHealth: { ...liberoHealthFixture, last_state_age_ms: 5000 },
     }).canReady).toBe(false);
     expect(deriveStatus({
       ...base,
-      liberoConnectionHealth: { ...liberoHealthFixture, simulator_connection: 'disconnected' },
+      liberoConnectionHealth: { ...liberoHealthFixture, sim: 'offline' },
     }).canReady).toBe(false);
     expect(deriveStatus({
       ...base,
-      liberoConnectionHealth: { ...liberoHealthFixture, poll_error: 'invalid state response' },
+      liberoConnectionHealth: { ...liberoHealthFixture, last_state_age_ms: null },
     }).canReady).toBe(false);
   });
 });

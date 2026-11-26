@@ -4,13 +4,15 @@ import raw from '../../contracts/web_examples.json?raw';
 import { applyMessage, initialMonitorState } from '../state/store';
 import { deriveStatus } from '../state/deriveStatus';
 import type { MonitorState } from '../state/types';
-import type { IncomingMessage, OutgoingMessage } from '../types/messages';
+import { NACK_CODES, type IncomingMessage, type OutgoingMessage } from '../types/messages';
 import { sameHostUrl } from './index';
 
 const contract = JSON.parse(raw) as {
   web_to_be: Record<string, OutgoingMessage | { type: 'pong'; id: string }>;
   be_to_web: Record<string, IncomingMessage | { type: 'ping'; id: string }>;
+  nack_codes: string[];
 };
+const be = contract.be_to_web;
 
 function run(names: string[]): MonitorState {
   let s = initialMonitorState(0);
@@ -45,15 +47,48 @@ describe('web <-> BE contract', () => {
     expect(s.samples[s.samples.length - 1]!.joints.elbow_flex.action).toBe(60);
   });
 
-  it('the nack code is accepted and the reason is shown', () => {
-    expect(contract.be_to_web.nack).toMatchObject({ code: 'busy' });
+  it('the nack codes are the ones the FE knows, LIBERO codes included', () => {
+    expect(contract.nack_codes).toEqual([...NACK_CODES]);
+    expect(be.nack).toMatchObject({ code: 'busy' });
+    expect(be.nack_board_not_connected).toMatchObject({ code: 'BOARD_NOT_CONNECTED' });
+  });
+
+  it('libero_state carries seq, ts and the new connection_health', () => {
+    const s = run(['libero_state']);
+    expect(be.libero_state).toMatchObject({ seq: 42, ts: expect.any(Number) });
+    expect(s.libero?.run_id).toBe('run-7f3a');
+    expect(s.liberoConnectionHealth).toEqual({
+      sim: 'online',
+      board: 'connected',
+      heartbeat: 'healthy',
+      last_state_age_ms: 40,
+    });
+    expect(run(['libero_state_offline']).liberoConnectionHealth?.last_state_age_ms).toBeNull();
+  });
+
+  it('task events walk preparing -> running -> failed with run_id, outcome, end_reason', () => {
+    const s = run(['task_preparing', 'task_running', 'task_libero_failed']);
+    const task = s.tasks.find((x) => x.id === 14);
+    expect(task).toMatchObject({
+      state: 'failed',
+      run_id: 'run-7f3a',
+      outcome: 'TIMEOUT',
+      end_reason: 'MAX_STEPS',
+    });
+    const states = Object.values(be).flatMap((m) =>
+      m.type === 'task' ? [m.task.state] : m.type === 'tasks' ? m.tasks.map((x) => x.state) : [],
+    );
+    expect(new Set(states)).toEqual(new Set(['preparing', 'running', 'done', 'failed', 'stopped']));
   });
 
   it('what the FE sends has the shapes the BE expects', () => {
     const cmd = contract.web_to_be.command as Extract<OutgoingMessage, { type: 'command' }>;
     expect(Object.keys(cmd).sort()).toEqual(
-      ['id', 'params', 'profileId', 'templateId', 'text', 'type'].sort(),
+      ['id', 'init_state', 'profile_id', 'seed', 'task', 'type'].sort(),
     );
+    expect(cmd.task).toEqual({ suite: 'libero_object', task_id: 0 });
+    expect(Object.keys(contract.web_to_be.command_minimal!).sort()).toEqual(['id', 'task', 'type']);
+    expect(contract.web_to_be).not.toHaveProperty('reconnect_usb');
     expect(contract.web_to_be.stop).toEqual({ type: 'stop', id: 'stop-m1a3-2' });
   });
 

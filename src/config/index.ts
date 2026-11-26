@@ -1,5 +1,5 @@
 // Single place for tunables. Values are placeholders to calibrate on the real robot.
-import type { CameraId, JointName, PipelineStepId } from '../types/messages';
+import type { CameraId, JointName, LiberoTaskRef, PipelineStepId } from '../types/messages';
 
 export type ObjectId = 'red_duck' | 'yellow_duck' | 'cube' | 'pink_box';
 export type TemplateId = 'pick_into_box';
@@ -108,6 +108,10 @@ export const config = {
   ackTimeoutMs: 5_000,
   stopAckTimeoutMs: 4_000,
   liberoResetTimeoutMs: 32_000,
+  // TODO(Q2): the demo suite/task is not decided yet; these are the plan's stand-ins.
+  liberoTask: { suite: 'libero_object', task_id: 0 } as LiberoTaskRef,
+  liberoInitState: 0,
+  liberoSeed: 1000,
   fpsWarn: 8,
   cameraFrozenAfterMs: 3000,
   trackingWindowMs: 1000,

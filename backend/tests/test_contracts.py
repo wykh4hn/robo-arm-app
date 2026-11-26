@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.models_web import incoming_adapter, outgoing_adapter
+from app.models_web import NACK_CODES, incoming_adapter, outgoing_adapter
 from app.ports import parse_evaluation, parse_sim_state
 
 from .conftest import load_contract
@@ -26,17 +26,51 @@ def test_be_to_web_examples_round_trip(name):
     assert model.wire() == msg  # nothing added, nothing lost
 
 
-def test_task_states_never_preparing():
-    for name, msg in WEB["be_to_web"].items():
+TASK_STATES = ("preparing", "running", "done", "failed", "stopped")
+
+
+def test_task_states_are_the_run_lifecycle():
+    seen = set()
+    for msg in WEB["be_to_web"].values():
         tasks = msg.get("tasks") or ([msg["task"]] if msg["type"] == "task" else [])
-        assert all(t["state"] in ("idle", "running", "done", "failed", "stopped") for t in tasks)
+        seen |= {t["state"] for t in tasks}
+    assert seen == set(TASK_STATES)
 
 
-def test_unknown_task_state_is_refused():
+@pytest.mark.parametrize("state", ["idle", "queued"])
+def test_unknown_task_state_is_refused(state):
     bad = {**WEB["be_to_web"]["task_done"]}
-    bad["task"] = {**bad["task"], "state": "preparing"}
+    bad["task"] = {**bad["task"], "state": state}
     with pytest.raises(Exception):
         outgoing_adapter.validate_python(bad)
+
+
+@pytest.mark.parametrize(
+    "msg",
+    [
+        {"type": "reconnect_usb", "id": "u1"},
+        {"type": "command", "id": "c1", "text": "pick the cube", "templateId": "t", "params": {}},
+        {"type": "command", "id": "c1", "task": {"suite": "libero_99", "task_id": 0}},
+        {"type": "command", "id": "c1", "task": {"suite": "libero_object", "task_id": -1}},
+    ],
+)
+def test_old_or_bad_commands_are_refused(msg):
+    with pytest.raises(Exception):
+        incoming_adapter.validate_python(msg)
+
+
+def test_libero_state_needs_seq_and_health():
+    good = WEB["be_to_web"]["libero_state"]
+    for key in ("seq", "ts", "connection_health"):
+        with pytest.raises(Exception):
+            outgoing_adapter.validate_python({k: v for k, v in good.items() if k != key})
+
+
+def test_nack_codes_match_the_backend():
+    assert tuple(WEB["nack_codes"]) == NACK_CODES
+    for msg in WEB["be_to_web"].values():
+        if msg["type"] == "nack":
+            assert msg["code"] in NACK_CODES
 
 
 @pytest.mark.parametrize("name", [k for k in SIM if k.startswith("state")])

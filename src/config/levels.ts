@@ -1,7 +1,7 @@
 // Level -> icon and chip class. Used by the app AND the Tutorial table.
 import type { IconName } from '../components/Icon';
 import { LEVELS, type Level } from '../state/types';
-import type { TaskState } from '../types/messages';
+import type { StatusTaskState } from '../types/messages';
 
 export const LEVEL_ORDER = LEVELS;
 
@@ -18,8 +18,9 @@ export function detailChipClass(level: Level): string {
   return level === 'ok' ? '' : LEVEL_META[level].chip;
 }
 
-export const TASK_STATUS: Record<TaskState, { icon: IconName; cls: string }> = {
+export const TASK_STATUS: Record<StatusTaskState, { icon: IconName; cls: string }> = {
   idle: { icon: 'pending', cls: '' },
+  preparing: { icon: 'waiting', cls: '' },
   running: { icon: 'running', cls: 'rb-task__status--running' },
   done: { icon: 'ok', cls: 'rb-task__status--done' },
   failed: { icon: 'critical', cls: 'rb-task__status--failed' },

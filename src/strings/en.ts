@@ -94,6 +94,7 @@ export const en: Strings = {
     },
     task: {
       idle: 'Idle',
+      preparing: 'Preparing',
       running: 'Running',
       done: 'Done',
       failed: 'Failed',

@@ -36,7 +36,6 @@ export function ErrorBanner({ derived }: { derived: DerivedStatus }) {
   const t = useT();
   const lang = useStore((s) => s.lang);
   const setTab = useStore((s) => s.setTab);
-  const reconnectUsb = useStore((s) => s.reconnectUsb);
   if (derived.banner.length === 0) return null;
 
   return (
@@ -62,12 +61,6 @@ export function ErrorBanner({ derived }: { derived: DerivedStatus }) {
               </dl>
             </div>
             <div className="rb-banner__actions">
-              {kind === 'usbLost' && (
-                <button type="button" className="rb-btn rb-btn--primary" onClick={reconnectUsb}>
-                  <Icon name="unplug" />
-                  {t.banner.reconnectUsb}
-                </button>
-              )}
               {kind !== 'stopUnconfirmed' && (
                 <button
                   type="button"
